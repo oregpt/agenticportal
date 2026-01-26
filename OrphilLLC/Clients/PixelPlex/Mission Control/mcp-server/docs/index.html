@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ccview.io MCP Server - API Reference</title>
+    <style>
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-card: #0f3460;
+            --text-primary: #e8e8e8;
+            --text-secondary: #a0a0a0;
+            --accent-stable: #00d26a;
+            --accent-experimental: #f7b731;
+            --accent-deprecated: #eb3b5a;
+            --accent-blue: #4a9eff;
+            --border: #2d3a4f;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        header {
+            text-align: center;
+            padding: 3rem 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 2rem;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+        }
+        
+        .stats-bar {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+        }
+        
+        .stat-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .dot-stable { background: var(--accent-stable); }
+        .dot-experimental { background: var(--accent-experimental); }
+        .dot-deprecated { background: var(--accent-deprecated); }
+        
+        .search-box {
+            margin: 2rem 0;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 1rem 1.5rem;
+            font-size: 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            outline: none;
+        }
+        
+        .search-input:focus {
+            border-color: var(--accent-blue);
+        }
+        
+        .filter-bar {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .filter-btn:hover {
+            border-color: var(--accent-blue);
+        }
+        
+        .filter-btn.active {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+        }
+        
+        .category {
+            margin-bottom: 2rem;
+        }
+        
+        .category-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+        }
+        
+        .category-header h2 {
+            font-size: 1.2rem;
+        }
+        
+        .category-count {
+            background: var(--bg-card);
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+        
+        .tools-list {
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+        }
+        
+        .tool {
+            border-bottom: 1px solid var(--border);
+            padding: 1rem;
+        }
+        
+        .tool:last-child {
+            border-bottom: none;
+        }
+        
+        .tool-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            cursor: pointer;
+        }
+        
+        .status-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .badge-stable {
+            background: rgba(0, 210, 106, 0.2);
+            color: var(--accent-stable);
+        }
+        
+        .badge-experimental {
+            background: rgba(247, 183, 49, 0.2);
+            color: var(--accent-experimental);
+        }
+        
+        .badge-deprecated {
+            background: rgba(235, 59, 90, 0.2);
+            color: var(--accent-deprecated);
+        }
+        
+        .tool-name {
+            font-family: 'Menlo', 'Monaco', monospace;
+            font-weight: 600;
+            color: var(--accent-blue);
+        }
+        
+        .tool-desc {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        
+        .tool-details {
+            display: none;
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+        }
+        
+        .tool.expanded .tool-details {
+            display: block;
+        }
+        
+        .detail-section {
+            margin-bottom: 1rem;
+        }
+        
+        .detail-section h4 {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+        }
+        
+        .endpoint {
+            font-family: monospace;
+            background: var(--bg-card);
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        
+        .params-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .params-table th,
+        .params-table td {
+            text-align: left;
+            padding: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .params-table th {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .param-name {
+            font-family: monospace;
+            color: var(--accent-blue);
+        }
+        
+        .param-required {
+            color: var(--accent-deprecated);
+            font-size: 0.7rem;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            border-top: 1px solid var(--border);
+            margin-top: 3rem;
+        }
+        
+        footer a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔗 ccview.io MCP Server</h1>
+            <p class="subtitle">Model Context Protocol API Reference for Canton Network Explorer</p>
+            <div class="stats-bar">
+                <div class="stat">
+                    <div class="stat-dot dot-stable"></div>
+                    <span><strong id="stable-count">32</strong> Stable</span>
+                </div>
+                <div class="stat">
+                    <div class="stat-dot dot-experimental"></div>
+                    <span><strong id="experimental-count">12</strong> Experimental</span>
+                </div>
+                <div class="stat">
+                    <div class="stat-dot dot-deprecated"></div>
+                    <span><strong id="deprecated-count">5</strong> Deprecated</span>
+                </div>
+            </div>
+        </header>
+        
+        <div class="search-box">
+            <input type="text" class="search-input" placeholder="Search tools..." id="search">
+        </div>
+        
+        <div class="filter-bar">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="stable">✅ Stable</button>
+            <button class="filter-btn" data-filter="experimental">⚠️ Experimental</button>
+            <button class="filter-btn" data-filter="deprecated">❌ Deprecated</button>
+        </div>
+        
+        <div id="categories"></div>
+        
+        <footer>
+            <p>Built by <a href="https://github.com/oregpt">Ore Phillips</a> | 
+               <a href="https://ccview.io">ccview.io</a> | 
+               <a href="https://docs.ccview.io">API Docs</a></p>
+        </footer>
+    </div>
+    
+    <script>
+        // Tool definitions (from tools.ts)
+        const TOOLS = [
+            // Governance
+            { name: "governance_list_active", description: "List active governance proposals on the Canton Network", status: "stable", category: "Governance", endpoint: "GET /api/v2/governances/active", params: [{name: "offset", type: "number", desc: "Pagination offset"}, {name: "limit", type: "number", desc: "Number of results"}] },
+            { name: "governance_list_completed", description: "List completed governance proposals", status: "stable", category: "Governance", endpoint: "GET /api/v2/governances/completed", params: [{name: "offset", type: "number", desc: "Pagination offset"}, {name: "limit", type: "number", desc: "Number of results"}] },
+            { name: "governance_search", description: "Search all governance proposals", status: "stable", category: "Governance", endpoint: "GET /api/v2/governances", params: [{name: "offset", type: "number", desc: "Pagination offset"}, {name: "limit", type: "number", desc: "Number of results"}, {name: "search_arg", type: "string", desc: "Search term"}] },
+            { name: "governance_price_votes", description: "Get governance price votes", status: "stable", category: "Governance", endpoint: "GET /api/v2/governances/price-votes", params: [{name: "offset", type: "number", desc: "Pagination offset"}, {name: "limit", type: "number", desc: "Number of results"}] },
+            { name: "governance_details", description: "Get details for a specific governance proposal", status: "stable", category: "Governance", endpoint: "GET /api/v1/governances/details/{tracking_cid}", params: [{name: "tracking_cid", type: "string", desc: "Governance tracking CID", required: true}] },
+            { name: "governance_statistics", description: "Get overall governance statistics", status: "stable", category: "Governance", endpoint: "GET /api/v1/governances/statistics", params: [] },
+            
+            // ANS
+            { name: "ans_check_availability", description: "Check if an ANS name is available", status: "stable", category: "ANS", endpoint: "GET /api/v1/ans/available/{name}", params: [{name: "name", type: "string", desc: "ANS name to check", required: true}] },
+            { name: "ans_list_by_party", description: "List ANS names owned by a party", status: "stable", category: "ANS", endpoint: "GET /api/v1/ans/list/{party_id}", params: [{name: "party_id", type: "string", desc: "Party ID", required: true}] },
+            { name: "ans_context_by_name", description: "Get ANS context for a name", status: "stable", category: "ANS", endpoint: "GET /api/v1/ans/context/list-by-name/{ans}", params: [{name: "ans", type: "string", desc: "ANS name", required: true}] },
+            { name: "ans_context_by_party", description: "Get ANS context for a party", status: "stable", category: "ANS", endpoint: "GET /api/v1/ans/context/list-by-party/{party_id}", params: [{name: "party_id", type: "string", desc: "Party ID", required: true}] },
+            { name: "ans_request_status", description: "Get ANS request status by reference", status: "experimental", category: "ANS", endpoint: "GET /api/v1/ans/req-details/{reference}", params: [{name: "reference", type: "string", desc: "Request reference", required: true}] },
+            
+            // Super Validators
+            { name: "super_validators_escrow", description: "List super validators in escrow", status: "stable", category: "Super Validators", endpoint: "GET /api/v2/super-validators/escrow", params: [{name: "offset", type: "number", desc: "Pagination offset"}, {name: "limit", type: "number", desc: "Number of results"}] },
+            { name: "super_validators_hosted", description: "List hosted super validators", status: "stable", category: "Super Validators", endpoint: "GET /api/v2/super-validators/hosted", params: [{name: "offset", type: "number", desc: "Pagination offset"}, {name: "limit", type: "number", desc: "Number of results"}] },
+            { name: "super_validators_standalone", description: "List standalone super validators", status: "stable", category: "Super Validators", endpoint: "GET /api/v2/super-validators/standalone", params: [{name: "offset", type: "number", desc: "Pagination offset"}, {name: "limit", type: "number", desc: "Number of results"}] },
+            { name: "super_validators_onboarded", description: "List onboarded validators", status: "experimental", category: "Super Validators", endpoint: "GET /api/v2/super-validators/onboarded-validators", params: [{name: "offset", type: "number", desc: "Pagination offset"}, {name: "limit", type: "number", desc: "Number of results"}, {name: "sv_party_id", type: "string", desc: "Super validator party ID"}] },
+            
+            // Validators
+            { name: "validators_list", description: "List all validators on the Canton Network", status: "stable", category: "Validators", endpoint: "GET /api/v2/validators", params: [{name: "offset", type: "number", desc: "Pagination offset"}, {name: "limit", type: "number", desc: "Number of results"}, {name: "sort_field", type: "string", desc: "Sort field"}, {name: "sort_order", type: "string", desc: "asc or desc"}] },
+            { name: "validator_details", description: "Get details for a specific validator", status: "stable", category: "Validators", endpoint: "GET /api/v1/validators/{validator_id}", params: [{name: "validator_id", type: "string", desc: "Validator ID", required: true}] },
+            { name: "validator_statistics", description: "Get statistics for a validator", status: "stable", category: "Validators", endpoint: "GET /api/v1/validators/statistics", params: [{name: "validator_id", type: "string", desc: "Validator ID", required: true}] },
+            { name: "validator_performance_ranged", description: "Get validator performance over a range", status: "experimental", category: "Validators", endpoint: "GET /api/v1/validators/perfomance-ranged", params: [{name: "validator_id", type: "string", desc: "Validator ID", required: true}, {name: "start", type: "string", desc: "Start date"}, {name: "end", type: "string", desc: "End date"}] },
+            
+            // Parties
+            { name: "party_details", description: "Get details for a party (wallet/account)", status: "stable", category: "Parties", endpoint: "GET /api/v1/parties/{party_id}", params: [{name: "party_id", type: "string", desc: "Party ID", required: true}] },
+            { name: "party_counterparties", description: "Get counterparties for a party", status: "stable", category: "Parties", endpoint: "GET /api/v1/parties/counterparties", params: [{name: "party_id", type: "string", desc: "Party ID", required: true}, {name: "limit", type: "number", desc: "Number of results"}] },
+            { name: "party_balance_changes", description: "Get balance changes for a party", status: "experimental", category: "Parties", endpoint: "GET /api/v2/parties/balance-changes", params: [{name: "party_id", type: "string", desc: "Party ID", required: true}, {name: "cursor", type: "string", desc: "Pagination cursor"}, {name: "limit", type: "number", desc: "Number of results"}] },
+            { name: "party_interactions", description: "Get interactions for a party", status: "experimental", category: "Parties", endpoint: "GET /api/v1/parties/interactions", params: [{name: "party_id", type: "string", desc: "Party ID", required: true}, {name: "limit", type: "number", desc: "Number of results"}] },
+            
+            // Token Transfers
+            { name: "token_transfers_list", description: "List recent token transfers", status: "stable", category: "Token Transfers", endpoint: "GET /api/v2/token-transfers", params: [{name: "cursor", type: "string", desc: "Pagination cursor"}, {name: "limit", type: "number", desc: "Number of results"}] },
+            { name: "token_transfer_details", description: "Get details for a specific transfer", status: "stable", category: "Token Transfers", endpoint: "GET /api/v2/token-transfers/{event_id}", params: [{name: "event_id", type: "string", desc: "Transfer event ID", required: true}] },
+            { name: "token_transfer_instructions", description: "Get transfer instructions", status: "stable", category: "Token Transfers", endpoint: "GET /api/v1/token-transfer-instructions/{event_id}", params: [{name: "event_id", type: "string", desc: "Transfer event ID", required: true}] },
+            { name: "token_transfers_by_party", description: "Get transfers for a party", status: "experimental", category: "Token Transfers", endpoint: "GET /api/v2/token-transfers/by-party", params: [{name: "party_id", type: "string", desc: "Party ID", required: true}, {name: "cursor", type: "string", desc: "Pagination cursor"}, {name: "limit", type: "number", desc: "Number of results"}] },
+            
+            // Explore
+            { name: "explore_stats", description: "Get Canton Network explorer statistics", status: "stable", category: "Explore", endpoint: "GET /api/v2/explore/stats", params: [] },
+            { name: "explore_prices", description: "Get current token prices", status: "stable", category: "Explore", endpoint: "GET /api/v2/explore/prices", params: [] },
+            { name: "explore_prices_proxy", description: "Get token prices via proxy", status: "stable", category: "Explore", endpoint: "GET /api/v2/explore/prices-proxy", params: [] },
+            { name: "explore_supply_stats", description: "Get supply statistics over a date range", status: "stable", category: "Explore", endpoint: "GET /api/v1/explore/supply-stats", params: [{name: "start", type: "string", desc: "Start date (YYYY-MM-DD)", required: true}, {name: "end", type: "string", desc: "End date (YYYY-MM-DD)", required: true}] },
+            { name: "explore_transfer_stat_per_day", description: "Get daily transfer statistics", status: "stable", category: "Explore", endpoint: "GET /api/v1/explore/transfer-stat-per-day", params: [] },
+            
+            // Offers
+            { name: "offers_search", description: "Search offers on the network", status: "stable", category: "Offers", endpoint: "GET /api/v2/offers/search", params: [{name: "party_id", type: "string", desc: "Filter by party"}, {name: "status", type: "string", desc: "Filter by status"}, {name: "cursor", type: "string", desc: "Pagination cursor"}, {name: "limit", type: "number", desc: "Number of results"}] },
+            { name: "offers_stat", description: "Get offer statistics", status: "stable", category: "Offers", endpoint: "GET /api/v2/offers/stat", params: [] },
+            
+            // Featured Apps
+            { name: "featured_apps_list", description: "List featured apps on Canton Network", status: "stable", category: "Featured Apps", endpoint: "GET /api/v2/featured-apps", params: [{name: "offset", type: "number", desc: "Pagination offset"}, {name: "limit", type: "number", desc: "Number of results"}] },
+            { name: "featured_apps_top5", description: "Get top 5 featured apps", status: "experimental", category: "Featured Apps", endpoint: "GET /api/v2/featured-apps/top5", params: [] },
+            
+            // Rewards
+            { name: "rewards_leaderboard_top", description: "Get top rewards leaderboard", status: "stable", category: "Rewards", endpoint: "GET /api/v1/rewards/leaderboard/top", params: [{name: "limit", type: "number", desc: "Number of results"}, {name: "leader_type", type: "string", desc: "Type of leader"}] },
+            { name: "rewards_leaderboard_stat", description: "Get rewards leaderboard statistics", status: "stable", category: "Rewards", endpoint: "GET /api/v1/rewards/leaderboard/stat", params: [] },
+            
+            // General
+            { name: "general_search", description: "Universal search across the Canton Network", status: "stable", category: "General", endpoint: "GET /api/v1/general-search", params: [{name: "arg", type: "string", desc: "Search query", required: true}, {name: "limit", type: "number", desc: "Number of results"}] },
+            
+            // Mining (deprecated)
+            { name: "mining_rounds_active", description: "Get active mining rounds", status: "deprecated", category: "Mining", endpoint: "GET /api/v1/mining-rounds/active", params: [] },
+            { name: "mining_rounds_list", description: "List mining rounds", status: "deprecated", category: "Mining", endpoint: "GET /api/v1/mining-rounds", params: [{name: "cursor", type: "string", desc: "Pagination cursor"}, {name: "limit", type: "number", desc: "Number of results"}] },
+            
+            // Deprecated Rewards
+            { name: "rewards_app", description: "Get app rewards", status: "deprecated", category: "Rewards (Deprecated)", endpoint: "GET /api/v1/rewards/app", params: [] },
+            { name: "rewards_validator", description: "Get validator rewards", status: "deprecated", category: "Rewards (Deprecated)", endpoint: "GET /api/v1/rewards/validator", params: [] },
+            { name: "rewards_super_validator", description: "Get super validator rewards", status: "deprecated", category: "Rewards (Deprecated)", endpoint: "GET /api/v1/rewards/super-validator", params: [] },
+            
+            // Updates
+            { name: "updates_list", description: "List network updates", status: "experimental", category: "Updates", endpoint: "GET /api/v3/updates", params: [{name: "cursor", type: "string", desc: "Pagination cursor"}, {name: "limit", type: "number", desc: "Number of results"}, {name: "start_datetime", type: "string", desc: "Start datetime"}, {name: "end_datetime", type: "string", desc: "End datetime"}] },
+            { name: "updates_by_party", description: "Get updates for a party", status: "experimental", category: "Updates", endpoint: "GET /api/v3/updates/by-party", params: [{name: "party_id", type: "string", desc: "Party ID", required: true}, {name: "cursor", type: "string", desc: "Pagination cursor"}, {name: "limit", type: "number", desc: "Number of results"}] },
+        ];
+        
+        // Group tools by category
+        function groupByCategory(tools) {
+            const groups = {};
+            tools.forEach(tool => {
+                if (!groups[tool.category]) {
+                    groups[tool.category] = [];
+                }
+                groups[tool.category].push(tool);
+            });
+            return groups;
+        }
+        
+        // Render tools
+        function renderTools(tools) {
+            const container = document.getElementById('categories');
+            container.innerHTML = '';
+            
+            const groups = groupByCategory(tools);
+            
+            Object.entries(groups).forEach(([category, categoryTools]) => {
+                const categoryEl = document.createElement('div');
+                categoryEl.className = 'category';
+                categoryEl.innerHTML = `
+                    <div class="category-header">
+                        <h2>${category}</h2>
+                        <span class="category-count">${categoryTools.length} tools</span>
+                    </div>
+                    <div class="tools-list">
+                        ${categoryTools.map(tool => `
+                            <div class="tool" data-status="${tool.status}">
+                                <div class="tool-header" onclick="this.parentElement.classList.toggle('expanded')">
+                                    <span class="status-badge badge-${tool.status}">${tool.status}</span>
+                                    <span class="tool-name">${tool.name}</span>
+                                    <span class="tool-desc">— ${tool.description}</span>
+                                </div>
+                                <div class="tool-details">
+                                    <div class="detail-section">
+                                        <h4>Endpoint</h4>
+                                        <div class="endpoint">${tool.endpoint}</div>
+                                    </div>
+                                    ${tool.params.length > 0 ? `
+                                    <div class="detail-section">
+                                        <h4>Parameters</h4>
+                                        <table class="params-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Name</th>
+                                                    <th>Type</th>
+                                                    <th>Description</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                ${tool.params.map(p => `
+                                                    <tr>
+                                                        <td><span class="param-name">${p.name}</span> ${p.required ? '<span class="param-required">required</span>' : ''}</td>
+                                                        <td>${p.type}</td>
+                                                        <td>${p.desc}</td>
+                                                    </tr>
+                                                `).join('')}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                container.appendChild(categoryEl);
+            });
+        }
+        
+        // Update counts
+        function updateCounts() {
+            document.getElementById('stable-count').textContent = TOOLS.filter(t => t.status === 'stable').length;
+            document.getElementById('experimental-count').textContent = TOOLS.filter(t => t.status === 'experimental').length;
+            document.getElementById('deprecated-count').textContent = TOOLS.filter(t => t.status === 'deprecated').length;
+        }
+        
+        // Search
+        document.getElementById('search').addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            const filtered = TOOLS.filter(t => 
+                t.name.toLowerCase().includes(query) || 
+                t.description.toLowerCase().includes(query) ||
+                t.category.toLowerCase().includes(query)
+            );
+            renderTools(filtered);
+        });
+        
+        // Filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                const filter = btn.dataset.filter;
+                const filtered = filter === 'all' ? TOOLS : TOOLS.filter(t => t.status === filter);
+                renderTools(filtered);
+            });
+        });
+        
+        // Initial render
+        updateCounts();
+        renderTools(TOOLS);
+    </script>
+</body>
+</html>

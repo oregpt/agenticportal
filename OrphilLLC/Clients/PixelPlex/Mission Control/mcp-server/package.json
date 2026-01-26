@@ -1,0 +1,32 @@
+{
+  "name": "ccview-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP Server for ccview.io Canton Network Explorer API",
+  "main": "dist/index.js",
+  "type": "module",
+  "bin": {
+    "ccview-mcp": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "keywords": [
+    "mcp",
+    "canton",
+    "blockchain",
+    "ccview",
+    "api"
+  ],
+  "author": "Ore Phillips",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0"
+  }
+}
