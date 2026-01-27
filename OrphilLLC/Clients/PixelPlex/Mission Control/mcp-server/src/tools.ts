@@ -1,6 +1,11 @@
 /**
  * ccview.io MCP Tool Definitions
  * 
+ * DESCRIPTION GUIDELINES (for LLM token efficiency):
+ * - Tool `description`: max 80 chars (sent to LLM)
+ * - Tool `documentation`: verbose details (for docs/UI only, NOT sent to LLM)
+ * - Parameter `description`: max 20 chars (sent to LLM)
+ * 
  * STATUS KEY:
  * - stable: Tested and working reliably
  * - experimental: Works but may need specific params
@@ -11,14 +16,15 @@ export type ToolStatus = 'stable' | 'experimental' | 'deprecated';
 
 export interface ToolDefinition {
   name: string;
-  description: string;
+  description: string;  // SHORT - sent to LLM (max 80 chars)
+  documentation?: string;  // VERBOSE - for docs/UI only, NOT sent to LLM
   status: ToolStatus;
   category: string;
   inputSchema: {
     type: 'object';
     properties: Record<string, {
       type: string;
-      description: string;
+      description: string;  // SHORT - max 20 chars
       enum?: string[];
     }>;
     required?: string[];
@@ -33,14 +39,14 @@ export const TOOLS: ToolDefinition[] = [
   // ============================================
   {
     name: 'governance_list_active',
-    description: 'List active governance proposals on the Canton Network',
+    description: 'List active governance proposals',
     status: 'stable',
     category: 'Governance',
     inputSchema: {
       type: 'object',
       properties: {
-        offset: { type: 'number', description: 'Pagination offset (default: 0)' },
-        limit: { type: 'number', description: 'Number of results (default: 10, max: 100)' }
+        offset: { type: 'number', description: 'offset' },
+        limit: { type: 'number', description: 'limit' }
       }
     },
     endpoint: 'governances/active',
@@ -54,8 +60,8 @@ export const TOOLS: ToolDefinition[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        offset: { type: 'number', description: 'Pagination offset' },
-        limit: { type: 'number', description: 'Number of results' }
+        offset: { type: 'number', description: 'offset' },
+        limit: { type: 'number', description: 'limit' }
       }
     },
     endpoint: 'governances/completed',
@@ -63,16 +69,16 @@ export const TOOLS: ToolDefinition[] = [
   },
   {
     name: 'governance_search',
-    description: 'Search all governance proposals',
+    description: 'Search governance proposals',
     status: 'stable',
     category: 'Governance',
     inputSchema: {
       type: 'object',
       properties: {
-        offset: { type: 'number', description: 'Pagination offset' },
-        limit: { type: 'number', description: 'Number of results' },
-        votes_filter_type: { type: 'string', description: 'Filter by vote type' },
-        search_arg: { type: 'string', description: 'Search term' }
+        offset: { type: 'number', description: 'offset' },
+        limit: { type: 'number', description: 'limit' },
+        votes_filter_type: { type: 'string', description: 'filter' },
+        search_arg: { type: 'string', description: 'query' }
       }
     },
     endpoint: 'governances',
@@ -80,14 +86,14 @@ export const TOOLS: ToolDefinition[] = [
   },
   {
     name: 'governance_price_votes',
-    description: 'Get governance price votes',
+    description: 'Get price votes',
     status: 'stable',
     category: 'Governance',
     inputSchema: {
       type: 'object',
       properties: {
-        offset: { type: 'number', description: 'Pagination offset' },
-        limit: { type: 'number', description: 'Number of results' }
+        offset: { type: 'number', description: 'offset' },
+        limit: { type: 'number', description: 'limit' }
       }
     },
     endpoint: 'governances/price-votes',
@@ -95,7 +101,7 @@ export const TOOLS: ToolDefinition[] = [
   },
   {
     name: 'governance_details',
-    description: 'Get details for a specific governance proposal',
+    description: 'Get governance proposal details',
     status: 'stable',
     category: 'Governance',
     inputSchema: {
@@ -110,7 +116,7 @@ export const TOOLS: ToolDefinition[] = [
   },
   {
     name: 'governance_statistics',
-    description: 'Get overall governance statistics',
+    description: 'Get governance stats',
     status: 'stable',
     category: 'Governance',
     inputSchema: {
@@ -126,13 +132,13 @@ export const TOOLS: ToolDefinition[] = [
   // ============================================
   {
     name: 'ans_check_availability',
-    description: 'Check if an ANS name is available',
+    description: 'Check ANS availability',
     status: 'stable',
     category: 'ANS',
     inputSchema: {
       type: 'object',
       properties: {
-        name: { type: 'string', description: 'The ANS name to check' }
+        name: { type: 'string', description: 'name' }
       },
       required: ['name']
     },
@@ -211,8 +217,8 @@ export const TOOLS: ToolDefinition[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        offset: { type: 'number', description: 'Pagination offset' },
-        limit: { type: 'number', description: 'Number of results' }
+        offset: { type: 'number', description: 'offset' },
+        limit: { type: 'number', description: 'limit' }
       }
     },
     endpoint: 'super-validators/escrow',
@@ -226,8 +232,8 @@ export const TOOLS: ToolDefinition[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        offset: { type: 'number', description: 'Pagination offset' },
-        limit: { type: 'number', description: 'Number of results' }
+        offset: { type: 'number', description: 'offset' },
+        limit: { type: 'number', description: 'limit' }
       }
     },
     endpoint: 'super-validators/hosted',
@@ -235,14 +241,14 @@ export const TOOLS: ToolDefinition[] = [
   },
   {
     name: 'super_validators_standalone',
-    description: 'List standalone super validators',
+    description: 'List standalone SVs',
     status: 'stable',
     category: 'Super Validators',
     inputSchema: {
       type: 'object',
       properties: {
-        offset: { type: 'number', description: 'Pagination offset' },
-        limit: { type: 'number', description: 'Number of results' }
+        offset: { type: 'number', description: 'offset' },
+        limit: { type: 'number', description: 'limit' }
       }
     },
     endpoint: 'super-validators/standalone',
@@ -256,8 +262,8 @@ export const TOOLS: ToolDefinition[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        offset: { type: 'number', description: 'Pagination offset' },
-        limit: { type: 'number', description: 'Number of results' },
+        offset: { type: 'number', description: 'offset' },
+        limit: { type: 'number', description: 'limit' },
         sv_party_id: { type: 'string', description: 'Super validator party ID' }
       }
     },
@@ -276,8 +282,8 @@ export const TOOLS: ToolDefinition[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        offset: { type: 'number', description: 'Pagination offset' },
-        limit: { type: 'number', description: 'Number of results' },
+        offset: { type: 'number', description: 'offset' },
+        limit: { type: 'number', description: 'limit' },
         sort_field: { type: 'string', description: 'Field to sort by' },
         sort_order: { type: 'string', description: 'asc or desc' }
       }
@@ -287,7 +293,7 @@ export const TOOLS: ToolDefinition[] = [
   },
   {
     name: 'validator_details',
-    description: 'Get details for a specific validator',
+    description: 'Get validator details',
     status: 'stable',
     category: 'Validators',
     inputSchema: {
@@ -360,7 +366,7 @@ export const TOOLS: ToolDefinition[] = [
       type: 'object',
       properties: {
         party_id: { type: 'string', description: 'The party ID' },
-        limit: { type: 'number', description: 'Number of results' }
+        limit: { type: 'number', description: 'limit' }
       },
       required: ['party_id']
     },
@@ -377,7 +383,7 @@ export const TOOLS: ToolDefinition[] = [
       properties: {
         party_id: { type: 'string', description: 'The party ID' },
         cursor: { type: 'string', description: 'Pagination cursor' },
-        limit: { type: 'number', description: 'Number of results' }
+        limit: { type: 'number', description: 'limit' }
       },
       required: ['party_id']
     },
@@ -393,7 +399,7 @@ export const TOOLS: ToolDefinition[] = [
       type: 'object',
       properties: {
         party_id: { type: 'string', description: 'The party ID' },
-        limit: { type: 'number', description: 'Number of results' }
+        limit: { type: 'number', description: 'limit' }
       },
       required: ['party_id']
     },
@@ -413,7 +419,7 @@ export const TOOLS: ToolDefinition[] = [
       type: 'object',
       properties: {
         cursor: { type: 'string', description: 'Pagination cursor' },
-        limit: { type: 'number', description: 'Number of results' }
+        limit: { type: 'number', description: 'limit' }
       }
     },
     endpoint: 'token-transfers',
@@ -459,7 +465,7 @@ export const TOOLS: ToolDefinition[] = [
       properties: {
         party_id: { type: 'string', description: 'The party ID' },
         cursor: { type: 'string', description: 'Pagination cursor' },
-        limit: { type: 'number', description: 'Number of results' }
+        limit: { type: 'number', description: 'limit' }
       },
       required: ['party_id']
     },
@@ -549,7 +555,7 @@ export const TOOLS: ToolDefinition[] = [
         party_id: { type: 'string', description: 'Filter by party ID' },
         status: { type: 'string', description: 'Filter by status' },
         cursor: { type: 'string', description: 'Pagination cursor' },
-        limit: { type: 'number', description: 'Number of results' }
+        limit: { type: 'number', description: 'limit' }
       }
     },
     endpoint: 'offers/search',
@@ -557,7 +563,7 @@ export const TOOLS: ToolDefinition[] = [
   },
   {
     name: 'offers_stat',
-    description: 'Get offer statistics',
+    description: 'Get offer stats',
     status: 'stable',
     category: 'Offers',
     inputSchema: {
@@ -579,8 +585,8 @@ export const TOOLS: ToolDefinition[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        offset: { type: 'number', description: 'Pagination offset' },
-        limit: { type: 'number', description: 'Number of results' }
+        offset: { type: 'number', description: 'offset' },
+        limit: { type: 'number', description: 'limit' }
       }
     },
     endpoint: 'featured-apps',
@@ -610,7 +616,7 @@ export const TOOLS: ToolDefinition[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        limit: { type: 'number', description: 'Number of results' },
+        limit: { type: 'number', description: 'limit' },
         leader_type: { type: 'string', description: 'Type of leader' }
       }
     },
@@ -642,7 +648,7 @@ export const TOOLS: ToolDefinition[] = [
       type: 'object',
       properties: {
         arg: { type: 'string', description: 'Search query' },
-        limit: { type: 'number', description: 'Number of results' }
+        limit: { type: 'number', description: 'limit' }
       },
       required: ['arg']
     },
@@ -674,7 +680,7 @@ export const TOOLS: ToolDefinition[] = [
       type: 'object',
       properties: {
         cursor: { type: 'string', description: 'Pagination cursor' },
-        limit: { type: 'number', description: 'Number of results' }
+        limit: { type: 'number', description: 'limit' }
       }
     },
     endpoint: 'mining-rounds',
@@ -689,7 +695,7 @@ export const TOOLS: ToolDefinition[] = [
       type: 'object',
       properties: {
         cursor: { type: 'string', description: 'Pagination cursor' },
-        limit: { type: 'number', description: 'Number of results' }
+        limit: { type: 'number', description: 'limit' }
       }
     },
     endpoint: 'rewards/app',
@@ -704,7 +710,7 @@ export const TOOLS: ToolDefinition[] = [
       type: 'object',
       properties: {
         cursor: { type: 'string', description: 'Pagination cursor' },
-        limit: { type: 'number', description: 'Number of results' }
+        limit: { type: 'number', description: 'limit' }
       }
     },
     endpoint: 'rewards/validator',
@@ -719,7 +725,7 @@ export const TOOLS: ToolDefinition[] = [
       type: 'object',
       properties: {
         cursor: { type: 'string', description: 'Pagination cursor' },
-        limit: { type: 'number', description: 'Number of results' }
+        limit: { type: 'number', description: 'limit' }
       }
     },
     endpoint: 'rewards/super-validator',
@@ -738,7 +744,7 @@ export const TOOLS: ToolDefinition[] = [
       type: 'object',
       properties: {
         cursor: { type: 'string', description: 'Pagination cursor' },
-        limit: { type: 'number', description: 'Number of results' },
+        limit: { type: 'number', description: 'limit' },
         start_datetime: { type: 'string', description: 'Start datetime' },
         end_datetime: { type: 'string', description: 'End datetime' }
       }
@@ -756,7 +762,7 @@ export const TOOLS: ToolDefinition[] = [
       properties: {
         party_id: { type: 'string', description: 'The party ID' },
         cursor: { type: 'string', description: 'Pagination cursor' },
-        limit: { type: 'number', description: 'Number of results' }
+        limit: { type: 'number', description: 'limit' }
       },
       required: ['party_id']
     },
@@ -780,3 +786,9 @@ export const getToolCounts = () => ({
   experimental: getExperimentalTools().length,
   deprecated: getDeprecatedTools().length
 });
+
+
+
+
+
+
