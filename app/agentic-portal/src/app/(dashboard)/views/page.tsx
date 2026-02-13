@@ -7,38 +7,18 @@ import { Plus, Table2, Search, Code, MessageSquare, Database, Clock } from 'luci
 import Link from 'next/link';
 
 export default function ViewsPage() {
-  // TODO: Fetch from API
-  const views = [
-    {
-      id: '1',
-      name: 'Top Customers',
-      description: 'Top 100 customers by revenue',
-      dataSource: 'Production DB',
-      columns: 8,
-      createdVia: 'chat',
-      naturalLanguageQuery: 'Show me top 100 customers by total revenue',
-      updatedAt: '2 hours ago',
-    },
-    {
-      id: '2',
-      name: 'Monthly Sales',
-      description: 'Sales aggregated by month',
-      dataSource: 'Production DB',
-      columns: 5,
-      createdVia: 'sql',
-      updatedAt: '1 day ago',
-    },
-    {
-      id: '3',
-      name: 'Product Performance',
-      description: 'Product metrics with YoY comparison',
-      dataSource: 'Analytics Warehouse',
-      columns: 12,
-      createdVia: 'chat',
-      naturalLanguageQuery: 'Product performance metrics comparing this year vs last year',
-      updatedAt: '3 days ago',
-    },
-  ];
+  // TODO: Implement API fetch for real views
+  // For now, show empty state until Views API is built
+  const views: {
+    id: string;
+    name: string;
+    description: string;
+    dataSource: string;
+    columns: number;
+    createdVia: 'chat' | 'sql';
+    naturalLanguageQuery?: string;
+    updatedAt: string;
+  }[] = [];
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
