@@ -189,9 +189,13 @@ export class GoogleSheetsAdapter implements DataSourceAdapter {
     let sheetName = sql.trim();
     let limit: number | undefined;
     
-    // Match SQL patterns like: SELECT * FROM `table_name` LIMIT 5
-    // or: SELECT * FROM table_name LIMIT 5
-    const sqlMatch = sql.match(/FROM\s+[`"']?([^`"'\s]+)[`"']?(?:\s+LIMIT\s+(\d+))?/i);
+    // Match SQL patterns like: SELECT * FROM `table name (1)` LIMIT 5
+    // Handle backticks (captures everything inside), quotes, or bare names
+    const backtickMatch = sql.match(/FROM\s+`([^`]+)`(?:\s+LIMIT\s+(\d+))?/i);
+    const quoteMatch = sql.match(/FROM\s+["']([^"']+)["'](?:\s+LIMIT\s+(\d+))?/i);
+    const bareMatch = sql.match(/FROM\s+([\w\-+]+)(?:\s+LIMIT\s+(\d+))?/i);
+    
+    const sqlMatch = backtickMatch || quoteMatch || bareMatch;
     if (sqlMatch) {
       sheetName = sqlMatch[1];
       if (sqlMatch[2]) {
