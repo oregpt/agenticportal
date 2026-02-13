@@ -1,0 +1,244 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* 
+ * AgenticPortal Design System
+ * Inspired by ccview.io - Clean, professional, modern
+ */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  
+  /* Brand colors */
+  --color-teal: var(--teal);
+  --color-teal-dark: var(--teal-dark);
+  --color-cream: var(--cream);
+}
+
+:root {
+  --radius: 0.5rem;
+  
+  /* ccview.io inspired light theme */
+  --background: #FAFAF8;  /* Cream/off-white */
+  --foreground: #1a1a1a;  /* Dark charcoal */
+  
+  --card: #ffffff;
+  --card-foreground: #1a1a1a;
+  
+  --popover: #ffffff;
+  --popover-foreground: #1a1a1a;
+  
+  /* Teal accent - ccview.io's primary color */
+  --primary: #0D9488;  /* Teal */
+  --primary-foreground: #ffffff;
+  
+  --secondary: #f4f4f5;
+  --secondary-foreground: #1a1a1a;
+  
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  
+  --accent: #f0fdfa;  /* Light teal tint */
+  --accent-foreground: #0D9488;
+  
+  --destructive: #ef4444;
+  
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #0D9488;
+  
+  /* Chart colors - soft, professional */
+  --chart-1: #0D9488;  /* Teal */
+  --chart-2: #10B981;  /* Emerald */
+  --chart-3: #F59E0B;  /* Amber */
+  --chart-4: #8B5CF6;  /* Violet */
+  --chart-5: #EC4899;  /* Pink */
+  
+  /* Sidebar - clean white */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1a1a1a;
+  --sidebar-primary: #0D9488;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f0fdfa;
+  --sidebar-accent-foreground: #0D9488;
+  --sidebar-border: #e4e4e7;
+  --sidebar-ring: #0D9488;
+  
+  /* Brand */
+  --teal: #0D9488;
+  --teal-dark: #0F766E;
+  --cream: #FAFAF8;
+}
+
+.dark {
+  --background: #0f172a;  /* Slate 900 */
+  --foreground: #f8fafc;  /* Slate 50 */
+  
+  --card: #1e293b;  /* Slate 800 */
+  --card-foreground: #f8fafc;
+  
+  --popover: #1e293b;
+  --popover-foreground: #f8fafc;
+  
+  /* Teal stays vibrant in dark mode */
+  --primary: #14B8A6;  /* Teal 500 */
+  --primary-foreground: #0f172a;
+  
+  --secondary: #334155;  /* Slate 700 */
+  --secondary-foreground: #f8fafc;
+  
+  --muted: #334155;
+  --muted-foreground: #94a3b8;  /* Slate 400 */
+  
+  --accent: #134e4a;  /* Teal 900 */
+  --accent-foreground: #5eead4;  /* Teal 300 */
+  
+  --destructive: #f87171;
+  
+  --border: #334155;
+  --input: #334155;
+  --ring: #14B8A6;
+  
+  /* Chart colors - vibrant for dark bg */
+  --chart-1: #14B8A6;
+  --chart-2: #34D399;
+  --chart-3: #FBBF24;
+  --chart-4: #A78BFA;
+  --chart-5: #F472B6;
+  
+  /* Sidebar - dark slate */
+  --sidebar: #1e293b;
+  --sidebar-foreground: #f8fafc;
+  --sidebar-primary: #14B8A6;
+  --sidebar-primary-foreground: #0f172a;
+  --sidebar-accent: #134e4a;
+  --sidebar-accent-foreground: #5eead4;
+  --sidebar-border: #334155;
+  --sidebar-ring: #14B8A6;
+  
+  --teal: #14B8A6;
+  --teal-dark: #0F766E;
+  --cream: #0f172a;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  
+  /* Improved typography */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+  
+  /* Link styling */
+  a {
+    @apply transition-colors;
+  }
+  
+  /* Table styling */
+  table {
+    @apply w-full;
+  }
+  
+  th {
+    @apply text-left font-medium text-muted-foreground;
+  }
+  
+  /* Number formatting */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /* ccview.io style stat cards */
+  .stat-card {
+    @apply bg-card rounded-lg border border-border p-4 transition-shadow hover:shadow-sm;
+  }
+  
+  .stat-card-highlight {
+    @apply bg-primary text-primary-foreground rounded-lg p-4;
+  }
+  
+  /* Clean table rows */
+  .table-row {
+    @apply border-b border-border transition-colors hover:bg-muted/50;
+  }
+  
+  /* Teal link style */
+  .link-teal {
+    @apply text-primary hover:text-primary/80 transition-colors;
+  }
+  
+  /* Breadcrumb */
+  .breadcrumb {
+    @apply flex items-center gap-2 text-sm text-muted-foreground;
+  }
+  
+  .breadcrumb-separator {
+    @apply text-muted-foreground/50;
+  }
+}
+
+@layer utilities {
+  /* Positive/negative number colors */
+  .text-positive {
+    @apply text-emerald-600 dark:text-emerald-400;
+  }
+  
+  .text-negative {
+    @apply text-red-600 dark:text-red-400;
+  }
+  
+  /* Subtle shadow for cards */
+  .shadow-subtle {
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+  }
+}
