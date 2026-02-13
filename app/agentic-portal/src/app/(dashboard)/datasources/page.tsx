@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, CheckCircle2, XCircle, RefreshCw, Loader2, Database, Table2, Zap } from 'lucide-react';
+import { Plus, CheckCircle2, XCircle, RefreshCw, Loader2, Database, Table2, Zap, Trash2, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -109,6 +109,8 @@ function DataSourcesPageContent() {
   const [syncingState, setSyncingState] = useState<SyncingState>({});
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchDataSources();
@@ -403,6 +405,27 @@ function DataSourcesPageContent() {
       toast({ title: 'Error', description: 'Failed to sync schema', variant: 'destructive' });
     } finally {
       setSyncingState((prev) => ({ ...prev, [id]: false }));
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteConfirm) return;
+    
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/datasources/${deleteConfirm.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast({ title: 'Deleted', description: `"${deleteConfirm.name}" has been deleted.` });
+        setDeleteConfirm(null);
+        fetchDataSources();
+      } else {
+        const error = await res.json();
+        toast({ title: 'Error', description: error.error || 'Failed to delete data source', variant: 'destructive' });
+      }
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to delete data source', variant: 'destructive' });
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -765,22 +788,32 @@ function DataSourcesPageContent() {
                     )}
                   </td>
                   <td className="px-5 py-4 text-right">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleSync(ds.id)}
-                      disabled={syncingState[ds.id]}
-                      className="hover:bg-primary/5 hover:text-primary hover:border-primary/30"
-                    >
-                      {syncingState[ds.id] ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <>
-                          <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSync(ds.id)}
+                        disabled={syncingState[ds.id]}
+                        className="hover:bg-primary/5 hover:text-primary hover:border-primary/30"
+                      >
+                        {syncingState[ds.id] ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
                           Sync
                         </>
                       )}
-                    </Button>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDeleteConfirm({ id: ds.id, name: ds.name })}
+                        className="hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -789,46 +822,42 @@ function DataSourcesPageContent() {
         </div>
       )}
 
-      {/* OAuth Completion Dialog */}
-      <Dialog open={isCompleteDialogOpen} onOpenChange={setIsCompleteDialogOpen}>
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Complete Google Sheets Setup</DialogTitle>
-            <DialogDescription>
-              Google authorization successful! Enter the spreadsheet ID to connect.
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="w-5 h-5" />
+              Delete Data Source
+            </DialogTitle>
+            <DialogDescription className="pt-2">
+              Are you sure you want to delete <strong>"{deleteConfirm?.name}"</strong>?
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <Label>Spreadsheet ID</Label>
-              <Input
-                placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-                value={completeSpreadsheetId}
-                onChange={(e) => setCompleteSpreadsheetId(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                From the spreadsheet URL: docs.google.com/spreadsheets/d/<span className="font-medium">SPREADSHEET_ID</span>/
-              </p>
-            </div>
+          <div className="py-4">
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                <strong>This action cannot be undone.</strong> All associated views, dashboards, and cached data will be permanently removed.
+              </AlertDescription>
+            </Alert>
           </div>
           <div className="flex gap-3">
             <Button 
               variant="outline" 
-              onClick={() => {
-                setIsCompleteDialogOpen(false);
-                setPendingOAuth(null);
-                setCompleteSpreadsheetId('');
-              }} 
+              onClick={() => setDeleteConfirm(null)} 
               className="flex-1"
+              disabled={isDeleting}
             >
               Cancel
             </Button>
             <Button 
-              onClick={handleCompleteOAuth} 
-              disabled={isSubmitting || !completeSpreadsheetId} 
-              className="flex-1 bg-primary hover:bg-primary/90"
+              variant="destructive"
+              onClick={handleDelete} 
+              disabled={isDeleting} 
+              className="flex-1"
             >
-              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Connect'}
+              {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Delete Forever'}
             </Button>
           </div>
         </DialogContent>

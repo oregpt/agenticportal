@@ -195,26 +195,12 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 export async function DELETE(request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
-    const { searchParams } = new URL(request.url);
-    const organizationId = searchParams.get('organizationId');
-
-    if (!organizationId) {
-      return NextResponse.json(
-        { error: 'organizationId is required' },
-        { status: 400 }
-      );
-    }
 
     // Check if exists
     const [existing] = await db
-      .select({ id: dataSources.id })
+      .select({ id: dataSources.id, name: dataSources.name })
       .from(dataSources)
-      .where(
-        and(
-          eq(dataSources.id, id),
-          eq(dataSources.organizationId, organizationId)
-        )
-      )
+      .where(eq(dataSources.id, id))
       .limit(1);
 
     if (!existing) {
@@ -227,6 +213,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     // Delete the data source
     await db.delete(dataSources).where(eq(dataSources.id, id));
 
+    console.log(`[datasources DELETE] Deleted data source: ${existing.name} (${id})`);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting data source:', error);
