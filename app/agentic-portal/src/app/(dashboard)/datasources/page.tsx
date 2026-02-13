@@ -14,8 +14,16 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, CheckCircle2, XCircle, RefreshCw, Loader2, Database, Table2 } from 'lucide-react';
+import { Plus, CheckCircle2, XCircle, RefreshCw, Loader2, Database, Table2, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+
+interface TestResult {
+  success: boolean;
+  message?: string;
+  error?: string;
+  tableCount?: number;
+}
 
 const DATA_SOURCE_TYPES = [
   { id: 'postgres', name: 'PostgreSQL', icon: '🐘', description: 'Connect to PostgreSQL databases' },
@@ -98,6 +106,8 @@ function DataSourcesPageContent() {
     refreshToken: '',
   });
   const [syncingState, setSyncingState] = useState<SyncingState>({});
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<TestResult | null>(null);
 
   useEffect(() => {
     fetchDataSources();
@@ -191,6 +201,50 @@ function DataSourcesPageContent() {
       toast({ title: 'Error', description: 'Failed to create data source', variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleTestConnection(type: string) {
+    setIsTesting(true);
+    setTestResult(null);
+    
+    try {
+      let config;
+      if (type === 'bigquery') {
+        config = {
+          projectId: bigqueryForm.projectId,
+          dataset: bigqueryForm.dataset,
+          serviceAccountKey: bigqueryForm.serviceAccountKey,
+        };
+      } else if (type === 'postgres') {
+        config = {
+          host: postgresForm.host,
+          port: parseInt(postgresForm.port) || 5432,
+          database: postgresForm.database,
+          username: postgresForm.username,
+          password: postgresForm.password,
+        };
+      }
+
+      const res = await fetch('/api/datasources/test-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, config }),
+      });
+
+      const result = await res.json();
+      setTestResult(result);
+      
+      if (result.success) {
+        toast({ title: 'Connection Test Passed', description: result.message });
+      } else {
+        toast({ title: 'Connection Test Failed', description: result.error, variant: 'destructive' });
+      }
+    } catch (error) {
+      setTestResult({ success: false, error: 'Failed to test connection' });
+      toast({ title: 'Error', description: 'Failed to test connection', variant: 'destructive' });
+    } finally {
+      setIsTesting(false);
     }
   }
 
@@ -383,7 +437,7 @@ function DataSourcesPageContent() {
                   {DATA_SOURCE_TYPES.map((type) => (
                     <button
                       key={type.id}
-                      onClick={() => setSelectedType(type.id)}
+                      onClick={() => { setSelectedType(type.id); setTestResult(null); }}
                       className="flex items-center gap-4 p-4 rounded-xl border border-border hover:border-primary/30 hover:bg-primary/5 transition-all text-left"
                     >
                       <span className="text-2xl">{type.icon}</span>
@@ -454,10 +508,28 @@ function DataSourcesPageContent() {
                       />
                     </div>
                   </div>
+                  {testResult && (
+                    <Alert variant={testResult.success ? 'default' : 'destructive'} className={testResult.success ? 'border-green-500 bg-green-50' : ''}>
+                      <AlertDescription className="flex items-center gap-2">
+                        {testResult.success ? (
+                          <><CheckCircle2 className="w-4 h-4 text-green-600" /> {testResult.message}</>
+                        ) : (
+                          <><XCircle className="w-4 h-4" /> {testResult.error}</>
+                        )}
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 </div>
                 <div className="flex gap-3">
-                  <Button variant="outline" onClick={() => setSelectedType(null)} className="flex-1">
+                  <Button variant="outline" onClick={() => { setSelectedType(null); setTestResult(null); }} className="flex-1">
                     Back
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => handleTestConnection('postgres')} 
+                    disabled={isTesting || !postgresForm.host || !postgresForm.database || !postgresForm.username}
+                  >
+                    {isTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Zap className="w-4 h-4 mr-1" /> Test</>}
                   </Button>
                   <Button onClick={handlePostgresSubmit} disabled={isSubmitting} className="flex-1 bg-primary hover:bg-primary/90">
                     {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Connect'}
@@ -504,10 +576,28 @@ function DataSourcesPageContent() {
                       onChange={(e) => setBigqueryForm({ ...bigqueryForm, serviceAccountKey: e.target.value })}
                     />
                   </div>
+                  {testResult && (
+                    <Alert variant={testResult.success ? 'default' : 'destructive'} className={testResult.success ? 'border-green-500 bg-green-50' : ''}>
+                      <AlertDescription className="flex items-center gap-2">
+                        {testResult.success ? (
+                          <><CheckCircle2 className="w-4 h-4 text-green-600" /> {testResult.message}</>
+                        ) : (
+                          <><XCircle className="w-4 h-4" /> {testResult.error}</>
+                        )}
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 </div>
                 <div className="flex gap-3">
-                  <Button variant="outline" onClick={() => setSelectedType(null)} className="flex-1">
+                  <Button variant="outline" onClick={() => { setSelectedType(null); setTestResult(null); }} className="flex-1">
                     Back
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => handleTestConnection('bigquery')} 
+                    disabled={isTesting || !bigqueryForm.projectId || !bigqueryForm.dataset || !bigqueryForm.serviceAccountKey}
+                  >
+                    {isTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Zap className="w-4 h-4 mr-1" /> Test</>}
                   </Button>
                   <Button onClick={handleBigQuerySubmit} disabled={isSubmitting} className="flex-1 bg-primary hover:bg-primary/90">
                     {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Connect'}
