@@ -28,12 +28,20 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 
+interface QueryResult {
+  rows?: Record<string, unknown>[];
+  error?: string;
+  columns?: { name: string; type: string }[];
+  totalRows?: number;
+  executionTimeMs?: number;
+}
+
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   sql?: string;
-  data?: Record<string, unknown>[];
+  data?: QueryResult | Record<string, unknown>[];
   error?: string;
   timestamp: Date;
 }
@@ -229,18 +237,18 @@ export default function ChatPage() {
                 )}
 
                 {/* Query Error */}
-                {message.data?.error && (
+                {message.data && 'error' in message.data && message.data.error && (
                   <div className="mt-4 bg-destructive/10 border border-destructive/30 rounded-xl p-4">
                     <div className="flex items-center gap-2 text-destructive">
                       <AlertCircle className="w-4 h-4" />
                       <span className="text-sm font-medium">Query Error</span>
                     </div>
-                    <p className="text-sm text-destructive/80 mt-2">{message.data.error}</p>
+                    <p className="text-sm text-destructive/80 mt-2">{String(message.data.error)}</p>
                   </div>
                 )}
 
                 {/* Data Preview */}
-                {message.data && !message.data.error && message.data.length > 0 && (
+                {message.data && Array.isArray(message.data) && message.data.length > 0 && (
                   <div className="mt-4 bg-card border border-border rounded-xl overflow-hidden">
                     <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/30">
                       <span className="text-sm font-medium text-muted-foreground">
