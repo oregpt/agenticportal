@@ -193,7 +193,8 @@ async function handleGoogleSheetsLive(
         ? `'${sheetName.replace(/'/g, "''")}'`
         : sheetName;
 
-      await dataset.createTable(tableName, {
+      // Use type assertion for external table config
+      const tableOptions: any = {
         externalDataConfiguration: {
           sourceFormat: 'GOOGLE_SHEETS',
           sourceUris: [sheetUri],
@@ -203,7 +204,8 @@ async function handleGoogleSheetsLive(
           },
           autodetect: true,
         },
-      });
+      };
+      await dataset.createTable(tableName, tableOptions);
     }
 
     // Get schema from BigQuery

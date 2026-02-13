@@ -107,7 +107,8 @@ export async function POST(request: NextRequest) {
       ? `'${sheetName.replace(/'/g, "''")}'`
       : sheetName;
 
-    const tableOptions = {
+    // Use type assertion for external table config
+    const tableOptions: any = {
       externalDataConfiguration: {
         sourceFormat: 'GOOGLE_SHEETS',
         sourceUris: [sheetUri],
