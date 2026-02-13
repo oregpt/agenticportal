@@ -28,7 +28,7 @@ interface TestResult {
 const DATA_SOURCE_TYPES = [
   { id: 'postgres', name: 'PostgreSQL', icon: '🐘', description: 'Connect to PostgreSQL databases' },
   { id: 'bigquery', name: 'BigQuery', icon: '📊', description: 'Connect to Google BigQuery' },
-  { id: 'google_sheets', name: 'Google Sheets', icon: '📗', description: 'Import data from Google Sheets' },
+  { id: 'google_sheets_live', name: 'Google Sheets', icon: '📗', description: 'Query Google Sheets with SQL (via BigQuery)' },
 ];
 
 interface DataSource {
@@ -61,11 +61,11 @@ interface BigQueryForm {
   serviceAccountKey: string;
 }
 
-interface GoogleSheetsForm {
+interface GoogleSheetsLiveForm {
   name: string;
   spreadsheetId: string;
-  accessToken: string;
-  refreshToken: string;
+  sheetName: string;
+  hasHeader: boolean;
 }
 
 function DataSourcesPageContent() {
@@ -99,46 +99,34 @@ function DataSourcesPageContent() {
     dataset: '',
     serviceAccountKey: '',
   });
-  const [sheetsForm, setSheetsForm] = useState<GoogleSheetsForm>({
+  const [sheetsLiveForm, setSheetsLiveForm] = useState<GoogleSheetsLiveForm>({
     name: '',
     spreadsheetId: '',
-    accessToken: '',
-    refreshToken: '',
+    sheetName: 'Sheet1',
+    hasHeader: true,
   });
+  const [serviceAccountEmail, setServiceAccountEmail] = useState<string | null>(null);
   const [syncingState, setSyncingState] = useState<SyncingState>({});
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
 
   useEffect(() => {
     fetchDataSources();
+    fetchServiceAccountEmail();
     
     // Handle OAuth callback params
-    const complete = searchParams.get('complete');
     const success = searchParams.get('success');
     const error = searchParams.get('error');
     
-    if (complete === 'google_sheets') {
-      const name = searchParams.get('name') || 'Google Sheets';
-      const accessToken = searchParams.get('accessToken');
-      const refreshToken = searchParams.get('refreshToken');
-      
-      if (accessToken && refreshToken) {
-        setPendingOAuth({ name, accessToken, refreshToken });
-        setIsCompleteDialogOpen(true);
-        // Clear URL params
-        router.replace('/datasources', { scroll: false });
-      }
-    }
-    
     if (success === 'connected') {
-      toast({ title: 'Success', description: 'Google Sheets connected successfully' });
+      toast({ title: 'Success', description: 'Data source connected successfully' });
       router.replace('/datasources', { scroll: false });
     }
     
     if (error) {
       toast({ 
         title: 'Error', 
-        description: error === 'access_denied' ? 'Google authorization was denied' : `OAuth error: ${error}`,
+        description: `Error: ${error}`,
         variant: 'destructive' 
       });
       router.replace('/datasources', { scroll: false });
@@ -156,6 +144,20 @@ function DataSourcesPageContent() {
       console.error('Failed to fetch data sources:', error);
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function fetchServiceAccountEmail() {
+    try {
+      const res = await fetch('/api/google-sheets-live/service-account');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.configured) {
+          setServiceAccountEmail(data.serviceAccountEmail);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch service account:', error);
     }
   }
 
@@ -303,54 +305,51 @@ function DataSourcesPageContent() {
     }
   }
 
-  async function handleSheetsSubmit() {
-    if (!sheetsForm.name || !sheetsForm.spreadsheetId) {
+  async function handleTestSheetsLive() {
+    if (!sheetsLiveForm.spreadsheetId || !sheetsLiveForm.sheetName) {
       toast({
         title: 'Missing fields',
-        description: 'Please fill in name and spreadsheet ID',
+        description: 'Please fill in spreadsheet ID and sheet name',
         variant: 'destructive',
       });
       return;
     }
 
-    setIsSubmitting(true);
+    setIsTesting(true);
+    setTestResult(null);
+    
     try {
-      const res = await fetch('/api/datasources', {
+      const res = await fetch('/api/google-sheets-live/test-connection', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: sheetsForm.name,
-          type: 'google_sheets',
-          config: {
-            spreadsheetId: sheetsForm.spreadsheetId,
-            accessToken: sheetsForm.accessToken,
-            refreshToken: sheetsForm.refreshToken,
-          },
+          spreadsheetId: sheetsLiveForm.spreadsheetId,
+          sheetName: sheetsLiveForm.sheetName,
+          hasHeader: sheetsLiveForm.hasHeader,
         }),
       });
 
-      if (res.ok) {
-        toast({ title: 'Success', description: 'Google Sheets connected successfully' });
-        setIsAddDialogOpen(false);
-        setSelectedType(null);
-        setSheetsForm({ name: '', spreadsheetId: '', accessToken: '', refreshToken: '' });
-        fetchDataSources();
+      const result = await res.json();
+      setTestResult(result);
+      
+      if (result.success) {
+        toast({ title: 'Connection Test Passed', description: result.message });
       } else {
-        const error = await res.json();
-        toast({ title: 'Error', description: error.error || 'Failed to connect Google Sheets', variant: 'destructive' });
+        toast({ title: 'Connection Test Failed', description: result.error, variant: 'destructive' });
       }
     } catch (error) {
-      toast({ title: 'Error', description: 'Failed to connect Google Sheets', variant: 'destructive' });
+      setTestResult({ success: false, error: 'Failed to test connection' });
+      toast({ title: 'Error', description: 'Failed to test connection', variant: 'destructive' });
     } finally {
-      setIsSubmitting(false);
+      setIsTesting(false);
     }
   }
 
-  async function handleCompleteOAuth() {
-    if (!pendingOAuth || !completeSpreadsheetId) {
+  async function handleSheetsLiveSubmit() {
+    if (!sheetsLiveForm.name || !sheetsLiveForm.spreadsheetId || !sheetsLiveForm.sheetName) {
       toast({
-        title: 'Missing spreadsheet ID',
-        description: 'Please enter a spreadsheet ID',
+        title: 'Missing fields',
+        description: 'Please fill in name, spreadsheet ID, and sheet name',
         variant: 'destructive',
       });
       return;
@@ -362,21 +361,22 @@ function DataSourcesPageContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: pendingOAuth.name,
-          type: 'google_sheets',
+          name: sheetsLiveForm.name,
+          type: 'google_sheets_live',
           config: {
-            spreadsheetId: completeSpreadsheetId,
-            accessToken: pendingOAuth.accessToken,
-            refreshToken: pendingOAuth.refreshToken,
+            spreadsheetId: sheetsLiveForm.spreadsheetId,
+            sheetName: sheetsLiveForm.sheetName,
+            hasHeader: sheetsLiveForm.hasHeader,
           },
         }),
       });
 
       if (res.ok) {
-        toast({ title: 'Success', description: 'Google Sheets connected successfully' });
-        setIsCompleteDialogOpen(false);
-        setPendingOAuth(null);
-        setCompleteSpreadsheetId('');
+        toast({ title: 'Success', description: 'Google Sheets connected! You can now query it with SQL.' });
+        setIsAddDialogOpen(false);
+        setSelectedType(null);
+        setSheetsLiveForm({ name: '', spreadsheetId: '', sheetName: 'Sheet1', hasHeader: true });
+        setTestResult(null);
         fetchDataSources();
       } else {
         const error = await res.json();
@@ -604,51 +604,83 @@ function DataSourcesPageContent() {
                   </Button>
                 </div>
               </>
-            ) : selectedType === 'google_sheets' ? (
+            ) : selectedType === 'google_sheets_live' ? (
               <>
                 <DialogHeader>
                   <DialogTitle>Connect Google Sheets</DialogTitle>
-                  <DialogDescription>Sign in with Google to connect your spreadsheets</DialogDescription>
+                  <DialogDescription>Query your Google Sheet with SQL via BigQuery</DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
+                  {serviceAccountEmail && (
+                    <Alert className="border-blue-200 bg-blue-50">
+                      <AlertDescription className="text-sm">
+                        <strong>Step 1:</strong> Share your Google Sheet with:<br />
+                        <code className="bg-blue-100 px-2 py-0.5 rounded text-xs mt-1 inline-block">{serviceAccountEmail}</code>
+                        <span className="text-muted-foreground ml-2">(Viewer access)</span>
+                      </AlertDescription>
+                    </Alert>
+                  )}
                   <div className="space-y-2">
                     <Label>Display Name</Label>
                     <Input
-                      placeholder="My Spreadsheet"
-                      value={sheetsForm.name}
-                      onChange={(e) => setSheetsForm({ ...sheetsForm, name: e.target.value })}
+                      placeholder="My Spreadsheet Data"
+                      value={sheetsLiveForm.name}
+                      onChange={(e) => setSheetsLiveForm({ ...sheetsLiveForm, name: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Spreadsheet ID <span className="text-muted-foreground">(optional)</span></Label>
+                    <Label>Spreadsheet ID</Label>
                     <Input
                       placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-                      value={sheetsForm.spreadsheetId}
-                      onChange={(e) => setSheetsForm({ ...sheetsForm, spreadsheetId: e.target.value })}
+                      value={sheetsLiveForm.spreadsheetId}
+                      onChange={(e) => setSheetsLiveForm({ ...sheetsLiveForm, spreadsheetId: e.target.value })}
                     />
-                    <p className="text-xs text-muted-foreground">From the spreadsheet URL: docs.google.com/spreadsheets/d/<span className="font-medium">SPREADSHEET_ID</span>/</p>
+                    <p className="text-xs text-muted-foreground">From URL: docs.google.com/spreadsheets/d/<span className="font-medium">SPREADSHEET_ID</span>/</p>
                   </div>
+                  <div className="space-y-2">
+                    <Label>Sheet Name</Label>
+                    <Input
+                      placeholder="Sheet1"
+                      value={sheetsLiveForm.sheetName}
+                      onChange={(e) => setSheetsLiveForm({ ...sheetsLiveForm, sheetName: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">The tab name in your spreadsheet (default: Sheet1)</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="hasHeader"
+                      checked={sheetsLiveForm.hasHeader}
+                      onChange={(e) => setSheetsLiveForm({ ...sheetsLiveForm, hasHeader: e.target.checked })}
+                      className="rounded border-gray-300"
+                    />
+                    <Label htmlFor="hasHeader" className="text-sm font-normal">First row contains headers</Label>
+                  </div>
+                  {testResult && (
+                    <Alert variant={testResult.success ? 'default' : 'destructive'} className={testResult.success ? 'border-green-500 bg-green-50' : ''}>
+                      <AlertDescription className="flex items-center gap-2">
+                        {testResult.success ? (
+                          <><CheckCircle2 className="w-4 h-4 text-green-600" /> {testResult.message}</>
+                        ) : (
+                          <><XCircle className="w-4 h-4" /> {testResult.error}</>
+                        )}
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 </div>
                 <div className="flex gap-3">
-                  <Button variant="outline" onClick={() => setSelectedType(null)} className="flex-1">
+                  <Button variant="outline" onClick={() => { setSelectedType(null); setTestResult(null); }} className="flex-1">
                     Back
                   </Button>
                   <Button 
-                    onClick={() => {
-                      const params = new URLSearchParams();
-                      if (sheetsForm.name) params.set('name', sheetsForm.name);
-                      if (sheetsForm.spreadsheetId) params.set('spreadsheetId', sheetsForm.spreadsheetId);
-                      window.location.href = `/api/auth/google/start?${params.toString()}`;
-                    }}
-                    className="flex-1 bg-[#4285F4] hover:bg-[#3367D6] text-white"
+                    variant="outline" 
+                    onClick={handleTestSheetsLive}
+                    disabled={isTesting || !sheetsLiveForm.spreadsheetId || !sheetsLiveForm.sheetName}
                   >
-                    <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
-                      <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                      <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                      <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                      <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                    </svg>
-                    Sign in with Google
+                    {isTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Zap className="w-4 h-4 mr-1" /> Test</>}
+                  </Button>
+                  <Button onClick={handleSheetsLiveSubmit} disabled={isSubmitting} className="flex-1 bg-primary hover:bg-primary/90">
+                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Connect'}
                   </Button>
                 </div>
               </>

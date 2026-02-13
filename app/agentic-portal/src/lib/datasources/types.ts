@@ -9,7 +9,7 @@
  * Future: MySQL, Snowflake, Redshift, Databricks, etc.
  */
 
-export type DataSourceType = 'postgres' | 'bigquery' | 'google_sheets' | 'csv';
+export type DataSourceType = 'postgres' | 'bigquery' | 'google_sheets' | 'google_sheets_live' | 'csv';
 
 export interface ColumnSchema {
   name: string;

@@ -15,3 +15,4 @@ export { adapterRegistry, registerAdapter, createDataSourceAdapter } from './reg
 import './adapters/postgres';
 import './adapters/bigquery';
 import './adapters/google-sheets';
+import './adapters/google-sheets-live';

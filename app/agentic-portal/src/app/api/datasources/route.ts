@@ -56,7 +56,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate connection before saving
+    // Special handling for Google Sheets Live (BigQuery external tables)
+    if (type === 'google_sheets_live') {
+      return handleGoogleSheetsLive(name, config, orgId, userId);
+    }
+
+    // Validate connection before saving (for standard adapters)
     const testConfig = {
       id: 'test',
       organizationId: orgId,
@@ -121,6 +126,148 @@ export async function POST(request: NextRequest) {
     console.error('Error creating data source:', error);
     return NextResponse.json(
       { error: 'Failed to create data source' },
+      { status: 500 }
+    );
+  }
+}
+
+// Handle Google Sheets Live (BigQuery External Tables)
+async function handleGoogleSheetsLive(
+  name: string,
+  config: { spreadsheetId: string; sheetName: string; hasHeader?: boolean; externalTableFQN?: string },
+  orgId: string,
+  userId: string
+) {
+  const { BigQuery } = await import('@google-cloud/bigquery');
+  
+  const keyJson = process.env.EDS_GCP_SERVICE_ACCOUNT_KEY;
+  if (!keyJson) {
+    return NextResponse.json(
+      { error: 'Platform GCP credentials not configured. Contact admin.' },
+      { status: 500 }
+    );
+  }
+
+  let credentials;
+  try {
+    credentials = JSON.parse(keyJson);
+  } catch {
+    return NextResponse.json(
+      { error: 'Invalid platform GCP credentials.' },
+      { status: 500 }
+    );
+  }
+
+  const { spreadsheetId, sheetName, hasHeader = true } = config;
+  
+  if (!spreadsheetId || !sheetName) {
+    return NextResponse.json(
+      { error: 'spreadsheetId and sheetName are required' },
+      { status: 400 }
+    );
+  }
+
+  const projectId = credentials.project_id;
+  const datasetName = `agentic_portal_default`;
+  const safeSheet = sheetName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase().substring(0, 30);
+  const tableName = `sheets_${spreadsheetId.substring(0, 8)}_${safeSheet}`;
+  const sheetUri = `https://docs.google.com/spreadsheets/d/${spreadsheetId}`;
+
+  try {
+    const bigquery = new BigQuery({ projectId, credentials });
+    const dataset = bigquery.dataset(datasetName);
+    
+    // Ensure dataset exists
+    const [datasetExists] = await dataset.exists();
+    if (!datasetExists) {
+      await bigquery.createDataset(datasetName);
+    }
+
+    // Check if table exists
+    const table = dataset.table(tableName);
+    const [tableExists] = await table.exists();
+
+    if (!tableExists) {
+      // Create external table
+      const escapedSheetName = sheetName.includes(' ') || /[^a-zA-Z0-9_]/.test(sheetName)
+        ? `'${sheetName.replace(/'/g, "''")}'`
+        : sheetName;
+
+      await dataset.createTable(tableName, {
+        externalDataConfiguration: {
+          sourceFormat: 'GOOGLE_SHEETS',
+          sourceUris: [sheetUri],
+          googleSheetsOptions: {
+            skipLeadingRows: hasHeader ? 1 : 0,
+            range: escapedSheetName,
+          },
+          autodetect: true,
+        },
+      });
+    }
+
+    // Get schema from BigQuery
+    const [metadata] = await table.getMetadata();
+    const schemaFields = metadata.schema?.fields || [];
+    const schemaCache = {
+      tables: [{
+        name: sheetName,
+        columns: schemaFields.map((f: any) => ({
+          name: f.name,
+          type: f.type?.toLowerCase() || 'string',
+          nullable: f.mode !== 'REQUIRED',
+        })),
+      }],
+    };
+
+    // Save to database
+    const id = randomUUID();
+    const now = new Date();
+    const externalTableFQN = `${projectId}.${datasetName}.${tableName}`;
+
+    const [inserted] = await db
+      .insert(schema.dataSources)
+      .values({
+        id,
+        organizationId: orgId,
+        name,
+        type: 'google_sheets_live',
+        config: {
+          spreadsheetId,
+          sheetName,
+          hasHeader,
+          externalTableFQN,
+          bqProjectId: projectId,
+          bqDataset: datasetName,
+          bqTableName: tableName,
+        },
+        schemaCache,
+        createdBy: userId,
+        createdAt: now,
+        updatedAt: now,
+        lastSyncedAt: now,
+      })
+      .returning();
+
+    return NextResponse.json({
+      dataSource: {
+        id: inserted.id,
+        name: inserted.name,
+        type: inserted.type,
+        createdAt: inserted.createdAt,
+        externalTableFQN,
+      },
+    });
+  } catch (error: any) {
+    console.error('[google-sheets-live] Error:', error);
+    
+    let userMessage = error.message || 'Failed to create Google Sheets Live data source';
+    if (error.message?.includes('ACCESS_DENIED') || error.message?.includes('403')) {
+      userMessage = `Access denied. Make sure the spreadsheet is shared with the service account.`;
+    }
+    
+    return NextResponse.json(
+      { error: userMessage },
       { status: 500 }
     );
   }
