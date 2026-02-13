@@ -130,14 +130,14 @@
 
 ## Critical Bugs Summary
 
-| ID | Severity | Page | Description |
-|----|----------|------|-------------|
-| BUG-001 | 🔴 CRITICAL | Data Sources | BigQuery button doesn't open form |
-| BUG-002 | 🔴 CRITICAL | Data Sources | Google Sheets Live button doesn't open form |
-| BUG-003 | 🔴 CRITICAL | Chat | Data source dropdown doesn't open |
-| BUG-004 | 🔴 CRITICAL | Views | View links lead to 404 (fake data) |
-| BUG-005 | 🟡 HIGH | MCP Hub | Page returns 404 |
-| BUG-006 | 🟢 LOW | Data Sources | Sync button has no visual feedback |
+| ID | Severity | Page | Description | Status |
+|----|----------|------|-------------|--------|
+| BUG-001 | 🔴 CRITICAL | Data Sources | BigQuery button doesn't open form | ⚠️ NEEDS INVESTIGATION |
+| BUG-002 | 🔴 CRITICAL | Data Sources | Google Sheets Live button doesn't open form | ⚠️ NEEDS INVESTIGATION |
+| BUG-003 | 🔴 CRITICAL | Chat | Data source dropdown doesn't open | ⚠️ NEEDS INVESTIGATION |
+| BUG-004 | 🔴 CRITICAL | Views | View links lead to 404 (fake data) | ✅ FIXED - Shows empty state now |
+| BUG-005 | 🟡 HIGH | MCP Hub | Page returns 404 | ✅ FIXED - Page created |
+| BUG-006 | 🟢 LOW | Data Sources | Sync button has no visual feedback | ⚠️ OPEN |
 
 ---
 
@@ -166,4 +166,24 @@
 
 ---
 
+---
+
+## Fixes Applied (2026-02-13 00:55 EST)
+
+### ✅ Fixed
+1. **Views page** - Removed fake/placeholder data, now shows proper empty state
+2. **MCP Hub page** - Created page with empty state UI (was returning 404)
+
+### ⚠️ Needs Investigation
+The following bugs couldn't be reproduced in code inspection but occurred during browser testing:
+1. **BigQuery/Google Sheets buttons** - Code looks correct, onClick handlers present. May be a race condition or Radix UI dialog issue.
+2. **Chat data source dropdown** - Uses Shadcn Select component correctly. May be an API issue (empty data sources for this org).
+
+### Commits
+- `ad56abd` - Fix QA bugs: Remove fake views data, add MCP Hub page
+- `5b08e5c` - Fix TypeScript error - add type assertion for BigQuery createTable options
+
+---
+
 *Test completed: 2026-02-13 00:45 EST*
+*Fixes applied: 2026-02-13 00:55 EST*
