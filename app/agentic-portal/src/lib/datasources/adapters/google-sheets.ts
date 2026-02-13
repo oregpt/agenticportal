@@ -174,9 +174,10 @@ export class GoogleSheetsAdapter implements DataSourceAdapter {
 
   /**
    * Execute a "query" on Google Sheets.
-   * Since Sheets doesn't support SQL, we interpret the sql parameter as:
-   * - A sheet name to fetch all data from
-   * - Or we could implement basic filtering in the future
+   * Since Sheets doesn't support SQL, we:
+   * 1. Try to parse SQL and extract the table/sheet name
+   * 2. Apply LIMIT if specified
+   * 3. Fall back to interpreting input as sheet name
    */
   async executeQuery(
     sql: string,
@@ -184,8 +185,22 @@ export class GoogleSheetsAdapter implements DataSourceAdapter {
   ): Promise<QueryResult> {
     const start = Date.now();
 
-    // For Sheets, interpret sql as sheet name or range
-    const sheetName = sql.trim();
+    // Try to parse SQL and extract sheet name + limit
+    let sheetName = sql.trim();
+    let limit: number | undefined;
+    
+    // Match SQL patterns like: SELECT * FROM `table_name` LIMIT 5
+    // or: SELECT * FROM table_name LIMIT 5
+    const sqlMatch = sql.match(/FROM\s+[`"']?([^`"'\s]+)[`"']?(?:\s+LIMIT\s+(\d+))?/i);
+    if (sqlMatch) {
+      sheetName = sqlMatch[1];
+      if (sqlMatch[2]) {
+        limit = parseInt(sqlMatch[2], 10);
+      }
+      console.log('[google-sheets] Parsed SQL - sheet:', sheetName, 'limit:', limit);
+    } else {
+      console.log('[google-sheets] Using raw input as sheet name:', sheetName);
+    }
 
     try {
       const response = await this.sheets.spreadsheets.values.get({
@@ -220,13 +235,18 @@ export class GoogleSheetsAdapter implements DataSourceAdapter {
       });
 
       // Convert rows to objects
-      const rows = dataRows.map((row) => {
+      let rows = dataRows.map((row) => {
         const obj: Record<string, unknown> = {};
         headers.forEach((header, index) => {
           obj[header] = row[index] ?? null;
         });
         return obj;
       });
+
+      // Apply LIMIT if specified
+      if (limit && limit > 0) {
+        rows = rows.slice(0, limit);
+      }
 
       return {
         columns,
@@ -235,6 +255,7 @@ export class GoogleSheetsAdapter implements DataSourceAdapter {
         executionTimeMs,
       };
     } catch (error) {
+      console.error('[google-sheets] Query error:', error);
       throw new Error(
         `Google Sheets query failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
