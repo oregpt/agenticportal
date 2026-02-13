@@ -25,8 +25,17 @@ export function getGoogleOAuthConfig() {
 }
 
 export function getRedirectUri(request: Request): string {
+  // In production, always use the canonical domain
+  // This must match exactly what's configured in Google Cloud Console
+  const isProd = process.env.NODE_ENV === 'production';
+  
+  if (isProd) {
+    // Use the custom domain configured in Google OAuth
+    return 'https://agenticportal.agenticledger.ai/api/auth/google/callback';
+  }
+  
+  // For local development, use the request origin
   const url = new URL(request.url);
-  // Use the origin from the request to support multiple environments
   return `${url.origin}/api/auth/google/callback`;
 }
 
