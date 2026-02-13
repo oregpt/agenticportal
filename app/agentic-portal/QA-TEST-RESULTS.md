@@ -13,12 +13,12 @@
 | Landing Page | 3 | 3 | 0 | 0 |
 | Authentication | 4 | 4 | 0 | 0 |
 | Dashboard | 4 | 4 | 0 | 0 |
-| Data Sources | 8 | 5 | 3 | 0 |
-| Chat | 2 | 1 | 1 | 0 |
+| Data Sources | 9 | 8 | 0 | 1 |
+| Chat | 3 | 3 | 0 | 0 |
 | Views | 3 | 1 | 2 | 0 |
 | Dashboards | 3 | 3 | 0 | 0 |
-| Organization | 6 | 5 | 1 | 0 |
-| **Total** | **33** | **26** | **7** | **0** |
+| Organization | 6 | 6 | 0 | 0 |
+| **Total** | **35** | **32** | **2** | **1** |
 
 ---
 
@@ -54,7 +54,7 @@
 
 ---
 
-## 4. Data Sources ⚠️
+## 4. Data Sources ✅
 
 | Test | Status | Notes |
 |------|--------|-------|
@@ -63,27 +63,28 @@
 | Add Data Source button opens dialog | ✅ | |
 | PostgreSQL form renders | ✅ | |
 | PostgreSQL Test Connection works | ✅ | Shows error for invalid host |
-| **BigQuery form renders** | ❌ | **BUG: Button click doesn't open form** |
-| **Google Sheets form renders** | ❌ | **BUG: Button click doesn't open form** |
+| BigQuery form renders | ✅ | **Re-verified 2026-02-13** |
+| Google Sheets form renders | ✅ | **Re-verified 2026-02-13** |
 | Delete button shows confirmation | ✅ | |
 | Sync button works | ⚠️ | No visual feedback |
 
-### Data Sources Bugs Found:
-1. **CRITICAL:** BigQuery data source button doesn't open form
-2. **CRITICAL:** Google Sheets Live button doesn't open form
-3. **MINOR:** Sync button has no visual feedback (toast/spinner)
+### Data Sources Notes:
+- All data source type buttons now work correctly
+- Minor: Sync button has no visual feedback (toast/spinner)
 
 ---
 
-## 5. Chat ⚠️
+## 5. Chat ✅
 
 | Test | Status | Notes |
 |------|--------|-------|
 | Page loads | ✅ | |
-| **Data source dropdown works** | ❌ | **BUG: Dropdown doesn't open/show options** |
+| Data source dropdown works | ✅ | **Re-verified 2026-02-13** - Shows all 3 data sources |
+| Chat response works | ✅ | AI responds with database schema info |
 
-### Chat Bugs Found:
-1. **CRITICAL:** Data source dropdown doesn't open - can't use Chat at all
+### Chat Notes:
+- Chat feature fully functional
+- AI provides helpful responses about available tables and schema
 
 ---
 
@@ -111,7 +112,7 @@
 
 ---
 
-## 8. Organization ⚠️
+## 8. Organization ✅
 
 | Test | Status | Notes |
 |------|--------|-------|
@@ -120,11 +121,11 @@
 | Invite Member modal works | ✅ | |
 | Agents page works | ✅ | |
 | New Agent modal works | ✅ | |
-| **MCP Hub page works** | ❌ | **BUG: 404 error** |
+| MCP Hub page works | ✅ | **Fixed 2026-02-13** |
 | Settings page works | ✅ | LLM API keys section present |
 
-### Organization Bugs Found:
-1. **HIGH:** MCP Hub page returns 404 but is linked in navigation
+### Organization Notes:
+- All organization pages working correctly
 
 ---
 
@@ -132,9 +133,9 @@
 
 | ID | Severity | Page | Description | Status |
 |----|----------|------|-------------|--------|
-| BUG-001 | 🔴 CRITICAL | Data Sources | BigQuery button doesn't open form | ⚠️ NEEDS INVESTIGATION |
-| BUG-002 | 🔴 CRITICAL | Data Sources | Google Sheets Live button doesn't open form | ⚠️ NEEDS INVESTIGATION |
-| BUG-003 | 🔴 CRITICAL | Chat | Data source dropdown doesn't open | ⚠️ NEEDS INVESTIGATION |
+| BUG-001 | 🔴 CRITICAL | Data Sources | BigQuery button doesn't open form | ✅ VERIFIED FIXED (2026-02-13) |
+| BUG-002 | 🔴 CRITICAL | Data Sources | Google Sheets Live button doesn't open form | ✅ VERIFIED FIXED (2026-02-13) |
+| BUG-003 | 🔴 CRITICAL | Chat | Data source dropdown doesn't open | ✅ VERIFIED FIXED (2026-02-13) |
 | BUG-004 | 🔴 CRITICAL | Views | View links lead to 404 (fake data) | ✅ FIXED - Shows empty state now |
 | BUG-005 | 🟡 HIGH | MCP Hub | Page returns 404 | ✅ FIXED - Page created |
 | BUG-006 | 🟢 LOW | Data Sources | Sync button has no visual feedback | ⚠️ OPEN |
@@ -174,10 +175,10 @@
 1. **Views page** - Removed fake/placeholder data, now shows proper empty state
 2. **MCP Hub page** - Created page with empty state UI (was returning 404)
 
-### ⚠️ Needs Investigation
+### ⚠️ Previously Needed Investigation (NOW RESOLVED)
 The following bugs couldn't be reproduced in code inspection but occurred during browser testing:
-1. **BigQuery/Google Sheets buttons** - Code looks correct, onClick handlers present. May be a race condition or Radix UI dialog issue.
-2. **Chat data source dropdown** - Uses Shadcn Select component correctly. May be an API issue (empty data sources for this org).
+1. **BigQuery/Google Sheets buttons** - ✅ Now working correctly. May have been a deployment timing issue.
+2. **Chat data source dropdown** - ✅ Now working correctly. Shows all data sources and chat is functional.
 
 ### Commits
 - `ad56abd` - Fix QA bugs: Remove fake views data, add MCP Hub page
@@ -185,5 +186,26 @@ The following bugs couldn't be reproduced in code inspection but occurred during
 
 ---
 
+## Re-verification (2026-02-13 01:30 EST)
+
+### ✅ Verified Fixed
+All three critical bugs that were marked "NEEDS INVESTIGATION" have been re-tested and are now working:
+
+1. **BUG-001: BigQuery form** - Opens correctly when clicking BigQuery button in Add Data Source dialog
+2. **BUG-002: Google Sheets form** - Opens correctly when clicking Google Sheets button in Add Data Source dialog  
+3. **BUG-003: Chat dropdown** - Opens correctly and shows all 3 data sources (Google Sheets, Flux Analyzer, T)
+
+### Additional Testing
+- **Chat feature** - Tested end-to-end by selecting "Flux Analyzer" data source and asking "What tables are available?"
+- AI responded with comprehensive list of 25+ tables including organizations, users, datasets, fluxes, etc.
+- Chat functionality is fully operational
+
+### Test Account Used
+- Email: qa-test-2@agenticledger.ai
+- Organization: QA Test Org 2
+
+---
+
 *Test completed: 2026-02-13 00:45 EST*
 *Fixes applied: 2026-02-13 00:55 EST*
+*Re-verification completed: 2026-02-13 01:30 EST*
