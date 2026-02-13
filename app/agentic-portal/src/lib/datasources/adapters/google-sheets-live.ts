@@ -144,12 +144,14 @@ export class GoogleSheetsLiveAdapter implements DataSourceAdapter {
     
     // If query doesn't include the full table name, assume it's querying this sheet
     if (!sql.includes(this.config.externalTableFQN) && !sql.includes('`')) {
-      // Simple case: just "SELECT * FROM table" - replace "table" with full name
+      // Match table names including hyphens, underscores, and alphanumeric chars
       processedSql = sql.replace(
-        /FROM\s+["']?(\w+)["']?/gi,
+        /FROM\s+["']?([\w\-]+)["']?/gi,
         `FROM \`${this.config.externalTableFQN}\``
       );
     }
+    
+    console.log('[google-sheets-live] Executing SQL:', processedSql);
 
     const options: any = {
       query: processedSql,

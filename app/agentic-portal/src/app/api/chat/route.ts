@@ -68,19 +68,12 @@ export async function POST(request: NextRequest) {
 When the user asks a question about data:
 1. Understand what they're asking for
 2. Generate a valid SQL query to answer their question
-3. Explain what the query does
+3. Briefly explain what the query does
 
-Format your SQL queries in a code block with the language "sql".
+Always format SQL queries in a code block with the language "sql".
 ${schemaContext}
 
-If you generate a SQL query, always end your response with:
-[GENERATED_SQL]
-\`\`\`sql
-YOUR SQL QUERY HERE
-\`\`\`
-[/GENERATED_SQL]
-
-Be concise but helpful. If you need more information about the data structure, ask.`;
+Important: When generating SQL, use the exact table names from the schema above. Keep responses concise.`;
 
     // Call Claude
     console.log('[chat] Calling Claude API...');
@@ -101,18 +94,30 @@ Be concise but helpful. If you need more information about the data structure, a
       ? response.content[0].text 
       : '';
 
-    // Extract SQL if present
+    // Extract SQL if present - try multiple patterns
     let generatedSql: string | undefined;
-    const sqlMatch = assistantMessage.match(/\[GENERATED_SQL\]\s*```sql\s*([\s\S]*?)\s*```\s*\[\/GENERATED_SQL\]/);
-    if (sqlMatch) {
-      generatedSql = sqlMatch[1].trim();
+    
+    // Try pattern with markers first
+    const markerMatch = assistantMessage.match(/\[GENERATED_SQL\]\s*```sql\s*([\s\S]*?)\s*```\s*\[\/GENERATED_SQL\]/);
+    if (markerMatch) {
+      generatedSql = markerMatch[1].trim();
+    } else {
+      // Fallback: extract any SQL code block
+      const codeBlockMatch = assistantMessage.match(/```sql\s*([\s\S]*?)\s*```/);
+      if (codeBlockMatch) {
+        generatedSql = codeBlockMatch[1].trim();
+      }
     }
+    
+    console.log('[chat] Extracted SQL:', generatedSql || '(none)');
 
     // Execute query if we have SQL and a data source
     let queryResults: any = null;
     if (generatedSql && dataSource) {
+      console.log('[chat] Executing query for data source:', dataSource.id, dataSource.type);
+      console.log('[chat] Generated SQL:', generatedSql);
       try {
-        const adapter = await createDataSourceAdapter({
+        const adapterConfig = {
           ...dataSource.config,
           id: dataSource.id,
           organizationId: dataSource.organizationId,
@@ -121,9 +126,15 @@ Be concise but helpful. If you need more information about the data structure, a
           createdAt: dataSource.createdAt,
           updatedAt: dataSource.updatedAt,
           createdBy: dataSource.createdBy,
-        } as any);
+        };
+        console.log('[chat] Creating adapter with config:', JSON.stringify(adapterConfig, null, 2));
+        
+        const adapter = await createDataSourceAdapter(adapterConfig as any);
+        console.log('[chat] Adapter created, executing query...');
 
         const result = await adapter.executeQuery(generatedSql);
+        console.log('[chat] Query executed, row count:', result.rowCount);
+        
         queryResults = {
           columns: result.columns,
           rows: result.rows.slice(0, 100), // Limit to 100 rows for response
@@ -133,11 +144,13 @@ Be concise but helpful. If you need more information about the data structure, a
 
         await adapter.disconnect();
       } catch (err) {
-        console.error('Query execution error:', err);
+        console.error('[chat] Query execution error:', err);
         queryResults = {
           error: err instanceof Error ? err.message : 'Query execution failed',
         };
       }
+    } else {
+      console.log('[chat] Skipping query execution - SQL:', !!generatedSql, 'dataSource:', !!dataSource);
     }
 
     // Clean up the response (remove SQL markers)
