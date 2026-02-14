@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, description, dataSourceId, sql, naturalLanguageQuery, workstreamId } = body;
+    const { name, description, dataSourceId, sql, naturalLanguageQuery, workstreamId, sourceTable } = body;
 
     if (!name || !sql || !dataSourceId) {
       return NextResponse.json(
@@ -114,6 +114,7 @@ export async function POST(request: NextRequest) {
       organizationId: user.organizationId,
       workstreamId: workstreamId || null,
       dataSourceId,
+      sourceTable: sourceTable || null, // The table this view queries from
       name,
       description: description || null,
       sql,

@@ -100,6 +100,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
       // Add LIMIT if not present (basic safety)
       let finalSql = sql.trim();
+      // Remove trailing semicolon before adding LIMIT
+      if (finalSql.endsWith(';')) {
+        finalSql = finalSql.slice(0, -1).trim();
+      }
       const hasLimit = /\blimit\s+\d+/i.test(finalSql);
       if (!hasLimit && !finalSql.toLowerCase().startsWith('insert') 
           && !finalSql.toLowerCase().startsWith('update')

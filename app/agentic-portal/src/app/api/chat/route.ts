@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     console.log('[chat] Body:', JSON.stringify(body));
-    const { message, dataSourceId, sessionId } = body;
+    const { message, dataSourceId, sessionId, tableName } = body;
 
     if (!message) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });
@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
     // Get data source and schema if provided
     let schemaContext = '';
     let dataSource: any = null;
+    let targetTable: any = null;
 
     if (dataSourceId) {
       const [ds] = await db
@@ -49,12 +50,24 @@ export async function POST(request: NextRequest) {
         if (ds.schemaCache) {
           const schemaCache = ds.schemaCache as any;
           if (schemaCache.tables) {
-            schemaContext = `\n\nAvailable Tables:\n`;
-            for (const table of schemaCache.tables) {
-              schemaContext += `\n**${table.name}**\n`;
-              schemaContext += `Columns:\n`;
-              for (const col of table.columns || []) {
-                schemaContext += `  - ${col.name} (${col.type})${col.description ? ': ' + col.description : ''}\n`;
+            // If tableName is specified, only include that table's schema
+            if (tableName) {
+              targetTable = schemaCache.tables.find((t: any) => t.name === tableName);
+              if (targetTable) {
+                schemaContext = `\n\nTarget Table: **${targetTable.name}**\nColumns:\n`;
+                for (const col of targetTable.columns || []) {
+                  schemaContext += `  - ${col.name} (${col.type})${col.description ? ': ' + col.description : ''}\n`;
+                }
+              }
+            } else {
+              // Include all tables if no specific table selected
+              schemaContext = `\n\nAvailable Tables:\n`;
+              for (const table of schemaCache.tables) {
+                schemaContext += `\n**${table.name}**\n`;
+                schemaContext += `Columns:\n`;
+                for (const col of table.columns || []) {
+                  schemaContext += `  - ${col.name} (${col.type})${col.description ? ': ' + col.description : ''}\n`;
+                }
               }
             }
           }
@@ -62,18 +75,36 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Build system prompt
+    // Get database type for SQL dialect
+    const dbType = dataSource?.type || 'postgres';
+    const dbDialect = dbType === 'bigquery' ? 'BigQuery SQL' : 
+                      dbType === 'mysql' ? 'MySQL' :
+                      dbType === 'postgres' ? 'PostgreSQL' : 'SQL';
+
+    // Build system prompt - different for table-scoped vs general queries
+    const tableConstraint = tableName 
+      ? `\n\nIMPORTANT: You MUST generate SQL that queries ONLY the table "${tableName}". Do not use any other tables.`
+      : '';
+
     const systemPrompt = `You are a data analyst assistant. Help users query and understand their data.
+
+Database Type: ${dbDialect}
+${schemaContext}
+${tableConstraint}
 
 When the user asks a question about data:
 1. Understand what they're asking for
-2. Generate a valid SQL query to answer their question
+2. Generate a valid ${dbDialect} query to answer their question
 3. Briefly explain what the query does
 
 Always format SQL queries in a code block with the language "sql".
-${schemaContext}
 
-Important: When generating SQL, use the exact table names from the schema above. Keep responses concise.`;
+IMPORTANT:
+- ${tableName ? `Query ONLY from the table "${tableName}" - do not use any other tables` : 'Use the exact table names from the schema above'}
+- Generate ${dbDialect}-compatible syntax only
+- For date/time operations in PostgreSQL, use: NOW() - INTERVAL '7 days' (not DATETIME)
+- For date/time operations in BigQuery, use: TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 7 DAY)
+- Keep responses concise`;
 
     // Call Claude
     console.log('[chat] Calling Claude API...');

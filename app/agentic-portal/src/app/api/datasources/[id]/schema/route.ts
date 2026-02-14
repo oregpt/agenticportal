@@ -74,7 +74,17 @@ export async function GET(request: NextRequest, context: RouteContext) {
     let adapter;
     try {
       adapter = await createDataSourceAdapter(fullConfig);
-      const schema = await adapter.getSchema();
+      let schema = await adapter.getSchema();
+
+      // Filter to selectedTables if configured
+      const selectedTables = config.selectedTables as string[] | undefined;
+      if (selectedTables && selectedTables.length > 0 && schema.tables) {
+        const selectedSet = new Set(selectedTables);
+        schema = {
+          ...schema,
+          tables: schema.tables.filter((t: { name: string }) => selectedSet.has(t.name)),
+        };
+      }
 
       // Cache the schema
       const now = new Date();

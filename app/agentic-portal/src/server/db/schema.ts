@@ -239,6 +239,7 @@ export const views = pgTable('views', {
   organizationId: varchar('organization_id', { length: 64 }).notNull(),
   workstreamId: varchar('workstream_id', { length: 64 }), // Optional
   dataSourceId: varchar('data_source_id', { length: 64 }).notNull(),
+  sourceTable: varchar('source_table', { length: 255 }), // The table this view queries from
   name: varchar('name', { length: 255 }).notNull(),
   description: text('description'),
   sql: text('sql').notNull(),

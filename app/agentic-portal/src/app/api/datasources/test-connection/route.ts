@@ -107,8 +107,9 @@ async function testPostgresConnection(config: {
   database: string;
   username: string;
   password: string;
+  fetchTables?: boolean;
 }) {
-  const { host, port, database, username, password } = config;
+  const { host, port, database, username, password, fetchTables } = config;
 
   if (!host || !database || !username) {
     return NextResponse.json(
@@ -121,7 +122,8 @@ async function testPostgresConnection(config: {
     // Dynamic import to avoid loading pg if not needed
     const { Pool } = await import('pg');
     
-    const pool = new Pool({
+    // Try with SSL first, fallback to no SSL
+    let pool = new Pool({
       host,
       port: port || 5432,
       database,
@@ -130,17 +132,76 @@ async function testPostgresConnection(config: {
       ssl: { rejectUnauthorized: false },
       connectionTimeoutMillis: 10000,
     });
-
-    const client = await pool.connect();
+    
+    let client;
+    try {
+      client = await pool.connect();
+    } catch (sslError: unknown) {
+      const sslMsg = sslError instanceof Error ? sslError.message : '';
+      // If SSL fails, try without SSL
+      if (sslMsg.includes('SSL') || sslMsg.includes('ssl')) {
+        await pool.end();
+        pool = new Pool({
+          host,
+          port: port || 5432,
+          database,
+          user: username,
+          password,
+          ssl: false,
+          connectionTimeoutMillis: 10000,
+        });
+        client = await pool.connect();
+      } else {
+        throw sslError;
+      }
+    }
     
     // Get table count
-    const result = await client.query(`
+    const countResult = await client.query(`
       SELECT COUNT(*) as count 
       FROM information_schema.tables 
       WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
     `);
     
-    const tableCount = parseInt(result.rows[0]?.count || '0');
+    const tableCount = parseInt(countResult.rows[0]?.count || '0');
+    
+    // If fetchTables is true, get all tables with their columns
+    let tables: { name: string; columns: { name: string; type: string; nullable: boolean }[] }[] = [];
+    
+    if (fetchTables) {
+      // Get all tables with columns
+      const tablesResult = await client.query(`
+        SELECT 
+          t.table_name,
+          c.column_name,
+          c.data_type,
+          c.is_nullable
+        FROM information_schema.tables t
+        LEFT JOIN information_schema.columns c 
+          ON t.table_name = c.table_name AND t.table_schema = c.table_schema
+        WHERE t.table_schema = 'public' 
+          AND t.table_type = 'BASE TABLE'
+        ORDER BY t.table_name, c.ordinal_position
+      `);
+      
+      // Group by table
+      const tableMap = new Map<string, { name: string; columns: { name: string; type: string; nullable: boolean }[] }>();
+      
+      for (const row of tablesResult.rows) {
+        if (!tableMap.has(row.table_name)) {
+          tableMap.set(row.table_name, { name: row.table_name, columns: [] });
+        }
+        if (row.column_name) {
+          tableMap.get(row.table_name)!.columns.push({
+            name: row.column_name,
+            type: row.data_type,
+            nullable: row.is_nullable === 'YES',
+          });
+        }
+      }
+      
+      tables = Array.from(tableMap.values());
+    }
     
     client.release();
     await pool.end();
@@ -149,6 +210,7 @@ async function testPostgresConnection(config: {
       success: true,
       message: `Connected successfully! Found ${tableCount} tables.`,
       tableCount,
+      ...(fetchTables && { tables }),
     });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

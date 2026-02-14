@@ -130,6 +130,9 @@ export async function POST(request: NextRequest) {
     // TODO: Encrypt sensitive config fields
     const id = randomUUID();
     const now = new Date();
+    
+    // Extract selectedTables if provided
+    const { selectedTables, ...restConfig } = config;
 
     const [inserted] = await db
       .insert(schema.dataSources)
@@ -139,7 +142,10 @@ export async function POST(request: NextRequest) {
         workstreamId: workstreamId || null,
         name,
         type,
-        config,
+        config: {
+          ...restConfig,
+          selectedTables: selectedTables || null,
+        },
         createdBy: userId,
         createdAt: now,
         updatedAt: now,

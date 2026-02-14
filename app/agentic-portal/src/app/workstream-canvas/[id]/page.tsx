@@ -25,7 +25,8 @@ import {
   Mail,
   Webhook,
   Check,
-  Loader2
+  Loader2,
+  Search
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -172,6 +173,11 @@ function AddNodeButton({ type, onClick }: { type: NodeType; onClick: () => void 
 }
 
 // Connect Source Modal
+interface AvailableTable {
+  name: string;
+  columns: { name: string; type: string; nullable: boolean }[];
+}
+
 function ConnectSourceModal({ 
   open, 
   onClose, 
@@ -183,9 +189,10 @@ function ConnectSourceModal({
   workstreamId: string;
   onSuccess: () => void;
 }) {
-  const [step, setStep] = useState<'type' | 'config'>('type');
+  const [step, setStep] = useState<'type' | 'config' | 'tables'>('type');
   const [sourceType, setSourceType] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     host: '',
@@ -194,12 +201,64 @@ function ConnectSourceModal({
     username: 'postgres',
     password: ''
   });
+  const [availableTables, setAvailableTables] = useState<AvailableTable[]>([]);
+  const [selectedTables, setSelectedTables] = useState<Set<string>>(new Set());
+  const [tableSearch, setTableSearch] = useState('');
 
   const sourceTypes = [
     { id: 'postgres', name: 'PostgreSQL', icon: '🐘', desc: 'Connect to PostgreSQL databases' },
     { id: 'bigquery', name: 'BigQuery', icon: '📊', desc: 'Connect to Google BigQuery' },
     { id: 'google_sheets', name: 'Google Sheets', icon: '📗', desc: 'Query Google Sheets with SQL' },
   ];
+
+  // Reset when modal closes
+  useEffect(() => {
+    if (!open) {
+      setStep('type');
+      setSourceType(null);
+      setFormData({ name: '', host: '', port: '5432', database: '', username: 'postgres', password: '' });
+      setAvailableTables([]);
+      setSelectedTables(new Set());
+      setTableSearch('');
+    }
+  }, [open]);
+
+  const handleTestAndFetchTables = async () => {
+    setIsTesting(true);
+    try {
+      const response = await fetch('/api/datasources/test-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: sourceType,
+          config: {
+            host: formData.host,
+            port: parseInt(formData.port),
+            database: formData.database,
+            username: formData.username,
+            password: formData.password,
+            fetchTables: true,
+          }
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (result.success && result.tables) {
+        setAvailableTables(result.tables);
+        // Pre-select all tables by default
+        setSelectedTables(new Set(result.tables.map((t: AvailableTable) => t.name)));
+        setStep('tables');
+      } else {
+        alert(result.error || 'Failed to connect');
+      }
+    } catch (error) {
+      console.error('Error testing connection:', error);
+      alert('Failed to test connection');
+    } finally {
+      setIsTesting(false);
+    }
+  };
 
   const handleConnect = async () => {
     setIsLoading(true);
@@ -217,6 +276,7 @@ function ConnectSourceModal({
             database: formData.database,
             username: formData.username,
             password: formData.password,
+            selectedTables: Array.from(selectedTables),
           }
         }),
       });
@@ -224,9 +284,6 @@ function ConnectSourceModal({
       if (response.ok) {
         onSuccess();
         onClose();
-        setStep('type');
-        setSourceType(null);
-        setFormData({ name: '', host: '', port: '5432', database: '', username: 'postgres', password: '' });
       } else {
         const err = await response.json();
         alert(err.error || 'Failed to connect');
@@ -239,16 +296,35 @@ function ConnectSourceModal({
     }
   };
 
+  const toggleTable = (tableName: string) => {
+    const newSelected = new Set(selectedTables);
+    if (newSelected.has(tableName)) {
+      newSelected.delete(tableName);
+    } else {
+      newSelected.add(tableName);
+    }
+    setSelectedTables(newSelected);
+  };
+
+  const selectAll = () => setSelectedTables(new Set(availableTables.map(t => t.name)));
+  const selectNone = () => setSelectedTables(new Set());
+
+  const filteredTables = availableTables.filter(t => 
+    t.name.toLowerCase().includes(tableSearch.toLowerCase())
+  );
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className={step === 'tables' ? 'sm:max-w-2xl' : 'sm:max-w-lg'}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Database className="w-5 h-5 text-blue-600" />
             Connect Data Source
           </DialogTitle>
           <DialogDescription>
-            {step === 'type' ? 'Choose the type of data source to connect' : 'Enter connection details'}
+            {step === 'type' && 'Choose the type of data source to connect'}
+            {step === 'config' && 'Enter connection details'}
+            {step === 'tables' && 'Select which tables to include'}
           </DialogDescription>
         </DialogHeader>
 
@@ -343,11 +419,89 @@ function ConnectSourceModal({
               <Button variant="outline" onClick={() => setStep('type')}>Back</Button>
               <Button 
                 className="flex-1" 
+                onClick={handleTestAndFetchTables}
+                disabled={isTesting || !formData.name || !formData.host}
+              >
+                {isTesting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Test & Select Tables
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {step === 'tables' && (
+          <div className="space-y-4 py-4">
+            {/* Connection success indicator */}
+            <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+              <Check className="w-5 h-5 text-emerald-600" />
+              <span className="text-sm text-emerald-700">
+                Connected! Found {availableTables.length} tables.
+              </span>
+            </div>
+
+            {/* Search and bulk actions */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={tableSearch}
+                  onChange={(e) => setTableSearch(e.target.value)}
+                  placeholder="Search tables..."
+                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                />
+              </div>
+              <Button variant="outline" size="sm" onClick={selectAll}>Select All</Button>
+              <Button variant="outline" size="sm" onClick={selectNone}>Clear</Button>
+            </div>
+
+            {/* Table list */}
+            <div className="border rounded-lg max-h-80 overflow-y-auto">
+              {filteredTables.length === 0 ? (
+                <p className="p-4 text-center text-gray-500 text-sm">No tables match your search</p>
+              ) : (
+                filteredTables.map((table) => (
+                  <button
+                    key={table.name}
+                    onClick={() => toggleTable(table.name)}
+                    className={`w-full flex items-center gap-3 p-3 border-b last:border-b-0 hover:bg-gray-50 transition-colors text-left ${
+                      selectedTables.has(table.name) ? 'bg-emerald-50' : ''
+                    }`}
+                  >
+                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                      selectedTables.has(table.name) 
+                        ? 'bg-emerald-500 border-emerald-500' 
+                        : 'border-gray-300'
+                    }`}>
+                      {selectedTables.has(table.name) && (
+                        <Check className="w-3 h-3 text-white" />
+                      )}
+                    </div>
+                    <Table2 className="w-4 h-4 text-emerald-600" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm truncate">{table.name}</p>
+                      <p className="text-xs text-gray-500">{table.columns.length} columns</p>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+
+            {/* Selection summary */}
+            <p className="text-sm text-gray-600">
+              {selectedTables.size} of {availableTables.length} tables selected
+            </p>
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setStep('config')}>Back</Button>
+              <Button 
+                className="flex-1" 
                 onClick={handleConnect}
-                disabled={isLoading || !formData.name || !formData.host}
+                disabled={isLoading || selectedTables.size === 0}
               >
                 {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Connect
+                Connect with {selectedTables.size} Tables
               </Button>
             </div>
           </div>
@@ -357,7 +511,12 @@ function ConnectSourceModal({
   );
 }
 
-// Create View Modal
+// Create View Modal - with table selection
+interface TableInfo {
+  name: string;
+  columns: { name: string; type: string }[];
+}
+
 function CreateViewModal({ 
   open, 
   onClose,
@@ -371,28 +530,66 @@ function CreateViewModal({
   dataSources: PipelineNode[];
   onSuccess: () => void;
 }) {
+  const [step, setStep] = useState<'table' | 'query'>('table');
   const [query, setQuery] = useState('');
   const [selectedDataSource, setSelectedDataSource] = useState('');
+  const [selectedTable, setSelectedTable] = useState('');
+  const [tables, setTables] = useState<TableInfo[]>([]);
+  const [isLoadingTables, setIsLoadingTables] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [tableSearch, setTableSearch] = useState('');
 
+  // Auto-select data source if only one
   useEffect(() => {
     if (dataSources.length === 1) {
       setSelectedDataSource(dataSources[0].id);
     }
   }, [dataSources]);
 
+  // Load tables when data source is selected
+  useEffect(() => {
+    if (!selectedDataSource) {
+      setTables([]);
+      return;
+    }
+    
+    const ds = dataSources.find(d => d.id === selectedDataSource);
+    if (ds?.metadata) {
+      const metadata = ds.metadata as { schemaCache?: { tables?: TableInfo[] } };
+      if (metadata.schemaCache?.tables) {
+        setTables(metadata.schemaCache.tables);
+      }
+    }
+  }, [selectedDataSource, dataSources]);
+
+  // Reset state when modal closes
+  useEffect(() => {
+    if (!open) {
+      setStep('table');
+      setQuery('');
+      setSelectedTable('');
+      setTableSearch('');
+    }
+  }, [open]);
+
+  const selectedTableInfo = tables.find(t => t.name === selectedTable);
+  const filteredTables = tables.filter(t => 
+    t.name.toLowerCase().includes(tableSearch.toLowerCase())
+  );
+
   const handleGenerate = async () => {
-    if (!query || !selectedDataSource) return;
+    if (!query || !selectedDataSource || !selectedTable) return;
     
     setIsGenerating(true);
     try {
-      // First generate SQL via AI Chat
+      // Generate SQL via AI Chat, scoped to the selected table
       const chatResponse = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: query,
           dataSourceId: selectedDataSource,
+          tableName: selectedTable, // Pass the selected table
         }),
       });
 
@@ -403,16 +600,17 @@ function CreateViewModal({
       const chatData = await chatResponse.json();
       
       if (chatData.sql) {
-        // Save as view
+        // Save as view with table reference
         const viewResponse = await fetch('/api/views', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            name: query.slice(0, 50), // Use query as name
+            name: query.slice(0, 50),
             sql: chatData.sql,
             dataSourceId: selectedDataSource,
             workstreamId,
             naturalLanguageQuery: query,
+            sourceTable: selectedTable, // Store the source table
           }),
         });
 
@@ -420,6 +618,8 @@ function CreateViewModal({
           onSuccess();
           onClose();
           setQuery('');
+          setSelectedTable('');
+          setStep('table');
         }
       }
     } catch (error) {
@@ -441,78 +641,670 @@ function CreateViewModal({
             Create View with AI
           </DialogTitle>
           <DialogDescription>
-            Describe what data you want to see in natural language
+            {step === 'table' 
+              ? 'Select a table to create a view from'
+              : `Creating view from ${selectedTable}`
+            }
+          </DialogDescription>
+        </DialogHeader>
+
+        {step === 'table' ? (
+          <div className="space-y-4 py-4">
+            {/* Data Source Selection (if multiple) */}
+            {dataSources.length > 1 && (
+              <div>
+                <label className="text-sm font-medium text-gray-700">Data Source</label>
+                <select
+                  value={selectedDataSource}
+                  onChange={(e) => {
+                    setSelectedDataSource(e.target.value);
+                    setSelectedTable('');
+                  }}
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                >
+                  <option value="">Select a data source</option>
+                  {dataSources.map(ds => (
+                    <option key={ds.id} value={ds.id}>{ds.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Single data source display */}
+            {dataSources.length === 1 && (
+              <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                <Database className="w-4 h-4 text-blue-600" />
+                <span className="font-medium">{dataSources[0].name}</span>
+              </div>
+            )}
+
+            {/* Table Search */}
+            {selectedDataSource && tables.length > 0 && (
+              <div>
+                <label className="text-sm font-medium text-gray-700">Search Tables</label>
+                <input
+                  type="text"
+                  value={tableSearch}
+                  onChange={(e) => setTableSearch(e.target.value)}
+                  placeholder="Type to filter tables..."
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+            )}
+
+            {/* Table List */}
+            {selectedDataSource && (
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Select Table ({filteredTables.length} of {tables.length})
+                </label>
+                <div className="max-h-[300px] overflow-y-auto border border-gray-200 rounded-lg">
+                  {filteredTables.length === 0 ? (
+                    <div className="p-4 text-center text-gray-500 text-sm">
+                      {tables.length === 0 ? 'No tables found' : 'No matching tables'}
+                    </div>
+                  ) : (
+                    filteredTables.slice(0, 50).map((table) => (
+                      <button
+                        key={table.name}
+                        onClick={() => setSelectedTable(table.name)}
+                        className={`w-full text-left p-3 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors ${
+                          selectedTable === table.name ? 'bg-emerald-50 border-l-2 border-l-emerald-500' : ''
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Table2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                          <span className="font-medium text-sm truncate">{table.name}</span>
+                          <span className="text-xs text-gray-400 ml-auto flex-shrink-0">
+                            {table.columns.length} cols
+                          </span>
+                        </div>
+                        {selectedTable === table.name && table.columns.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {table.columns.slice(0, 6).map((col) => (
+                              <span key={col.name} className="px-2 py-0.5 bg-white rounded text-xs text-gray-600 border">
+                                {col.name}
+                              </span>
+                            ))}
+                            {table.columns.length > 6 && (
+                              <span className="px-2 py-0.5 text-xs text-gray-400">
+                                +{table.columns.length - 6} more
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </button>
+                    ))
+                  )}
+                  {filteredTables.length > 50 && (
+                    <div className="p-2 text-center text-gray-500 text-xs bg-gray-50">
+                      Showing 50 of {filteredTables.length} tables. Use search to filter.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={onClose}>Cancel</Button>
+              <Button 
+                className="flex-1" 
+                disabled={!selectedTable}
+                onClick={() => setStep('query')}
+              >
+                Continue with {selectedTable ? `"${selectedTable}"` : 'selected table'}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4 py-4">
+            {/* Selected table info */}
+            <div className="bg-emerald-50 rounded-lg p-3 border border-emerald-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Table2 className="w-4 h-4 text-emerald-600" />
+                  <span className="font-medium text-sm">{selectedTable}</span>
+                </div>
+                <button 
+                  onClick={() => setStep('table')}
+                  className="text-xs text-emerald-600 hover:underline"
+                >
+                  Change table
+                </button>
+              </div>
+              {selectedTableInfo && selectedTableInfo.columns.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {selectedTableInfo.columns.slice(0, 8).map((col) => (
+                    <span key={col.name} className="px-2 py-0.5 bg-white rounded text-xs text-gray-600 border">
+                      {col.name}
+                    </span>
+                  ))}
+                  {selectedTableInfo.columns.length > 8 && (
+                    <span className="px-2 py-0.5 text-xs text-gray-400">
+                      +{selectedTableInfo.columns.length - 8} more
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Query input */}
+            <div>
+              <label className="text-sm font-medium text-gray-700">What would you like to see from this table?</label>
+              <textarea
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={`e.g., Show all records from the last 7 days, sorted by date...`}
+                className="mt-1 w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent min-h-[100px] resize-none"
+                autoFocus
+              />
+            </div>
+
+            {/* Quick suggestions based on table */}
+            <div className="flex flex-wrap gap-2">
+              <span className="text-xs text-gray-500">Try:</span>
+              {[
+                'Show all records',
+                'Filter by date',
+                'Group and count',
+              ].map((suggestion) => (
+                <button
+                  key={suggestion}
+                  onClick={() => setQuery(suggestion)}
+                  className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setStep('table')}>Back</Button>
+              <Button 
+                className="flex-1 gap-2" 
+                disabled={!query || isGenerating}
+                onClick={handleGenerate}
+              >
+                {isGenerating ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4" />
+                )}
+                {isGenerating ? 'Generating...' : 'Generate View'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Create Dashboard Modal
+function CreateDashboardModal({ 
+  open, 
+  onClose,
+  workstreamId,
+  views,
+  onSuccess
+}: { 
+  open: boolean; 
+  onClose: () => void;
+  workstreamId: string;
+  views: PipelineNode[];
+  onSuccess: () => void;
+}) {
+  const [name, setName] = useState('');
+  const [selectedViews, setSelectedViews] = useState<string[]>([]);
+  const [isCreating, setIsCreating] = useState(false);
+
+  useEffect(() => {
+    if (views.length === 1) {
+      setSelectedViews([views[0].id]);
+    }
+  }, [views]);
+
+  const toggleView = (viewId: string) => {
+    setSelectedViews(prev => 
+      prev.includes(viewId) 
+        ? prev.filter(id => id !== viewId)
+        : [...prev, viewId]
+    );
+  };
+
+  const handleCreate = async () => {
+    if (!name || selectedViews.length === 0) return;
+    
+    setIsCreating(true);
+    try {
+      const response = await fetch('/api/dashboards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          workstreamId,
+          viewIds: selectedViews,
+        }),
+      });
+
+      if (response.ok) {
+        onSuccess();
+        onClose();
+        setName('');
+        setSelectedViews([]);
+      } else {
+        const err = await response.json();
+        alert(err.error || 'Failed to create dashboard');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Failed to create dashboard');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <LayoutDashboard className="w-5 h-5 text-violet-600" />
+            Create Dashboard
+          </DialogTitle>
+          <DialogDescription>
+            Combine views into a dashboard for visualization
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {dataSources.length > 1 && (
-            <div>
-              <label className="text-sm font-medium text-gray-700">Data Source</label>
-              <select
-                value={selectedDataSource}
-                onChange={(e) => setSelectedDataSource(e.target.value)}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-              >
-                <option value="">Select a data source</option>
-                {dataSources.map(ds => (
-                  <option key={ds.id} value={ds.id}>{ds.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
           <div>
-            <label className="text-sm font-medium text-gray-700">What would you like to see?</label>
-            <textarea
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="e.g., Show me the top 10 customers by revenue this month..."
-              className="mt-1 w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent min-h-[100px] resize-none"
+            <label className="text-sm font-medium text-gray-700">Dashboard Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g., Weekly Metrics Dashboard"
+              className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
             />
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <span className="text-xs text-gray-500">Try:</span>
-            {['Recent transactions', 'Failed jobs today', 'User signups by week'].map((suggestion) => (
-              <button
-                key={suggestion}
-                onClick={() => setQuery(suggestion)}
-                className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
-              >
-                {suggestion}
-              </button>
-            ))}
-          </div>
-
-          {dataSources.length === 1 && (
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-              <p className="text-sm font-medium text-gray-700 mb-2">Data Source</p>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Database className="w-4 h-4 text-blue-600" />
-                {dataSources[0].name}
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-2">Select Views</label>
+            {views.length === 0 ? (
+              <p className="text-sm text-gray-500 bg-gray-50 rounded-lg p-4 text-center">
+                No views available. Create a view first.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {views.map(view => (
+                  <label
+                    key={view.id}
+                    className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                      selectedViews.includes(view.id)
+                        ? 'border-violet-400 bg-violet-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedViews.includes(view.id)}
+                      onChange={() => toggleView(view.id)}
+                      className="w-4 h-4 text-violet-600 rounded focus:ring-violet-500"
+                    />
+                    <Table2 className="w-4 h-4 text-emerald-600" />
+                    <span className="text-sm font-medium">{view.name}</span>
+                  </label>
+                ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           <div className="flex gap-3 pt-2">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
             <Button 
               className="flex-1 gap-2" 
-              disabled={!query || !selectedDataSource || isGenerating}
-              onClick={handleGenerate}
+              disabled={!name || selectedViews.length === 0 || isCreating}
+              onClick={handleCreate}
             >
-              {isGenerating ? (
+              {isCreating ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <Sparkles className="w-4 h-4" />
+                <LayoutDashboard className="w-4 h-4" />
               )}
-              {isGenerating ? 'Generating...' : 'Generate View'}
+              {isCreating ? 'Creating...' : 'Create Dashboard'}
             </Button>
           </div>
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// Add Output Modal
+function AddOutputModal({ 
+  open, 
+  onClose,
+  workstreamId,
+  dashboards,
+  onSuccess
+}: { 
+  open: boolean; 
+  onClose: () => void;
+  workstreamId: string;
+  dashboards: PipelineNode[];
+  onSuccess: () => void;
+}) {
+  const [step, setStep] = useState<'type' | 'config'>('type');
+  const [outputType, setOutputType] = useState<string | null>(null);
+  const [name, setName] = useState('');
+  const [selectedDashboard, setSelectedDashboard] = useState('');
+  const [schedule, setSchedule] = useState('daily');
+  const [email, setEmail] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+
+  useEffect(() => {
+    if (dashboards.length === 1) {
+      setSelectedDashboard(dashboards[0].id);
+    }
+  }, [dashboards]);
+
+  const outputTypes = [
+    { id: 'pdf', name: 'PDF Export', icon: FileText, desc: 'Generate PDF reports on schedule' },
+    { id: 'email', name: 'Email Report', icon: Mail, desc: 'Send reports via email' },
+    { id: 'webhook', name: 'Webhook', icon: Webhook, desc: 'Push data to external systems' },
+  ];
+
+  const handleCreate = async () => {
+    if (!name || !selectedDashboard || !outputType) return;
+    
+    setIsCreating(true);
+    try {
+      const response = await fetch('/api/outputs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          type: outputType,
+          workstreamId,
+          dashboardId: selectedDashboard,
+          config: {
+            schedule,
+            email: outputType === 'email' ? email : undefined,
+          },
+        }),
+      });
+
+      if (response.ok) {
+        onSuccess();
+        onClose();
+        setStep('type');
+        setOutputType(null);
+        setName('');
+        setSelectedDashboard('');
+      } else {
+        const err = await response.json();
+        alert(err.error || 'Failed to create output');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Failed to create output');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileOutput className="w-5 h-5 text-amber-600" />
+            Add Output
+          </DialogTitle>
+          <DialogDescription>
+            {step === 'type' ? 'Choose how to export your data' : 'Configure the output'}
+          </DialogDescription>
+        </DialogHeader>
+
+        {step === 'type' && (
+          <div className="grid gap-3 py-4">
+            {outputTypes.map((type) => {
+              const Icon = type.icon;
+              return (
+                <button
+                  key={type.id}
+                  onClick={() => {
+                    setOutputType(type.id);
+                    setStep('config');
+                  }}
+                  className="flex items-center gap-4 p-4 rounded-xl border-2 border-gray-200 hover:border-amber-400 hover:bg-amber-50 transition-all text-left"
+                >
+                  <div className="p-2 rounded-lg bg-amber-100">
+                    <Icon className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium">{type.name}</p>
+                    <p className="text-sm text-gray-500">{type.desc}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {step === 'config' && (
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700">Output Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g., Weekly Report Email"
+                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-2">Dashboard</label>
+              {dashboards.length === 0 ? (
+                <p className="text-sm text-gray-500 bg-gray-50 rounded-lg p-4 text-center">
+                  No dashboards available. Create a dashboard first.
+                </p>
+              ) : (
+                <select
+                  value={selectedDashboard}
+                  onChange={(e) => setSelectedDashboard(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                >
+                  <option value="">Select a dashboard</option>
+                  {dashboards.map(d => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700">Schedule</label>
+              <select
+                value={schedule}
+                onChange={(e) => setSchedule(e.target.value)}
+                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              >
+                <option value="hourly">Hourly</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+
+            {outputType === 'email' && (
+              <div>
+                <label className="text-sm font-medium text-gray-700">Email Address</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="team@company.com"
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" onClick={() => setStep('type')}>Back</Button>
+              <Button 
+                className="flex-1" 
+                onClick={handleCreate}
+                disabled={isCreating || !name || !selectedDashboard}
+              >
+                {isCreating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Create Output
+              </Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Node Detail Sidebar
+function NodeDetailSidebar({
+  node,
+  onClose,
+  onDelete,
+  onRefresh,
+}: {
+  node: PipelineNode;
+  onClose: () => void;
+  onDelete: () => void;
+  onRefresh: () => void;
+}) {
+  const router = useRouter();
+  const config = nodeConfig[node.type];
+  const Icon = config.icon;
+
+  const getDetailUrl = () => {
+    switch (node.type) {
+      case 'datasource':
+        return `/datasources/${node.id}`;
+      case 'view':
+        return `/views/${node.id}`;
+      case 'dashboard':
+        return `/dashboards/${node.id}`;
+      case 'output':
+        return `/outputs/${node.id}`;
+      default:
+        return null;
+    }
+  };
+
+  const handleViewDetails = () => {
+    const url = getDetailUrl();
+    if (url) router.push(url);
+  };
+
+  return (
+    <div className="w-80 border-l border-gray-200 bg-white flex flex-col">
+      {/* Header */}
+      <div className="p-4 border-b border-gray-100">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${config.iconBg}`}>
+              <Icon className={`w-5 h-5 ${config.textColor}`} />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wider">{config.label}</p>
+              <h3 className="font-medium text-sm truncate max-w-[180px]">{node.name}</h3>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            <X className="w-4 h-4 text-gray-400" />
+          </button>
+        </div>
+      </div>
+
+      {/* Details */}
+      <div className="flex-1 p-4 space-y-4 overflow-auto">
+        {node.description && (
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">Description</label>
+            <p className="text-sm text-gray-700">{node.description}</p>
+          </div>
+        )}
+
+        <div>
+          <label className="text-xs text-gray-500 block mb-1">Status</label>
+          <div className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${
+              node.status === 'active' ? 'bg-emerald-500' :
+              node.status === 'error' ? 'bg-red-500' :
+              node.status === 'syncing' ? 'bg-amber-500 animate-pulse' :
+              'bg-gray-400'
+            }`} />
+            <span className="text-sm capitalize">{node.status || 'active'}</span>
+          </div>
+        </div>
+
+        {node.parentIds && node.parentIds.length > 0 && (
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">Connected to</label>
+            <p className="text-sm text-gray-600">{node.parentIds.length} upstream node(s)</p>
+          </div>
+        )}
+
+        {node.metadata && Object.keys(node.metadata).length > 0 && (
+          <div>
+            <label className="text-xs text-gray-500 block mb-2">Metadata</label>
+            <div className="bg-gray-50 rounded-lg p-3 text-xs font-mono overflow-auto max-h-32">
+              {Object.entries(node.metadata).map(([key, value]) => (
+                <div key={key} className="flex gap-2">
+                  <span className="text-gray-500">{key}:</span>
+                  <span className="text-gray-700">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="p-4 border-t border-gray-100 space-y-2">
+        <Button 
+          variant="outline" 
+          className="w-full justify-start gap-2" 
+          size="sm"
+          onClick={handleViewDetails}
+        >
+          <Eye className="w-4 h-4" />
+          View Details
+        </Button>
+        <Button 
+          variant="outline" 
+          className="w-full justify-start gap-2" 
+          size="sm"
+          onClick={onRefresh}
+        >
+          <RefreshCw className="w-4 h-4" />
+          Refresh
+        </Button>
+        <Button 
+          variant="outline" 
+          className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50" 
+          size="sm"
+          onClick={onDelete}
+        >
+          <Trash2 className="w-4 h-4" />
+          Delete
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -774,56 +1566,36 @@ export default function WorkstreamCanvasPage() {
 
         {/* Node Detail Sidebar */}
         {selectedNode && !showAIChat && (
-          <div className="w-72 border-l border-gray-200 bg-white p-5">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="font-medium text-sm">{nodeConfig[selectedNode.type].label}</h3>
-              <button 
-                onClick={() => setSelectedNode(null)}
-                className="p-1 rounded hover:bg-gray-100 transition-colors"
-              >
-                <X className="w-4 h-4 text-gray-400" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs text-gray-500 block mb-1">Name</label>
-                <p className="font-medium text-sm">{selectedNode.name}</p>
-              </div>
-              {selectedNode.description && (
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Description</label>
-                  <p className="text-sm text-gray-600">{selectedNode.description}</p>
-                </div>
-              )}
-              <div>
-                <label className="text-xs text-gray-500 block mb-1">Status</label>
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${
-                    selectedNode.status === 'active' ? 'bg-emerald-500' :
-                    selectedNode.status === 'error' ? 'bg-red-500' :
-                    'bg-amber-500'
-                  }`} />
-                  <span className="text-sm capitalize">{selectedNode.status || 'active'}</span>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-gray-100 space-y-2">
-                <Button variant="outline" className="w-full justify-start gap-2" size="sm">
-                  <Eye className="w-4 h-4" />
-                  View Details
-                </Button>
-                <Button variant="outline" className="w-full justify-start gap-2" size="sm">
-                  <Play className="w-4 h-4" />
-                  Run / Refresh
-                </Button>
-                <Button variant="outline" className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50" size="sm">
-                  <Trash2 className="w-4 h-4" />
-                  Delete
-                </Button>
-              </div>
-            </div>
-          </div>
+          <NodeDetailSidebar
+            node={selectedNode}
+            onClose={() => setSelectedNode(null)}
+            onDelete={async () => {
+              if (!confirm(`Delete "${selectedNode.name}"? This cannot be undone.`)) return;
+              
+              const typeToEndpoint: Record<NodeType, string> = {
+                datasource: 'datasources',
+                view: 'views',
+                dashboard: 'dashboards',
+                output: 'outputs',
+              };
+              
+              try {
+                const res = await fetch(`/api/${typeToEndpoint[selectedNode.type]}/${selectedNode.id}`, {
+                  method: 'DELETE',
+                });
+                if (res.ok) {
+                  setSelectedNode(null);
+                  fetchData();
+                } else {
+                  alert('Failed to delete');
+                }
+              } catch (err) {
+                console.error(err);
+                alert('Failed to delete');
+              }
+            }}
+            onRefresh={fetchData}
+          />
         )}
       </div>
 
@@ -839,6 +1611,20 @@ export default function WorkstreamCanvasPage() {
         onClose={() => setShowCreateView(false)} 
         workstreamId={workstreamId}
         dataSources={nodesByType.datasource}
+        onSuccess={fetchData}
+      />
+      <CreateDashboardModal 
+        open={showCreateDashboard} 
+        onClose={() => setShowCreateDashboard(false)} 
+        workstreamId={workstreamId}
+        views={nodesByType.view}
+        onSuccess={fetchData}
+      />
+      <AddOutputModal 
+        open={showAddOutput} 
+        onClose={() => setShowAddOutput(false)} 
+        workstreamId={workstreamId}
+        dashboards={nodesByType.dashboard}
         onSuccess={fetchData}
       />
     </div>
