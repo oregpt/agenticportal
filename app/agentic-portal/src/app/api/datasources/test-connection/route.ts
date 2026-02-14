@@ -137,9 +137,9 @@ async function testPostgresConnection(config: {
     try {
       client = await pool.connect();
     } catch (sslError: unknown) {
-      const sslMsg = sslError instanceof Error ? sslError.message : '';
+      const sslMsg = sslError instanceof Error ? sslError.message : String(sslError);
       // If SSL fails, try without SSL
-      if (sslMsg.includes('SSL') || sslMsg.includes('ssl')) {
+      if (sslMsg.toLowerCase().includes('ssl')) {
         await pool.end();
         pool = new Pool({
           host,
