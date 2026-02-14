@@ -24,7 +24,35 @@ import {
   User,
   Sparkles,
   AlertCircle,
+  X,
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
+
+const CHART_COLORS = ['#0066cc', '#e63946', '#2a9d8f', '#f4a261', '#9b5de5'];
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 
@@ -68,6 +96,21 @@ export default function ChatPage() {
   const [dataSources, setDataSources] = useState<DataSource[]>([]);
   const [isLoadingDataSources, setIsLoadingDataSources] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
+  
+  // View All modal state
+  const [showViewAll, setShowViewAll] = useState(false);
+  const [viewAllData, setViewAllData] = useState<Record<string, unknown>[]>([]);
+  
+  // Chart modal state
+  const [showChart, setShowChart] = useState(false);
+  const [chartData, setChartData] = useState<Record<string, unknown>[]>([]);
+  const [chartType, setChartType] = useState<'bar' | 'line' | 'pie'>('bar');
+  
+  // Save View dialog state
+  const [showSaveView, setShowSaveView] = useState(false);
+  const [saveViewName, setSaveViewName] = useState('');
+  const [saveViewSql, setSaveViewSql] = useState('');
+  const [isSavingView, setIsSavingView] = useState(false);
 
   // Fetch data sources from API
   useEffect(() => {
@@ -158,6 +201,61 @@ export default function ChatPage() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({ title: 'Copied to clipboard' });
+  };
+
+  const handleViewAll = (data: Record<string, unknown>[]) => {
+    setViewAllData(data);
+    setShowViewAll(true);
+  };
+
+  const handleShowChart = (data: Record<string, unknown>[]) => {
+    setChartData(data);
+    // Auto-detect best chart type
+    if (data.length > 0) {
+      const keys = Object.keys(data[0]);
+      const numericKeys = keys.filter(k => typeof data[0][k] === 'number');
+      if (numericKeys.length === 1 && keys.length === 2) {
+        setChartType('pie');
+      } else {
+        setChartType('bar');
+      }
+    }
+    setShowChart(true);
+  };
+
+  const handleSaveViewClick = (sql: string) => {
+    setSaveViewSql(sql);
+    setSaveViewName('');
+    setShowSaveView(true);
+  };
+
+  const handleSaveView = async () => {
+    if (!saveViewName.trim() || !saveViewSql.trim() || !selectedDataSource) return;
+    
+    setIsSavingView(true);
+    try {
+      const response = await fetch('/api/views', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: saveViewName,
+          dataSourceId: selectedDataSource,
+          sql: saveViewSql,
+        }),
+      });
+      
+      if (response.ok) {
+        toast({ title: 'View saved successfully' });
+        setShowSaveView(false);
+      } else {
+        const data = await response.json();
+        toast({ title: 'Failed to save view', description: data.error, variant: 'destructive' });
+      }
+    } catch (error) {
+      toast({ title: 'Failed to save view', variant: 'destructive' });
+    } finally {
+      setIsSavingView(false);
+    }
   };
 
   return (
@@ -255,15 +353,30 @@ export default function ChatPage() {
                         Results ({message.data.length} rows)
                       </span>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" className="h-7 text-xs">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-7 text-xs"
+                          onClick={() => handleViewAll(message.data as Record<string, unknown>[])}
+                        >
                           <Table2 className="w-3 h-3 mr-1" />
                           View All
                         </Button>
-                        <Button variant="outline" size="sm" className="h-7 text-xs">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-7 text-xs"
+                          onClick={() => handleShowChart(message.data as Record<string, unknown>[])}
+                        >
                           <BarChart3 className="w-3 h-3 mr-1" />
                           Chart
                         </Button>
-                        <Button variant="outline" size="sm" className="h-7 text-xs">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-7 text-xs"
+                          onClick={() => handleSaveViewClick(message.sql || '')}
+                        >
                           <Save className="w-3 h-3 mr-1" />
                           Save View
                         </Button>
@@ -347,6 +460,154 @@ export default function ChatPage() {
           </div>
         </form>
       </div>
+
+      {/* View All Dialog */}
+      <Dialog open={showViewAll} onOpenChange={setShowViewAll}>
+        <DialogContent className="max-w-4xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>All Results ({viewAllData.length} rows)</DialogTitle>
+          </DialogHeader>
+          <div className="overflow-auto max-h-[60vh]">
+            {viewAllData.length > 0 && (
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-muted">
+                  <tr className="border-b">
+                    {Object.keys(viewAllData[0]).map((key) => (
+                      <th key={key} className="text-left px-4 py-2 font-medium">{key}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {viewAllData.map((row, i) => (
+                    <tr key={i} className="border-b">
+                      {Object.values(row).map((val, j) => (
+                        <td key={j} className="px-4 py-2">{String(val)}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Chart Dialog */}
+      <Dialog open={showChart} onOpenChange={setShowChart}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Chart Visualization</DialogTitle>
+            <DialogDescription>
+              <div className="flex gap-2 mt-2">
+                <Button 
+                  variant={chartType === 'bar' ? 'default' : 'outline'} 
+                  size="sm"
+                  onClick={() => setChartType('bar')}
+                >
+                  Bar
+                </Button>
+                <Button 
+                  variant={chartType === 'line' ? 'default' : 'outline'} 
+                  size="sm"
+                  onClick={() => setChartType('line')}
+                >
+                  Line
+                </Button>
+                <Button 
+                  variant={chartType === 'pie' ? 'default' : 'outline'} 
+                  size="sm"
+                  onClick={() => setChartType('pie')}
+                >
+                  Pie
+                </Button>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="h-80">
+            {chartData.length > 0 && (
+              <ResponsiveContainer width="100%" height="100%">
+                {chartType === 'bar' ? (
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey={Object.keys(chartData[0])[0]} />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    {Object.keys(chartData[0]).slice(1).map((key, i) => (
+                      <Bar key={key} dataKey={key} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                    ))}
+                  </BarChart>
+                ) : chartType === 'line' ? (
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey={Object.keys(chartData[0])[0]} />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    {Object.keys(chartData[0]).slice(1).map((key, i) => (
+                      <Line key={key} type="monotone" dataKey={key} stroke={CHART_COLORS[i % CHART_COLORS.length]} />
+                    ))}
+                  </LineChart>
+                ) : (
+                  <PieChart>
+                    <Pie
+                      data={chartData}
+                      dataKey={Object.keys(chartData[0]).find(k => typeof chartData[0][k] === 'number') || Object.keys(chartData[0])[1]}
+                      nameKey={Object.keys(chartData[0])[0]}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={100}
+                      label
+                    >
+                      {chartData.map((_, i) => (
+                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                )}
+              </ResponsiveContainer>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Save View Dialog */}
+      <Dialog open={showSaveView} onOpenChange={setShowSaveView}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save as View</DialogTitle>
+            <DialogDescription>
+              Save this query as a reusable view
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>View Name</Label>
+              <Input
+                placeholder="e.g., Monthly Revenue"
+                value={saveViewName}
+                onChange={(e) => setSaveViewName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>SQL Query</Label>
+              <pre className="bg-muted p-3 rounded-md text-sm overflow-x-auto">
+                {saveViewSql}
+              </pre>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSaveView(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveView} disabled={!saveViewName.trim() || isSavingView}>
+              {isSavingView ? 'Saving...' : 'Save View'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

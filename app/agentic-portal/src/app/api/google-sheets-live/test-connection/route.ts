@@ -13,16 +13,26 @@ function getPlatformCredentials() {
   if (!keyJson) {
     return null;
   }
+  
+  let credentials;
   try {
-    const credentials = JSON.parse(keyJson);
-    return {
-      credentials,
-      projectId: credentials.project_id,
-      serviceAccountEmail: credentials.client_email,
-    };
+    credentials = JSON.parse(keyJson);
   } catch {
-    return null;
+    // Railway sometimes strips quotes from JSON keys, try to fix it
+    try {
+      const fixed = keyJson.replace(/([{,])\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
+      credentials = JSON.parse(fixed);
+    } catch {
+      console.error('[sheets-live] Failed to parse GCP credentials');
+      return null;
+    }
   }
+  
+  return {
+    credentials,
+    projectId: credentials.project_id,
+    serviceAccountEmail: credentials.client_email,
+  };
 }
 
 // Generate a safe dataset name from org context

@@ -12,10 +12,18 @@ function getPlatformCredentials() {
   if (!keyJson) {
     return null;
   }
+  
   try {
     return JSON.parse(keyJson);
   } catch {
-    return null;
+    // Railway sometimes strips quotes from JSON keys, try to fix it
+    try {
+      const fixed = keyJson.replace(/([{,])\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
+      return JSON.parse(fixed);
+    } catch {
+      console.error('[sheets-live] Failed to parse GCP credentials');
+      return null;
+    }
   }
 }
 

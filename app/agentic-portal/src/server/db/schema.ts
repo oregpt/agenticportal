@@ -198,12 +198,28 @@ export const users = pgTable('users', {
 });
 
 // ============================================================================
+// WORKSTREAMS (Project Container)
+// ============================================================================
+
+export const workstreams = pgTable('workstreams', {
+  id: varchar('id', { length: 64 }).primaryKey(),
+  organizationId: varchar('organization_id', { length: 64 }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  color: varchar('color', { length: 16 }).default('#8b5cf6'), // Hex color for UI
+  createdBy: varchar('created_by', { length: 64 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// ============================================================================
 // LAYER 1: DATA SOURCES (Foundation)
 // ============================================================================
 
 export const dataSources = pgTable('data_sources', {
   id: varchar('id', { length: 64 }).primaryKey(),
   organizationId: varchar('organization_id', { length: 64 }).notNull(),
+  workstreamId: varchar('workstream_id', { length: 64 }), // Optional - can be unassigned
   name: varchar('name', { length: 255 }).notNull(),
   type: varchar('type', { length: 32 }).notNull(), // 'postgres', 'bigquery', 'google_sheets', 'csv'
   config: jsonb('config').notNull(), // Encrypted credentials
@@ -221,6 +237,7 @@ export const dataSources = pgTable('data_sources', {
 export const views = pgTable('views', {
   id: varchar('id', { length: 64 }).primaryKey(),
   organizationId: varchar('organization_id', { length: 64 }).notNull(),
+  workstreamId: varchar('workstream_id', { length: 64 }), // Optional
   dataSourceId: varchar('data_source_id', { length: 64 }).notNull(),
   name: varchar('name', { length: 255 }).notNull(),
   description: text('description'),
@@ -252,11 +269,32 @@ export const savedReports = pgTable('saved_reports', {
 export const dashboards = pgTable('dashboards', {
   id: varchar('id', { length: 64 }).primaryKey(),
   organizationId: varchar('organization_id', { length: 64 }).notNull(),
+  workstreamId: varchar('workstream_id', { length: 64 }), // Optional
   name: varchar('name', { length: 255 }).notNull(),
   description: text('description'),
   isPublic: integer('is_public').notNull().default(0),
   publicSlug: varchar('public_slug', { length: 64 }).unique(),
   layout: varchar('layout', { length: 32 }).default('grid'), // 'grid' | 'freeform'
+  createdBy: varchar('created_by', { length: 64 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// ============================================================================
+// LAYER 5: OUTPUTS (Export/Delivery Layer)
+// ============================================================================
+
+export const outputs = pgTable('outputs', {
+  id: varchar('id', { length: 64 }).primaryKey(),
+  organizationId: varchar('organization_id', { length: 64 }).notNull(),
+  workstreamId: varchar('workstream_id', { length: 64 }), // Optional
+  dashboardId: varchar('dashboard_id', { length: 64 }).notNull(), // Source dashboard
+  name: varchar('name', { length: 255 }).notNull(),
+  type: varchar('type', { length: 32 }).notNull(), // 'pdf', 'csv', 'email', 'webhook'
+  schedule: varchar('schedule', { length: 64 }), // cron expression or 'manual'
+  config: jsonb('config'), // Type-specific config (email recipients, webhook URL, etc.)
+  status: varchar('status', { length: 32 }).default('active'), // 'active', 'paused', 'error'
+  lastRunAt: timestamp('last_run_at'),
   createdBy: varchar('created_by', { length: 64 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

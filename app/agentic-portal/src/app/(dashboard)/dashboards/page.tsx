@@ -4,11 +4,7 @@ import Link from 'next/link';
 
 export default function DashboardsPage() {
   // TODO: Fetch dashboards from API
-  const dashboards = [
-    { id: '1', name: 'Sales Overview', description: 'Q4 2025 sales metrics', widgetCount: 6, updatedAt: '2 hours ago' },
-    { id: '2', name: 'Customer Analytics', description: 'Customer segmentation and retention', widgetCount: 4, updatedAt: '1 day ago' },
-    { id: '3', name: 'Financial Summary', description: 'Monthly P&L and cash flow', widgetCount: 8, updatedAt: '3 days ago' },
-  ];
+  const dashboards: { id: string; name: string; description: string; widgetCount: number; updatedAt: string }[] = [];
 
   return (
     <div className="p-8 max-w-7xl mx-auto">

@@ -16,6 +16,7 @@ interface DataSource {
   id: string;
   name: string;
   type: string;
+  organizationId?: string;
 }
 
 // Wrapper with Suspense for useSearchParams
@@ -117,7 +118,11 @@ function NewViewPageContent() {
     setResults(null);
     
     try {
-      const response = await fetch(`/api/datasources/${dataSourceId}/query`, {
+      // Get organizationId from the selected data source
+      const selectedDs = dataSources.find(ds => ds.id === dataSourceId);
+      const orgId = selectedDs?.organizationId || '';
+      
+      const response = await fetch(`/api/datasources/${dataSourceId}/query?organizationId=${orgId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sql: queryToRun }),
@@ -125,8 +130,8 @@ function NewViewPageContent() {
       
       if (response.ok) {
         const data = await response.json();
-        setResults(data.rows || []);
-        setColumns(data.columns || []);
+        setResults(data.result?.rows || data.rows || []);
+        setColumns(data.result?.columns?.map((c: any) => c.name || c) || data.columns || []);
       } else {
         const data = await response.json();
         setError(data.error || 'Query failed');
@@ -143,18 +148,32 @@ function NewViewPageContent() {
     if (!name.trim() || !finalSql.trim() || !dataSourceId) return;
     
     setIsSaving(true);
+    setError(null);
     
-    // TODO: Replace with real API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // POST /api/views
-    // const response = await fetch('/api/views', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ name, description, dataSourceId, sql: finalSql }),
-    // });
-    
-    router.push('/views');
+    try {
+      const response = await fetch('/api/views', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          name, 
+          description, 
+          dataSourceId, 
+          sql: finalSql,
+          naturalLanguageQuery: mode === 'chat' ? query : null,
+        }),
+      });
+      
+      if (response.ok) {
+        router.push('/views');
+      } else {
+        const data = await response.json();
+        setError(data.error || 'Failed to save view');
+      }
+    } catch (err) {
+      setError('Failed to save view');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const currentSql = mode === 'sql' ? sql : generatedSql;

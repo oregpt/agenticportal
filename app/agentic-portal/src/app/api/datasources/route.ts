@@ -3,12 +3,41 @@ import { db, schema } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { createDataSourceAdapter } from '@/lib/datasources';
 import { randomUUID } from 'crypto';
+import { cookies } from 'next/headers';
+
+// Helper to get current user from session
+async function getCurrentUser() {
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get('agentic_session');
+  
+  if (!sessionCookie?.value) {
+    return null;
+  }
+  
+  try {
+    // Session token is base64 encoded JSON
+    const decoded = Buffer.from(sessionCookie.value, 'base64').toString('utf-8');
+    const session = JSON.parse(decoded);
+    if (!session.userId) return null;
+    
+    const [user] = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.id, session.userId))
+      .limit(1);
+    
+    return user;
+  } catch {
+    return null;
+  }
+}
 
 // GET /api/datasources - List all data sources for org
 export async function GET(request: NextRequest) {
   try {
-    // TODO: Get org from session
-    const orgId = request.headers.get('x-org-id') || 'default-org';
+    // Get org from session or header
+    const user = await getCurrentUser();
+    const orgId = user?.organizationId || request.headers.get('x-org-id') || 'default-org';
 
     const dataSources = await db
       .select()
@@ -18,6 +47,7 @@ export async function GET(request: NextRequest) {
     // Don't send credentials to client
     const sanitized = dataSources.map((ds) => ({
       id: ds.id,
+      organizationId: ds.organizationId, // Include for query API
       name: ds.name,
       type: ds.type,
       createdAt: ds.createdAt,
@@ -41,11 +71,12 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     console.log('[datasources POST] Received body:', JSON.stringify(body, null, 2));
-    const { name, type, config } = body;
+    const { name, type, config, workstreamId } = body;
 
-    // TODO: Get org and user from session
-    const orgId = request.headers.get('x-org-id') || 'default-org';
-    const userId = request.headers.get('x-user-id') || 'default-user';
+    // Get org and user from session
+    const user = await getCurrentUser();
+    const orgId = user?.organizationId || request.headers.get('x-org-id') || 'default-org';
+    const userId = user?.id || request.headers.get('x-user-id') || 'default-user';
     console.log('[datasources POST] orgId:', orgId, 'userId:', userId);
 
     if (!name || !type || !config) {
@@ -105,6 +136,7 @@ export async function POST(request: NextRequest) {
       .values({
         id,
         organizationId: orgId,
+        workstreamId: workstreamId || null,
         name,
         type,
         config,
@@ -152,10 +184,16 @@ async function handleGoogleSheetsLive(
   try {
     credentials = JSON.parse(keyJson);
   } catch {
-    return NextResponse.json(
-      { error: 'Invalid platform GCP credentials.' },
-      { status: 500 }
-    );
+    // Railway sometimes strips quotes from JSON keys, try to fix it
+    try {
+      const fixed = keyJson.replace(/([{,])\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
+      credentials = JSON.parse(fixed);
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid platform GCP credentials.' },
+        { status: 500 }
+      );
+    }
   }
 
   const { spreadsheetId, sheetName, hasHeader = true } = config;

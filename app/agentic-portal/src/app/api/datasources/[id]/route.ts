@@ -7,11 +7,39 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import { dataSources } from '@/server/db/schema';
+import { db, schema } from '@/lib/db';
+import { dataSources, users } from '@/server/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { createDataSourceAdapter, type DataSourceConfig } from '@/lib/datasources';
 import { z } from 'zod';
+import { cookies } from 'next/headers';
+
+// Helper to get current user from session
+async function getCurrentUser() {
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get('agentic_session');
+  
+  if (!sessionCookie?.value) {
+    return null;
+  }
+  
+  try {
+    // Session token is base64 encoded JSON
+    const decoded = Buffer.from(sessionCookie.value, 'base64').toString('utf-8');
+    const session = JSON.parse(decoded);
+    if (!session.userId) return null;
+    
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, session.userId))
+      .limit(1);
+    
+    return user;
+  } catch {
+    return null;
+  }
+}
 
 // Validation schemas
 const updateDataSourceSchema = z.object({
@@ -29,13 +57,19 @@ export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
     const { searchParams } = new URL(request.url);
-    const organizationId = searchParams.get('organizationId');
+    let organizationId = searchParams.get('organizationId');
 
+    // If no organizationId provided, try to get from session
     if (!organizationId) {
-      return NextResponse.json(
-        { error: 'organizationId is required' },
-        { status: 400 }
-      );
+      const user = await getCurrentUser();
+      if (user?.organizationId) {
+        organizationId = user.organizationId;
+      } else {
+        return NextResponse.json(
+          { error: 'Unauthorized or organizationId is required' },
+          { status: 401 }
+        );
+      }
     }
 
     const [source] = await db
@@ -59,6 +93,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     // Don't expose sensitive config details
     const safeSource = {
       id: source.id,
+      organizationId: source.organizationId, // Include for query API calls
       name: source.name,
       type: source.type,
       schemaCache: source.schemaCache,
