@@ -122,38 +122,50 @@ async function testPostgresConnection(config: {
     // Dynamic import to avoid loading pg if not needed
     const { Pool } = await import('pg');
     
-    // Try with SSL first, fallback to no SSL
-    let pool = new Pool({
-      host,
-      port: port || 5432,
-      database,
-      user: username,
-      password,
-      ssl: { rejectUnauthorized: false },
-      connectionTimeoutMillis: 10000,
-    });
-    
+    // Try without SSL first, then with SSL
+    // (Many hosted DBs like Railway don't support SSL)
+    let pool: InstanceType<typeof Pool> | null = null;
     let client;
+    let lastError: unknown;
+    
+    // First try without SSL
     try {
+      pool = new Pool({
+        host,
+        port: port || 5432,
+        database,
+        user: username,
+        password,
+        ssl: false,
+        connectionTimeoutMillis: 10000,
+      });
       client = await pool.connect();
-    } catch (sslError: unknown) {
-      const sslMsg = sslError instanceof Error ? sslError.message : String(sslError);
-      // If SSL fails, try without SSL
-      if (sslMsg.toLowerCase().includes('ssl')) {
-        await pool.end();
+    } catch (noSslError) {
+      lastError = noSslError;
+      // Clean up failed pool
+      try { if (pool) await pool.end(); } catch { /* ignore */ }
+      
+      // Try with SSL
+      try {
         pool = new Pool({
           host,
           port: port || 5432,
           database,
           user: username,
           password,
-          ssl: false,
+          ssl: { rejectUnauthorized: false },
           connectionTimeoutMillis: 10000,
         });
         client = await pool.connect();
-      } else {
-        throw sslError;
+      } catch (sslError) {
+        // Both failed, throw the original error
+        try { if (pool) await pool.end(); } catch { /* ignore */ }
+        throw lastError;
       }
+    }
+    
+    if (!client) {
+      throw new Error('Failed to establish database connection');
     }
     
     // Get table count
