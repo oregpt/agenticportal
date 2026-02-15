@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import path from 'path';
+import { getDatabasePoolConfig } from '@/lib/database';
 
 dotenv.config({ path: path.resolve(__dirname, '..', '..', '.env') });
 
@@ -43,7 +44,7 @@ export function getFeatureFlags(): FeatureFlags {
 
 export function loadConfig(): AppConfig {
   const port = Number(process.env.PORT || 4000);
-  const databaseUrl = process.env.DATABASE_URL || '';
+  const databaseUrl = getDatabasePoolConfig().connectionString || '';
 
   if (!databaseUrl) {
     console.warn('[agent-lite] DATABASE_URL is not set. Required for production.');

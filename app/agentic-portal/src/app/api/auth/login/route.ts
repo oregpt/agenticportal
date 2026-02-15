@@ -8,13 +8,28 @@ import { db, schema } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { createSessionToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
-import crypto from 'crypto';
+import { getDatabaseConfigError } from '@/lib/database';
 
 const SESSION_COOKIE = 'agentic_session';
 
-// Simple password hash (use bcrypt in production)
-function hashPassword(password: string): string {
-  return crypto.createHash('sha256').update(password).digest('hex');
+function resolveAuthErrorResponse(error: unknown) {
+  const dbConfigError = getDatabaseConfigError();
+  if (dbConfigError) {
+    return NextResponse.json({ error: 'Authentication temporarily unavailable: database configuration is missing.' }, { status: 503 });
+  }
+
+  const dbError = error as { code?: string; message?: string };
+  if (dbError.code === '42P01') {
+    return NextResponse.json({ error: 'Authentication temporarily unavailable: database tables are not initialized.' }, { status: 503 });
+  }
+  if (dbError.code === '42703' || dbError.code === '3D000') {
+    return NextResponse.json({ error: 'Authentication temporarily unavailable: database schema is incompatible.' }, { status: 503 });
+  }
+  if (dbError.code === 'ECONNREFUSED' || dbError.code === 'ENOTFOUND' || dbError.code === 'ETIMEDOUT') {
+    return NextResponse.json({ error: 'Authentication temporarily unavailable: cannot reach database.' }, { status: 503 });
+  }
+
+  return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
 }
 
 export async function POST(request: NextRequest) {
@@ -72,9 +87,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('[auth/login] Error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return resolveAuthErrorResponse(error);
   }
 }
