@@ -1,12 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/lib/db';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
+import { getCurrentUser } from '@/lib/auth';
 
-const DEFAULT_ORG = 'default';
+async function requireOrgContext() {
+  const user = await getCurrentUser();
+  if (!user?.organizationId) {
+    return null;
+  }
+
+  return {
+    userId: user.id,
+    orgId: user.organizationId,
+  };
+}
 
 export async function GET(request: NextRequest) {
   try {
+    const context = await requireOrgContext();
+    if (!context) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const workstreamId = searchParams.get('workstreamId');
 
@@ -15,9 +31,17 @@ export async function GET(request: NextRequest) {
       outputList = await db
         .select()
         .from(schema.outputs)
-        .where(eq(schema.outputs.workstreamId, workstreamId));
+        .where(
+          and(
+            eq(schema.outputs.organizationId, context.orgId),
+            eq(schema.outputs.workstreamId, workstreamId)
+          )
+        );
     } else {
-      outputList = await db.select().from(schema.outputs);
+      outputList = await db
+        .select()
+        .from(schema.outputs)
+        .where(eq(schema.outputs.organizationId, context.orgId));
     }
 
     return NextResponse.json({ outputs: outputList });
@@ -32,6 +56,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const context = await requireOrgContext();
+    if (!context) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { name, type, workstreamId, dashboardId, config = {} } = body;
 
@@ -49,14 +78,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const [dashboard] = await db
+      .select({ id: schema.dashboards.id })
+      .from(schema.dashboards)
+      .where(
+        and(
+          eq(schema.dashboards.id, dashboardId),
+          eq(schema.dashboards.organizationId, context.orgId)
+        )
+      );
+
+    if (!dashboard) {
+      return NextResponse.json(
+        { error: 'Dashboard not found' },
+        { status: 404 }
+      );
+    }
+
     const id = uuidv4();
 
-    // Create output
     const [output] = await db
       .insert(schema.outputs)
       .values({
         id,
-        organizationId: DEFAULT_ORG,
+        organizationId: context.orgId,
         name,
         type,
         config,
@@ -64,10 +109,11 @@ export async function POST(request: NextRequest) {
         dashboardId,
         schedule: config.schedule || 'manual',
         status: 'active',
+        createdBy: context.userId,
       })
       .returning();
 
-    return NextResponse.json({ output });
+    return NextResponse.json({ output }, { status: 201 });
   } catch (error) {
     console.error('Error creating output:', error);
     return NextResponse.json(
