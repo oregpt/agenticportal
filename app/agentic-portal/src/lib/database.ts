@@ -36,9 +36,7 @@ function resolveSslConfig(databaseUrl: string): PgSslConfig {
     // Keep default below when the URL is not parseable.
   }
 
-  // Default to no SSL unless explicitly requested.
-  // Some managed DB TCP proxies (including certain Railway setups) reject SSL with:
-  // "The server does not support SSL connections".
+  // Default to no SSL — set PG_FORCE_SSL=true or sslmode=require in the URL to enable.
   return false;
 }
 
