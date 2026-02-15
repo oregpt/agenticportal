@@ -29,6 +29,9 @@ import {
   Search
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -117,8 +120,8 @@ function NodeCard({ node, onSelect, isSelected }: {
       `}
     >
       <div className={`
-        relative p-4 rounded-xl border-2 ${config.borderColor} ${config.bgColor} ${config.hoverBorder}
-        transition-all min-w-[200px] hover:shadow-md
+        relative p-4 rounded-2xl border-2 ${config.borderColor} ${config.bgColor} ${config.hoverBorder}
+        transition-all w-full hover:shadow-md hover:-translate-y-0.5
       `}>
         <div className="flex items-start gap-3">
           <div className={`p-2 rounded-lg ${config.iconBg}`}>
@@ -157,8 +160,8 @@ function AddNodeButton({ type, onClick }: { type: NodeType; onClick: () => void 
     <button
       onClick={onClick}
       className={`
-        group relative p-4 rounded-xl border-2 border-dashed border-gray-300
-        hover:border-gray-400 hover:bg-gray-50 transition-all min-w-[200px]
+        group relative p-4 rounded-2xl border-2 border-dashed border-gray-300
+        hover:border-primary/40 hover:bg-white/80 transition-all w-full hover:-translate-y-0.5
         flex items-center gap-3
       `}
     >
@@ -353,7 +356,7 @@ function ConnectSourceModal({
           <div className="space-y-4 py-4">
             <div>
               <label className="text-sm font-medium text-gray-700">Display Name</label>
-              <input
+              <Input
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData(f => ({ ...f, name: e.target.value }))}
@@ -364,7 +367,7 @@ function ConnectSourceModal({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-700">Host</label>
-                <input
+                <Input
                   type="text"
                   value={formData.host}
                   onChange={(e) => setFormData(f => ({ ...f, host: e.target.value }))}
@@ -374,7 +377,7 @@ function ConnectSourceModal({
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">Port</label>
-                <input
+                <Input
                   type="text"
                   value={formData.port}
                   onChange={(e) => setFormData(f => ({ ...f, port: e.target.value }))}
@@ -385,7 +388,7 @@ function ConnectSourceModal({
             </div>
             <div>
               <label className="text-sm font-medium text-gray-700">Database</label>
-              <input
+              <Input
                 type="text"
                 value={formData.database}
                 onChange={(e) => setFormData(f => ({ ...f, database: e.target.value }))}
@@ -396,7 +399,7 @@ function ConnectSourceModal({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-700">Username</label>
-                <input
+                <Input
                   type="text"
                   value={formData.username}
                   onChange={(e) => setFormData(f => ({ ...f, username: e.target.value }))}
@@ -406,7 +409,7 @@ function ConnectSourceModal({
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">Password</label>
-                <input
+                <Input
                   type="password"
                   value={formData.password}
                   onChange={(e) => setFormData(f => ({ ...f, password: e.target.value }))}
@@ -443,7 +446,7 @@ function ConnectSourceModal({
             <div className="flex items-center gap-3">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
+                <Input
                   type="text"
                   value={tableSearch}
                   onChange={(e) => setTableSearch(e.target.value)}
@@ -532,6 +535,7 @@ function CreateViewModal({
 }) {
   const [step, setStep] = useState<'table' | 'query'>('table');
   const [query, setQuery] = useState('');
+  const [viewName, setViewName] = useState('');
   const [selectedDataSource, setSelectedDataSource] = useState('');
   const [selectedTable, setSelectedTable] = useState('');
   const [tables, setTables] = useState<TableInfo[]>([]);
@@ -567,10 +571,19 @@ function CreateViewModal({
     if (!open) {
       setStep('table');
       setQuery('');
+      setViewName('');
       setSelectedTable('');
       setTableSearch('');
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!selectedTable) {
+      setViewName('');
+      return;
+    }
+    setViewName((prev) => (prev.trim() ? prev : `${selectedTable} View`));
+  }, [selectedTable]);
 
   const selectedTableInfo = tables.find(t => t.name === selectedTable);
   const filteredTables = tables.filter(t => 
@@ -578,7 +591,7 @@ function CreateViewModal({
   );
 
   const handleGenerate = async () => {
-    if (!query || !selectedDataSource || !selectedTable) return;
+    if (!query || !viewName.trim() || !selectedDataSource || !selectedTable) return;
     
     setIsGenerating(true);
     try {
@@ -605,7 +618,7 @@ function CreateViewModal({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            name: query.slice(0, 50),
+            name: viewName.trim(),
             sql: chatData.sql,
             dataSourceId: selectedDataSource,
             workstreamId,
@@ -618,6 +631,7 @@ function CreateViewModal({
           onSuccess();
           onClose();
           setQuery('');
+          setViewName('');
           setSelectedTable('');
           setStep('table');
         }
@@ -654,19 +668,22 @@ function CreateViewModal({
             {dataSources.length > 1 && (
               <div>
                 <label className="text-sm font-medium text-gray-700">Data Source</label>
-                <select
-                  value={selectedDataSource}
-                  onChange={(e) => {
-                    setSelectedDataSource(e.target.value);
+                <Select
+                  value={selectedDataSource || undefined}
+                  onValueChange={(value) => {
+                    setSelectedDataSource(value);
                     setSelectedTable('');
                   }}
-                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 >
-                  <option value="">Select a data source</option>
-                  {dataSources.map(ds => (
-                    <option key={ds.id} value={ds.id}>{ds.name}</option>
-                  ))}
-                </select>
+                  <SelectTrigger className="mt-1 w-full">
+                    <SelectValue placeholder="Select a data source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {dataSources.map((ds) => (
+                      <SelectItem key={ds.id} value={ds.id}>{ds.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
 
@@ -682,7 +699,7 @@ function CreateViewModal({
             {selectedDataSource && tables.length > 0 && (
               <div>
                 <label className="text-sm font-medium text-gray-700">Search Tables</label>
-                <input
+                <Input
                   type="text"
                   value={tableSearch}
                   onChange={(e) => setTableSearch(e.target.value)}
@@ -790,8 +807,20 @@ function CreateViewModal({
 
             {/* Query input */}
             <div>
+              <label className="text-sm font-medium text-gray-700">View Name</label>
+              <Input
+                value={viewName}
+                onChange={(e) => setViewName(e.target.value)}
+                placeholder="e.g., Orders Last 30 Days"
+                className="mt-1"
+                maxLength={60}
+              />
+            </div>
+
+            {/* Query input */}
+            <div>
               <label className="text-sm font-medium text-gray-700">What would you like to see from this table?</label>
-              <textarea
+              <Textarea
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={`e.g., Show all records from the last 7 days, sorted by date...`}
@@ -822,7 +851,7 @@ function CreateViewModal({
               <Button variant="outline" onClick={() => setStep('table')}>Back</Button>
               <Button 
                 className="flex-1 gap-2" 
-                disabled={!query || isGenerating}
+                disabled={!query || !viewName.trim() || isGenerating}
                 onClick={handleGenerate}
               >
                 {isGenerating ? (
@@ -920,7 +949,7 @@ function CreateDashboardModal({
         <div className="space-y-4 py-4">
           <div>
             <label className="text-sm font-medium text-gray-700">Dashboard Name</label>
-            <input
+            <Input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -999,8 +1028,10 @@ function AddOutputModal({
   const [outputType, setOutputType] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [selectedDashboard, setSelectedDashboard] = useState('');
-  const [schedule, setSchedule] = useState('daily');
+  const [schedule, setSchedule] = useState('on_demand');
   const [email, setEmail] = useState('');
+  const [contentMode, setContentMode] = useState<'full_dashboard' | 'top_widgets' | 'custom_summary'>('full_dashboard');
+  const [customPrompt, setCustomPrompt] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
@@ -1031,6 +1062,8 @@ function AddOutputModal({
           config: {
             schedule,
             email: outputType === 'email' ? email : undefined,
+            contentMode,
+            customPrompt: contentMode === 'custom_summary' ? customPrompt : undefined,
           },
         }),
       });
@@ -1097,7 +1130,7 @@ function AddOutputModal({
           <div className="space-y-4 py-4">
             <div>
               <label className="text-sm font-medium text-gray-700">Output Name</label>
-              <input
+              <Input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -1113,37 +1146,71 @@ function AddOutputModal({
                   No dashboards available. Create a dashboard first.
                 </p>
               ) : (
-                <select
-                  value={selectedDashboard}
-                  onChange={(e) => setSelectedDashboard(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                <Select
+                  value={selectedDashboard || undefined}
+                  onValueChange={setSelectedDashboard}
                 >
-                  <option value="">Select a dashboard</option>
-                  {dashboards.map(d => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
-                  ))}
-                </select>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a dashboard" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {dashboards.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               )}
             </div>
 
             <div>
               <label className="text-sm font-medium text-gray-700">Schedule</label>
-              <select
-                value={schedule}
-                onChange={(e) => setSchedule(e.target.value)}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-              >
-                <option value="hourly">Hourly</option>
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-              </select>
+              <Select value={schedule} onValueChange={setSchedule}>
+                <SelectTrigger className="mt-1 w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="on_demand">On-demand</SelectItem>
+                  <SelectItem value="hourly">Hourly</SelectItem>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700">Content</label>
+              <Select
+                value={contentMode}
+                onValueChange={(value) => setContentMode(value as 'full_dashboard' | 'top_widgets' | 'custom_summary')}
+              >
+                <SelectTrigger className="mt-1 w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full_dashboard">Full dashboard snapshot</SelectItem>
+                  <SelectItem value="top_widgets">Top widgets summary</SelectItem>
+                  <SelectItem value="custom_summary">Custom AI summary</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {contentMode === 'custom_summary' ? (
+              <div>
+                <label className="text-sm font-medium text-gray-700">Summary Prompt</label>
+                <Textarea
+                  value={customPrompt}
+                  onChange={(e) => setCustomPrompt(e.target.value)}
+                  placeholder="Summarize weekly changes and call out anomalies."
+                  className="mt-1 min-h-[80px]"
+                />
+              </div>
+            ) : null}
 
             {outputType === 'email' && (
               <div>
                 <label className="text-sm font-medium text-gray-700">Email Address</label>
-                <input
+                <Input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -1158,7 +1225,7 @@ function AddOutputModal({
               <Button 
                 className="flex-1" 
                 onClick={handleCreate}
-                disabled={isCreating || !name || !selectedDashboard}
+                disabled={isCreating || !name || !selectedDashboard || (contentMode === 'custom_summary' && !customPrompt.trim())}
               >
                 {isCreating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Create Output
@@ -1348,7 +1415,7 @@ export default function WorkstreamCanvasPage() {
 
   const fetchData = async () => {
     try {
-      const response = await fetch(`/api/workstreams/${workstreamId}`);
+      const response = await fetch(`/api/workstreams/${workstreamId}`, { cache: 'no-store' });
       if (response.ok) {
         const data = await response.json();
         setWorkstream(data.workstream);
@@ -1376,8 +1443,8 @@ export default function WorkstreamCanvasPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -1389,18 +1456,18 @@ export default function WorkstreamCanvasPage() {
   const hasNodes = nodes.length > 0;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background fade-in-up">
       {/* Subtle grid background */}
       <div 
-        className="fixed inset-0 pointer-events-none opacity-40"
+        className="fixed inset-0 pointer-events-none opacity-35"
         style={{
-          backgroundImage: `radial-gradient(circle at 1px 1px, rgb(209 213 219) 1px, transparent 0)`,
-          backgroundSize: '24px 24px'
+          backgroundImage: `radial-gradient(circle at 1px 1px, rgb(148 163 184 / 0.35) 1px, transparent 0)`,
+          backgroundSize: '22px 22px'
         }}
       />
 
       {/* Header */}
-      <header className="relative border-b border-gray-200 bg-white/80 backdrop-blur-xl sticky top-0 z-50">
+      <header className="relative border-b border-border bg-white/75 backdrop-blur-xl sticky top-0 z-50">
         <div className="max-w-full mx-auto px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -1411,7 +1478,7 @@ export default function WorkstreamCanvasPage() {
                 <ArrowLeft className="w-5 h-5 text-gray-600" />
               </Link>
               <div 
-                className="w-8 h-8 rounded-lg flex items-center justify-center"
+                className="w-8 h-8 rounded-xl flex items-center justify-center shadow-sm"
                 style={{ backgroundColor: `${workstream.color}20` }}
               >
                 <Hexagon className="w-4 h-4" style={{ color: workstream.color }} />
@@ -1425,7 +1492,7 @@ export default function WorkstreamCanvasPage() {
               <Button
                 onClick={() => setShowAIChat(!showAIChat)}
                 variant={showAIChat ? "default" : "outline"}
-                className={`gap-2 ${showAIChat ? 'bg-gradient-to-r from-violet-600 to-emerald-600 border-0' : ''}`}
+                className={`gap-2 ${showAIChat ? 'bg-gradient-to-r from-primary to-teal border-0' : ''}`}
               >
                 <Sparkles className="w-4 h-4" />
                 AI Assistant
@@ -1446,12 +1513,12 @@ export default function WorkstreamCanvasPage() {
           ) : (
             <>
               {/* Column Headers */}
-              <div className="flex gap-6 mb-4 min-w-max">
+              <div className="grid grid-cols-4 gap-8 mb-4 min-w-[980px] bg-white/70 border border-border rounded-2xl p-4 shadow-sm fade-in-up-delay-1">
                 {(['datasource', 'view', 'dashboard', 'output'] as NodeType[]).map((type) => {
                   const config = nodeConfig[type];
                   const Icon = config.icon;
                   return (
-                    <div key={type} className="w-[220px]">
+                    <div key={type} className="w-full">
                       <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-gray-500 mb-3 px-1">
                         <Icon className={`w-3.5 h-3.5 ${config.textColor}`} />
                         <span className="font-medium">{config.label}s</span>
@@ -1463,14 +1530,14 @@ export default function WorkstreamCanvasPage() {
               </div>
 
               {/* Nodes Grid */}
-              <div className="relative min-w-max">
-                <div className="flex gap-6">
+              <div className="relative min-w-[980px] bg-white/50 border border-border rounded-2xl p-4 fade-in-up-delay-2">
+                <div className="grid grid-cols-4 gap-8">
                   {(['datasource', 'view', 'dashboard', 'output'] as NodeType[]).map((type, colIndex) => (
-                    <div key={type} className="w-[220px] space-y-3">
+                    <div key={type} className="w-full space-y-3">
                       {nodesByType[type].map((node) => (
                         <div key={node.id} className="relative">
                           {colIndex < 3 && nodesByType[type].length > 0 && (
-                            <div className="absolute left-full top-1/2 w-6 h-0.5 bg-gradient-to-r from-gray-300 to-gray-200" />
+                            <div className="absolute left-full top-1/2 w-8 h-0.5 bg-gradient-to-r from-gray-300 to-gray-200" />
                           )}
                           <NodeCard 
                             node={node} 
@@ -1551,7 +1618,7 @@ export default function WorkstreamCanvasPage() {
 
             <div className="p-4 border-t border-gray-100">
               <div className="relative">
-                <input
+                <Input
                   type="text"
                   placeholder="Ask AI..."
                   className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 placeholder-gray-400"

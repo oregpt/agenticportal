@@ -1,196 +1,298 @@
 'use client';
 
-import { useState } from 'react';
-import { 
-  Plus, 
-  FileOutput, 
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import {
+  Plus,
+  FileOutput,
   FileText,
   Download,
   Calendar,
   Clock,
   Mail,
-  MoreHorizontal,
-  Play,
-  Pause,
   Search,
-  Webhook
+  Webhook,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { WorkstreamFilterBar } from '@/components/filters/WorkstreamFilterBar';
+import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
+import { FilterPresetManager } from '@/components/filters/FilterPresetManager';
+import Link from 'next/link';
 
 interface Output {
   id: string;
   name: string;
-  type: 'report' | 'csv' | 'email' | 'webhook';
+  type: 'pdf' | 'csv' | 'email' | 'webhook' | 'report' | string;
   schedule?: string;
-  lastRun?: string;
-  status: 'active' | 'paused' | 'error';
-  dashboardName: string;
+  lastRunAt?: string;
+  status: 'active' | 'paused' | 'error' | string;
+  workstreamId?: string | null;
+  dashboardId?: string;
 }
 
-const mockOutputs: Output[] = [
-  {
-    id: 'out-1',
-    name: 'Weekly Ops Report',
-    type: 'report',
-    schedule: 'Every Monday 9am',
-    lastRun: '2 days ago',
-    status: 'active',
-    dashboardName: 'Ops Dashboard'
-  },
-  {
-    id: 'out-2', 
-    name: 'Daily Metrics Export',
-    type: 'csv',
-    schedule: 'Daily 6am',
-    lastRun: '12 hours ago',
-    status: 'active',
-    dashboardName: 'KPI Dashboard'
-  },
-  {
-    id: 'out-3',
-    name: 'Error Alert',
-    type: 'email',
-    schedule: 'On trigger',
-    lastRun: '1 week ago',
-    status: 'paused',
-    dashboardName: 'Error Monitor'
-  }
-];
+interface WorkstreamOption {
+  id: string;
+  name: string;
+}
 
-const outputTypeConfig = {
+interface DashboardOption {
+  id: string;
+  name: string;
+}
+
+const outputTypeConfig: Record<string, { icon: typeof FileText; color: string; bg: string; border: string; label: string }> = {
   report: { icon: FileText, color: 'text-violet-500', bg: 'bg-violet-500/10', border: 'border-violet-500/20', label: 'PDF Report' },
+  pdf: { icon: FileText, color: 'text-violet-500', bg: 'bg-violet-500/10', border: 'border-violet-500/20', label: 'PDF Report' },
   csv: { icon: Download, color: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', label: 'CSV Export' },
   email: { icon: Mail, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'border-blue-500/20', label: 'Email' },
-  webhook: { icon: Webhook, color: 'text-amber-500', bg: 'bg-amber-500/10', border: 'border-amber-500/20', label: 'Webhook' }
+  webhook: { icon: Webhook, color: 'text-amber-500', bg: 'bg-amber-500/10', border: 'border-amber-500/20', label: 'Webhook' },
+};
+
+const scheduleLabel = (value?: string) => {
+  const schedule = value || 'on_demand';
+  if (schedule === 'manual' || schedule === 'on_demand') return 'On-demand';
+  return schedule.charAt(0).toUpperCase() + schedule.slice(1);
 };
 
 export default function OutputsPage() {
-  const [outputs] = useState<Output[]>(mockOutputs);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const [outputs, setOutputs] = useState<Output[]>([]);
+  const [workstreams, setWorkstreams] = useState<WorkstreamOption[]>([]);
+  const [dashboards, setDashboards] = useState<DashboardOption[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredOutputs = outputs.filter(o => 
-    o.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    o.dashboardName.toLowerCase().includes(searchQuery.toLowerCase())
+  const selectedWorkstreamId = searchParams.get('workstreamId') || undefined;
+  const selectedDashboardIds = (searchParams.get('dashboardIds') || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  useEffect(() => {
+    const fetchBaseData = async () => {
+      try {
+        const wsRes = await fetch('/api/workstreams');
+        if (wsRes.ok) {
+          const wsData = await wsRes.json();
+          setWorkstreams((wsData.workstreams || []).map((ws: { id: string; name: string }) => ({ id: ws.id, name: ws.name })));
+        }
+      } catch (error) {
+        console.error('Failed to fetch workstreams:', error);
+      }
+    };
+
+    fetchBaseData();
+  }, []);
+
+  useEffect(() => {
+    const fetchDashboards = async () => {
+      try {
+        const params = new URLSearchParams();
+        if (selectedWorkstreamId) {
+          params.set('workstreamId', selectedWorkstreamId);
+        }
+        const query = params.toString();
+        const res = await fetch(`/api/dashboards${query ? `?${query}` : ''}`);
+        if (res.ok) {
+          const data = await res.json();
+          setDashboards((data.dashboards || []).map((d: { id: string; name: string }) => ({ id: d.id, name: d.name })));
+        }
+      } catch (error) {
+        console.error('Failed to fetch dashboards:', error);
+      }
+    };
+
+    fetchDashboards();
+  }, [selectedWorkstreamId]);
+
+  useEffect(() => {
+    const fetchOutputs = async () => {
+      setIsLoading(true);
+      try {
+        const params = new URLSearchParams();
+        if (selectedWorkstreamId) {
+          params.set('workstreamId', selectedWorkstreamId);
+        }
+        const query = params.toString();
+        const res = await fetch(`/api/outputs${query ? `?${query}` : ''}`);
+        if (res.ok) {
+          const data = await res.json();
+          setOutputs(data.outputs || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch outputs:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchOutputs();
+  }, [selectedWorkstreamId]);
+
+  const dashboardNameById = useMemo(
+    () => Object.fromEntries(dashboards.map((dashboard) => [dashboard.id, dashboard.name])),
+    [dashboards]
   );
 
+  const filteredOutputs = outputs.filter((output) => {
+    const matchesSearch = output.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesDashboard =
+      selectedDashboardIds.length === 0 ||
+      (output.dashboardId ? selectedDashboardIds.includes(output.dashboardId) : false);
+    return matchesSearch && matchesDashboard;
+  });
+
+  const updateFilterParam = (key: string, value?: string) => {
+    const next = new URLSearchParams(searchParams.toString());
+    if (!value || value === 'all') {
+      next.delete(key);
+    } else {
+      next.set(key, value);
+    }
+    router.replace(`/outputs${next.toString() ? `?${next.toString()}` : ''}`, { scroll: false });
+  };
+
+  const updateMultiFilterParam = (key: string, values: string[]) => {
+    const next = new URLSearchParams(searchParams.toString());
+    if (values.length === 0) {
+      next.delete(key);
+    } else {
+      next.set(key, values.join(','));
+    }
+    router.replace(`/outputs${next.toString() ? `?${next.toString()}` : ''}`, { scroll: false });
+  };
+
+  const applyPreset = (query: string) => {
+    router.replace(`/outputs${query ? `?${query}` : ''}`, { scroll: false });
+  };
+
+  const formatLastRun = (value?: string) => {
+    if (!value) return 'Never';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Unknown';
+    return date.toLocaleString();
+  };
+
   return (
-    <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-8 max-w-7xl mx-auto fade-in-up">
+      <div className="page-header">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight mb-1">
-            Outputs
-          </h1>
+          <h1 className="text-3xl font-semibold tracking-tight mb-1">Outputs</h1>
           <p className="text-muted-foreground">
             Scheduled reports, exports, and automated notifications
           </p>
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" disabled>
           <Plus className="w-4 h-4" />
           New Output
         </Button>
       </div>
 
-      {/* Search */}
-      <div className="relative mb-6">
+      <WorkstreamFilterBar
+        workstreams={workstreams}
+        selectedWorkstreamId={selectedWorkstreamId}
+        onWorkstreamChange={(value) => {
+          updateFilterParam('workstreamId', value);
+          updateMultiFilterParam('dashboardIds', []);
+        }}
+        rightSlot={
+          <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-end">
+            <div className="w-full md:w-72">
+              <MultiSelectDropdown
+                label="Dashboard"
+                options={dashboards.map((dashboard) => ({ value: dashboard.id, label: dashboard.name }))}
+                selectedValues={selectedDashboardIds}
+                onChange={(values) => updateMultiFilterParam('dashboardIds', values)}
+                emptyLabel="All dashboards"
+              />
+            </div>
+            <FilterPresetManager
+              pageKey="outputs"
+              currentQuery={searchParams.toString()}
+              onApply={applyPreset}
+            />
+          </div>
+        }
+      />
+
+      <div className="relative mb-6 fade-in-up-delay-1">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <input
+        <Input
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search outputs..."
-          className="w-full bg-background border border-input rounded-lg pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          className="pl-10"
         />
       </div>
 
-      {/* Outputs List */}
-      <div className="grid gap-4">
-        {filteredOutputs.map((output) => {
-          const config = outputTypeConfig[output.type];
-          const Icon = config.icon;
-          
-          return (
-            <div
-              key={output.id}
-              className="group bg-card border border-border rounded-xl p-5 hover:border-primary/50 hover:shadow-lg transition-all"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-4">
-                  <div className={`p-3 rounded-xl ${config.bg} ${config.border} border`}>
-                    <Icon className={`w-5 h-5 ${config.color}`} />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-3 mb-1">
-                      <h3 className="font-medium">{output.name}</h3>
-                      <span className={`px-2 py-0.5 rounded-full text-xs ${config.bg} ${config.color}`}>
-                        {config.label}
-                      </span>
-                      {output.status === 'paused' && (
-                        <span className="px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground">
-                          Paused
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      From: {output.dashboardName}
-                    </p>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5" />
-                        {output.schedule}
-                      </div>
-                      {output.lastRun && (
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5" />
-                          Last run: {output.lastRun}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <Play className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    {output.status === 'paused' ? (
-                      <Play className="w-4 h-4" />
-                    ) : (
-                      <Pause className="w-4 h-4" />
-                    )}
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <MoreHorizontal className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {isLoading ? (
+        <div className="text-muted-foreground">Loading outputs...</div>
+      ) : (
+        <div className="grid gap-4">
+          {filteredOutputs.map((output) => {
+            const config = outputTypeConfig[output.type] || outputTypeConfig.webhook;
+            const Icon = config.icon;
 
-      {/* Empty State */}
-      {filteredOutputs.length === 0 && (
-        <div className="text-center py-16">
+            return (
+              <Link key={output.id} href={`/outputs/${output.id}`}>
+                <div className="group ui-card ui-card-hover p-5">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-4">
+                      <div className={`p-3 rounded-xl ${config.bg} ${config.border} border`}>
+                        <Icon className={`w-5 h-5 ${config.color}`} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-3 mb-1">
+                          <h3 className="font-medium">{output.name}</h3>
+                          <span className={`px-2 py-0.5 rounded-full text-xs ${config.bg} ${config.color}`}>
+                            {config.label}
+                          </span>
+                          {output.status === 'paused' ? (
+                            <span className="px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground">
+                              Paused
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Dashboard: {output.dashboardId ? (dashboardNameById[output.dashboardId] || output.dashboardId) : 'Unlinked'}
+                        </p>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1.5">
+                            <Calendar className="w-3.5 h-3.5" />
+                            {scheduleLabel(output.schedule)}
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5" />
+                            Last run: {formatLastRun(output.lastRunAt)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
+      {!isLoading && filteredOutputs.length === 0 ? (
+        <div className="ui-empty mt-2 fade-in-up-delay-2">
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-muted flex items-center justify-center">
             <FileOutput className="w-8 h-8 text-muted-foreground" />
           </div>
           <h3 className="text-lg font-medium mb-2">No outputs found</h3>
           <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
-            {searchQuery 
-              ? "Try adjusting your search"
-              : "Outputs let you export dashboards as reports, CSVs, or automated emails."
-            }
+            {searchQuery
+              ? 'Try adjusting your search'
+              : 'Outputs let you export dashboards as reports, CSVs, or automated emails.'}
           </p>
-          {!searchQuery && (
-            <Button className="gap-2">
-              <Plus className="w-4 h-4" />
-              Create Output
-            </Button>
-          )}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

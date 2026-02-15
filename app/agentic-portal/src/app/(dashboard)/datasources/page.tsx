@@ -14,6 +14,10 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { WorkstreamFilterBar } from '@/components/filters/WorkstreamFilterBar';
+import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
+import { FilterPresetManager } from '@/components/filters/FilterPresetManager';
 import { Plus, CheckCircle2, XCircle, RefreshCw, Loader2, Database, Table2, Zap, Trash2, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -36,9 +40,15 @@ interface DataSource {
   name: string;
   type: string;
   organizationId: string;
+  workstreamId?: string | null;
   createdAt: string;
   lastSyncedAt?: string;
   schemaCache?: { tables: { name: string }[] };
+}
+
+interface WorkstreamOption {
+  id: string;
+  name: string;
 }
 
 interface SyncingState {
@@ -111,9 +121,16 @@ function DataSourcesPageContent() {
   const [testResult, setTestResult] = useState<TestResult | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [workstreams, setWorkstreams] = useState<WorkstreamOption[]>([]);
+  const selectedWorkstreamId = searchParams.get('workstreamId') || undefined;
+  const selectedSourceTypes = (searchParams.get('sourceTypes') || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
 
   useEffect(() => {
     fetchDataSources();
+    fetchWorkstreams();
     fetchServiceAccountEmail();
     
     // Handle OAuth callback params
@@ -137,7 +154,12 @@ function DataSourcesPageContent() {
 
   async function fetchDataSources() {
     try {
-      const res = await fetch('/api/datasources');
+      const params = new URLSearchParams();
+      if (selectedWorkstreamId) {
+        params.set('workstreamId', selectedWorkstreamId);
+      }
+      const query = params.toString();
+      const res = await fetch(`/api/datasources${query ? `?${query}` : ''}`);
       if (res.ok) {
         const data = await res.json();
         setDataSources(data.dataSources || []);
@@ -148,6 +170,43 @@ function DataSourcesPageContent() {
       setIsLoading(false);
     }
   }
+
+  async function fetchWorkstreams() {
+    try {
+      const res = await fetch('/api/workstreams');
+      if (!res.ok) return;
+      const data = await res.json();
+      setWorkstreams(
+        (data.workstreams || []).map((ws: { id: string; name: string }) => ({ id: ws.id, name: ws.name }))
+      );
+    } catch (error) {
+      console.error('Failed to fetch workstreams:', error);
+    }
+  }
+
+  function updateFilterParam(key: string, value?: string) {
+    const next = new URLSearchParams(searchParams.toString());
+    if (!value || value === 'all') {
+      next.delete(key);
+    } else {
+      next.set(key, value);
+    }
+    router.replace(`/datasources${next.toString() ? `?${next.toString()}` : ''}`, { scroll: false });
+  }
+
+  function updateMultiFilterParam(key: string, values: string[]) {
+    const next = new URLSearchParams(searchParams.toString());
+    if (values.length === 0) {
+      next.delete(key);
+    } else {
+      next.set(key, values.join(','));
+    }
+    router.replace(`/datasources${next.toString() ? `?${next.toString()}` : ''}`, { scroll: false });
+  }
+
+  const applyPreset = (query: string) => {
+    router.replace(`/datasources${query ? `?${query}` : ''}`, { scroll: false });
+  };
 
   async function fetchServiceAccountEmail() {
     try {
@@ -434,10 +493,16 @@ function DataSourcesPageContent() {
     return typeConfig?.icon || '📁';
   }
 
+  const filteredDataSources =
+    selectedSourceTypes.length === 0
+      ? dataSources
+      : dataSources.filter((ds) => selectedSourceTypes.includes(ds.type));
+
+
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    <div className="p-8 max-w-7xl mx-auto fade-in-up">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="page-header">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">Data Sources</h1>
           <p className="text-muted-foreground mt-1">Connect and manage your data sources</p>
@@ -449,7 +514,7 @@ function DataSourcesPageContent() {
               Add Data Source
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md rounded-2xl border-border">
             {!selectedType ? (
               <>
                 <DialogHeader>
@@ -592,8 +657,8 @@ function DataSourcesPageContent() {
                   </div>
                   <div className="space-y-2">
                     <Label>Service Account Key (JSON)</Label>
-                    <textarea
-                      className="w-full h-32 px-3 py-2 text-sm border border-input rounded-md bg-background resize-none font-mono"
+                    <Textarea
+                      className="h-32 resize-none font-mono"
                       placeholder='{"type": "service_account", ...}'
                       value={bigqueryForm.serviceAccountKey}
                       onChange={(e) => setBigqueryForm({ ...bigqueryForm, serviceAccountKey: e.target.value })}
@@ -722,14 +787,38 @@ function DataSourcesPageContent() {
         </Dialog>
       </div>
 
+      <WorkstreamFilterBar
+        workstreams={workstreams}
+        selectedWorkstreamId={selectedWorkstreamId}
+        onWorkstreamChange={(value) => updateFilterParam('workstreamId', value)}
+        rightSlot={
+          <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-end">
+            <div className="w-full md:w-64">
+              <MultiSelectDropdown
+                label="Data Source Type"
+                options={DATA_SOURCE_TYPES.map((type) => ({ value: type.id, label: type.name }))}
+                selectedValues={selectedSourceTypes}
+                onChange={(values) => updateMultiFilterParam('sourceTypes', values)}
+                emptyLabel="All types"
+              />
+            </div>
+            <FilterPresetManager
+              pageKey="datasources"
+              currentQuery={searchParams.toString()}
+              onApply={applyPreset}
+            />
+          </div>
+        }
+      />
+
       {/* Data Sources List */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12 text-muted-foreground">
           <Loader2 className="w-5 h-5 animate-spin mr-2" />
           Loading...
         </div>
-      ) : dataSources.length === 0 ? (
-        <div className="bg-card border border-dashed border-border rounded-xl p-12">
+      ) : filteredDataSources.length === 0 ? (
+        <div className="ui-empty fade-in-up-delay-1">
           <div className="flex flex-col items-center justify-center text-center">
             <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
               <Database className="w-8 h-8 text-primary" />
@@ -743,7 +832,7 @@ function DataSourcesPageContent() {
           </div>
         </div>
       ) : (
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="ui-card overflow-hidden fade-in-up-delay-1">
           <table className="w-full">
             <thead>
               <tr className="border-b border-border bg-muted/30">
@@ -755,7 +844,7 @@ function DataSourcesPageContent() {
               </tr>
             </thead>
             <tbody>
-              {dataSources.map((ds) => (
+              {filteredDataSources.map((ds) => (
                 <tr key={ds.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
@@ -831,7 +920,7 @@ function DataSourcesPageContent() {
               Delete Data Source
             </DialogTitle>
             <DialogDescription className="pt-2">
-              Are you sure you want to delete <strong>"{deleteConfirm?.name}"</strong>?
+              Are you sure you want to delete <strong>&quot;{deleteConfirm?.name}&quot;</strong>?
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -873,3 +962,6 @@ export default function DataSourcesPage() {
     </Suspense>
   );
 }
+
+
+

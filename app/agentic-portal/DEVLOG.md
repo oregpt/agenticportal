@@ -90,3 +90,99 @@ src/lib/google-oauth.ts                         # OAuth helpers
 - [ ] Implement Dashboards feature
 - [ ] Add proper authentication/session management
 - [ ] Encrypt sensitive config in database
+
+## 2026-02-15 - IA Refactor, Filters, Explorer, and Output UX
+
+### Session Summary
+Focused stabilization + product UX pass to improve information architecture, cross-entity navigation, filtering, and output definition clarity.
+
+---
+
+### Features Built
+
+#### 1. Information Architecture Refactor
+- Added top-level section navigation in header:
+  - `Pipeline`
+  - `Organization`
+  - `Platform Admin`
+- Sidebar now shows section-scoped internal navigation only.
+- Role-aware visibility for admin sections remains enforced.
+
+#### 2. Workstream Context Across Entity Pages
+- Added shared workstream filter bar and URL-persisted filtering on:
+  - Data Sources
+  - Views
+  - Dashboards
+  - Outputs
+- Added dependent page filters:
+  - Data Sources: source type
+  - Views: data source
+  - Dashboards: widget state
+  - Outputs: dashboard
+
+#### 3. Phase 2 Filtering
+- Multi-select filters added for dependent filters.
+- Saved filter presets added (local per browser/user) with save/apply/delete.
+
+#### 4. Relationship Explorer
+- Added new route: `/relationship-explorer`.
+- Supports:
+  - Workstream-scoped relationship traversal
+  - Click-through to entity pages
+  - Expand/collapse related upstream/downstream nodes
+  - Column view + draggable mind-map view with animated edges
+
+#### 5. Output UX Clarification
+- Added explicit `On-demand` schedule option.
+- Added explicit output content definition:
+  - Full dashboard snapshot
+  - Top widgets summary
+  - Custom AI summary prompt
+- Added editable output definition controls on output detail page.
+- Added `PATCH /api/outputs/[id]` for updating output configuration.
+
+---
+
+### API/Backend Updates
+- `GET /api/datasources` now supports `workstreamId` filtering.
+- `GET /api/views` now supports `workstreamId` filtering.
+- `GET /api/dashboards` now includes `widgetCount`.
+- `PATCH /api/outputs/[id]` added for updates.
+- Output run endpoint now reflects on-demand labeling and content mode metadata in generated email body.
+
+---
+
+### Files Added
+
+```
+src/components/filters/WorkstreamFilterBar.tsx
+src/components/filters/MultiSelectDropdown.tsx
+src/components/filters/FilterPresetManager.tsx
+src/app/(dashboard)/relationship-explorer/page.tsx
+```
+
+### Files Updated (major)
+
+```
+src/components/layout/AppLayout.tsx
+src/components/layout/Sidebar.tsx
+src/app/(dashboard)/datasources/page.tsx
+src/app/(dashboard)/views/page.tsx
+src/app/(dashboard)/dashboards/page.tsx
+src/app/(dashboard)/outputs/page.tsx
+src/app/(dashboard)/outputs/[id]/page.tsx
+src/app/workstream-canvas/[id]/page.tsx
+src/app/api/datasources/route.ts
+src/app/api/views/route.ts
+src/app/api/dashboards/route.ts
+src/app/api/outputs/[id]/route.ts
+src/app/api/outputs/[id]/run/route.ts
+playwright.config.ts
+tests/ui-tests/canvas-end-to-end-flow.spec.ts
+```
+
+---
+
+### Validation
+- Lint on touched files: no errors.
+- Canvas E2E template regression: passing after updates.

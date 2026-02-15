@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/lib/db';
-import { eq, desc } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { cookies } from 'next/headers';
 
@@ -39,7 +39,7 @@ async function getCurrentUser() {
 }
 
 // GET /api/views - List views
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();
     
@@ -47,11 +47,22 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const workstreamId = searchParams.get('workstreamId');
+
+    const whereClause = workstreamId
+      ? and(
+          eq(schema.views.organizationId, user.organizationId),
+          eq(schema.views.workstreamId, workstreamId)
+        )
+      : eq(schema.views.organizationId, user.organizationId);
+
     const viewsList = await db
       .select({
         id: schema.views.id,
         name: schema.views.name,
         description: schema.views.description,
+        workstreamId: schema.views.workstreamId,
         dataSourceId: schema.views.dataSourceId,
         sql: schema.views.sql,
         columns: schema.views.columns,
@@ -59,7 +70,7 @@ export async function GET() {
         updatedAt: schema.views.updatedAt,
       })
       .from(schema.views)
-      .where(eq(schema.views.organizationId, user.organizationId))
+      .where(whereClause)
       .orderBy(desc(schema.views.createdAt));
 
     return NextResponse.json({ views: viewsList });

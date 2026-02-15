@@ -1,53 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/lib/db';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { createDataSourceAdapter } from '@/lib/datasources';
 import { randomUUID } from 'crypto';
-import { cookies } from 'next/headers';
-
-// Helper to get current user from session
-async function getCurrentUser() {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get('agentic_session');
-  
-  if (!sessionCookie?.value) {
-    return null;
-  }
-  
-  try {
-    // Session token is base64 encoded JSON
-    const decoded = Buffer.from(sessionCookie.value, 'base64').toString('utf-8');
-    const session = JSON.parse(decoded);
-    if (!session.userId) return null;
-    
-    const [user] = await db
-      .select()
-      .from(schema.users)
-      .where(eq(schema.users.id, session.userId))
-      .limit(1);
-    
-    return user;
-  } catch {
-    return null;
-  }
-}
+import { getCurrentUser } from '@/lib/auth';
+import type { DataSourceConfig } from '@/lib/datasources';
 
 // GET /api/datasources - List all data sources for org
 export async function GET(request: NextRequest) {
   try {
-    // Get org from session or header
     const user = await getCurrentUser();
-    const orgId = user?.organizationId || request.headers.get('x-org-id') || 'default-org';
+    if (!user?.organizationId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const orgId = user.organizationId;
+
+    const { searchParams } = new URL(request.url);
+    const workstreamId = searchParams.get('workstreamId');
+
+    const whereClause = workstreamId
+      ? and(
+          eq(schema.dataSources.organizationId, orgId),
+          eq(schema.dataSources.workstreamId, workstreamId)
+        )
+      : eq(schema.dataSources.organizationId, orgId);
 
     const dataSources = await db
       .select()
       .from(schema.dataSources)
-      .where(eq(schema.dataSources.organizationId, orgId));
+      .where(whereClause);
 
     // Don't send credentials to client
     const sanitized = dataSources.map((ds) => ({
       id: ds.id,
       organizationId: ds.organizationId, // Include for query API
+      workstreamId: ds.workstreamId,
       name: ds.name,
       type: ds.type,
       createdAt: ds.createdAt,
@@ -73,10 +60,12 @@ export async function POST(request: NextRequest) {
     console.log('[datasources POST] Received body:', JSON.stringify(body, null, 2));
     const { name, type, config, workstreamId } = body;
 
-    // Get org and user from session
     const user = await getCurrentUser();
-    const orgId = user?.organizationId || request.headers.get('x-org-id') || 'default-org';
-    const userId = user?.id || request.headers.get('x-user-id') || 'default-user';
+    if (!user?.organizationId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const orgId = user.organizationId;
+    const userId = user.id;
     console.log('[datasources POST] orgId:', orgId, 'userId:', userId);
 
     if (!name || !type || !config) {
@@ -92,7 +81,10 @@ export async function POST(request: NextRequest) {
       return handleGoogleSheetsLive(name, config, orgId, userId);
     }
 
-    // Validate connection before saving (for standard adapters)
+    // Extract selectedTables if provided
+    const { selectedTables, ...restConfig } = config;
+
+    // Validate connection and fetch schema before saving (for standard adapters)
     const testConfig = {
       id: 'test',
       organizationId: orgId,
@@ -101,23 +93,51 @@ export async function POST(request: NextRequest) {
       createdAt: new Date(),
       updatedAt: new Date(),
       createdBy: userId,
-      ...config,
+      ...restConfig,
     };
     console.log('[datasources POST] testConfig type:', testConfig.type);
 
+    let schemaCache: unknown = null;
+    let lastSyncedAt: Date | null = null;
+
     try {
       console.log('[datasources POST] Creating adapter...');
-      const adapter = await createDataSourceAdapter(testConfig as any);
-      console.log('[datasources POST] Testing connection...');
-      const result = await adapter.testConnection();
-      console.log('[datasources POST] Connection result:', result);
-      await adapter.disconnect();
+      const adapter = await createDataSourceAdapter(testConfig as unknown as DataSourceConfig);
+      try {
+        console.log('[datasources POST] Testing connection...');
+        const result = await adapter.testConnection();
+        console.log('[datasources POST] Connection result:', result);
 
-      if (!result.success) {
-        return NextResponse.json(
-          { error: `Connection test failed: ${result.error}` },
-          { status: 400 }
-        );
+        if (!result.success) {
+          return NextResponse.json(
+            { error: `Connection test failed: ${result.error}` },
+            { status: 400 }
+          );
+        }
+
+        const fetchedSchema = await adapter.getSchema();
+        if (
+          selectedTables &&
+          Array.isArray(selectedTables) &&
+          selectedTables.length > 0 &&
+          fetchedSchema &&
+          typeof fetchedSchema === 'object' &&
+          'tables' in fetchedSchema &&
+          Array.isArray((fetchedSchema as { tables?: unknown[] }).tables)
+        ) {
+          const selectedSet = new Set(selectedTables as string[]);
+          const typedSchema = fetchedSchema as {
+            tables?: Array<{ name: string; columns?: unknown[] }>;
+            [key: string]: unknown;
+          };
+          typedSchema.tables = (typedSchema.tables || []).filter((t) => selectedSet.has(t.name));
+          schemaCache = typedSchema;
+        } else {
+          schemaCache = fetchedSchema;
+        }
+        lastSyncedAt = new Date();
+      } finally {
+        await adapter.disconnect();
       }
     } catch (err) {
       console.error('[datasources POST] Connection test error:', err);
@@ -131,9 +151,6 @@ export async function POST(request: NextRequest) {
     const id = randomUUID();
     const now = new Date();
     
-    // Extract selectedTables if provided
-    const { selectedTables, ...restConfig } = config;
-
     const [inserted] = await db
       .insert(schema.dataSources)
       .values({
@@ -146,6 +163,8 @@ export async function POST(request: NextRequest) {
           ...restConfig,
           selectedTables: selectedTables || null,
         },
+        schemaCache,
+        lastSyncedAt,
         createdBy: userId,
         createdAt: now,
         updatedAt: now,
@@ -238,7 +257,14 @@ async function handleGoogleSheetsLive(
         : sheetName;
 
       // Use type assertion for external table config
-      const tableOptions: any = {
+      const tableOptions: {
+        externalDataConfiguration: {
+          sourceFormat: string;
+          sourceUris: string[];
+          googleSheetsOptions: { skipLeadingRows: number; range: string };
+          autodetect: boolean;
+        };
+      } = {
         externalDataConfiguration: {
           sourceFormat: 'GOOGLE_SHEETS',
           sourceUris: [sheetUri],
@@ -249,16 +275,23 @@ async function handleGoogleSheetsLive(
           autodetect: true,
         },
       };
-      await dataset.createTable(tableName, tableOptions);
+      await dataset.createTable(
+        tableName,
+        tableOptions as unknown as Parameters<typeof dataset.createTable>[1]
+      );
     }
 
     // Get schema from BigQuery
     const [metadata] = await table.getMetadata();
-    const schemaFields = metadata.schema?.fields || [];
+    const schemaFields = (metadata.schema?.fields || []) as Array<{
+      name: string;
+      type?: string;
+      mode?: string;
+    }>;
     const schemaCache = {
       tables: [{
         name: sheetName,
-        columns: schemaFields.map((f: any) => ({
+        columns: schemaFields.map((f) => ({
           name: f.name,
           type: f.type?.toLowerCase() || 'string',
           nullable: f.mode !== 'REQUIRED',
@@ -304,11 +337,12 @@ async function handleGoogleSheetsLive(
         externalTableFQN,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[google-sheets-live] Error:', error);
-    
-    let userMessage = error.message || 'Failed to create Google Sheets Live data source';
-    if (error.message?.includes('ACCESS_DENIED') || error.message?.includes('403')) {
+
+    const errorMessage = error instanceof Error ? error.message : 'Failed to create Google Sheets Live data source';
+    let userMessage = errorMessage;
+    if (errorMessage.includes('ACCESS_DENIED') || errorMessage.includes('403')) {
       userMessage = `Access denied. Make sure the spreadsheet is shared with the service account.`;
     }
     

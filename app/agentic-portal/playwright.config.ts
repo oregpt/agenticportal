@@ -15,7 +15,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 // Auth token from environment (set via TEST_AUTH_TOKEN env var)
 const authToken = process.env.TEST_AUTH_TOKEN;
-const baseURL = process.env.TEST_BASE_URL || 'https://agentic-portal-web-production.up.railway.app';
+const baseURL = process.env.TEST_BASE_URL || 'http://localhost:3000';
 
 export default defineConfig({
   testDir: './tests/ui-tests',

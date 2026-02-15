@@ -9,7 +9,6 @@ import {
   LayoutDashboard,
   Database,
   Table2,
-  MessageSquare,
   Settings,
   Users,
   Building2,
@@ -24,6 +23,7 @@ import {
   Workflow,
   FileOutput,
   Sparkles,
+  Network,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -33,16 +33,23 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-// Pipeline flow order: Workstreams → Sources → Views → Dashboards → Outputs
+export type NavSection = 'pipeline' | 'organization' | 'platform';
+
+export function getSectionFromPath(pathname: string): NavSection {
+  if (pathname.startsWith('/admin')) return 'platform';
+  if (pathname.startsWith('/org')) return 'organization';
+  return 'pipeline';
+}
+
 const pipelineNavigation = [
   { name: 'Workstreams', href: '/workstreams', icon: Workflow },
   { name: 'Data Sources', href: '/datasources', icon: Database },
   { name: 'Views', href: '/views', icon: Table2 },
   { name: 'Dashboards', href: '/dashboards', icon: LayoutDashboard },
   { name: 'Outputs', href: '/outputs', icon: FileOutput },
+  { name: 'Relationship Explorer', href: '/relationship-explorer', icon: Network },
 ];
 
-// AI tools
 const aiNavigation = [
   { name: 'AI Chat', href: '/chat', icon: Sparkles },
 ];
@@ -63,25 +70,63 @@ const platformNavigation = [
   { name: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 
-// Mock organizations - in production this would come from the user context
 const mockOrganizations = [
   { id: '1', name: 'ClarkAI', slug: 'clarkai' },
   { id: '2', name: 'Agenticledger', slug: 'agenticledger' },
   { id: '3', name: 'Demo Org', slug: 'demo' },
 ];
 
-export function Sidebar() {
+const sectionMeta: Record<NavSection, { label: string; description: string }> = {
+  pipeline: {
+    label: 'Pipeline',
+    description: 'Build data sources, views, dashboards, and outputs',
+  },
+  organization: {
+    label: 'Organization',
+    description: 'Manage team members, agents, and org settings',
+  },
+  platform: {
+    label: 'Platform Admin',
+    description: 'Global administration for all organizations',
+  },
+};
+
+interface SidebarProps {
+  section: NavSection;
+}
+
+export function Sidebar({ section }: SidebarProps) {
   const pathname = usePathname();
   const { user, logout, canAccessPlatformAdmin, canAccessOrgAdmin } = useAuth();
   const [currentOrg, setCurrentOrg] = useState(mockOrganizations[0]);
 
+  const navGroups =
+    section === 'pipeline'
+      ? [
+          { title: 'Pipeline', items: pipelineNavigation },
+          { title: 'AI Tools', items: aiNavigation },
+        ]
+      : section === 'organization'
+        ? [{ title: 'Organization', items: orgNavigation }]
+        : [{ title: 'Platform Admin', items: platformNavigation }];
+
+  const canViewSection =
+    section === 'platform'
+      ? canAccessPlatformAdmin
+      : section === 'organization'
+        ? canAccessOrgAdmin
+        : true;
+
+  const effectiveGroups = canViewSection
+    ? navGroups
+    : [{ title: 'Pipeline', items: pipelineNavigation }];
+  const meta = sectionMeta[section];
+
   return (
-    <div className="flex h-full w-64 flex-col bg-sidebar border-r border-sidebar-border">
-      {/* Logo - AgenticPortal (one word) */}
-      <div className="flex h-16 items-center px-5 border-b border-sidebar-border">
+    <div className="flex h-full w-72 flex-col bg-sidebar/90 backdrop-blur-md border-r border-sidebar-border shadow-[0_1px_0_rgba(15,23,42,0.03)]">
+      <div className="flex h-16 items-center px-5 border-b border-sidebar-border/80">
         <Link href="/" className="flex items-center gap-2.5 group">
-          {/* Clean geometric logo icon */}
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-sm">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-teal flex items-center justify-center shadow-sm">
             <Hexagon className="w-4.5 h-4.5 text-primary-foreground" strokeWidth={2.5} />
           </div>
           <span className="font-semibold text-lg text-sidebar-foreground tracking-tight">
@@ -90,12 +135,11 @@ export function Sidebar() {
         </Link>
       </div>
 
-      {/* Organization Switcher */}
       {user && (
-        <div className="px-3 py-3 border-b border-sidebar-border">
+        <div className="px-3 py-3 border-b border-sidebar-border/80">
           <DropdownMenu>
             <DropdownMenuTrigger className="w-full">
-              <div className="flex items-center justify-between px-3 py-2.5 rounded-lg border border-sidebar-border hover:bg-sidebar-accent transition-colors">
+              <div className="flex items-center justify-between px-3 py-2.5 rounded-xl border border-sidebar-border hover:bg-sidebar-accent transition-colors">
                 <div className="flex items-center gap-2.5">
                   <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center">
                     <Building2 className="w-3.5 h-3.5 text-primary" />
@@ -107,7 +151,7 @@ export function Sidebar() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-56">
               {mockOrganizations.map((org) => (
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   key={org.id}
                   onClick={() => setCurrentOrg(org)}
                   className="flex items-center justify-between"
@@ -131,75 +175,38 @@ export function Sidebar() {
         </div>
       )}
 
-      {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-4">
-        {/* Pipeline Navigation */}
-        <div className="space-y-1">
-          <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-            Pipeline
+        <div className="mb-4 rounded-xl border border-sidebar-border/60 bg-white/50 px-3 py-2.5">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            {meta.label}
           </p>
-          {pipelineNavigation.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                )}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.name}
-              </Link>
-            );
-          })}
+          <p className="mt-1 text-xs text-muted-foreground">
+            {meta.description}
+          </p>
         </div>
 
-        {/* AI Tools */}
-        <div className="mt-6 space-y-1">
-          <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-            AI Tools
-          </p>
-          {aiNavigation.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-gradient-to-r from-violet-500 to-emerald-500 text-white'
-                    : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                )}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.name}
-              </Link>
-            );
-          })}
-        </div>
-
-        {/* Organization */}
-        {user && canAccessOrgAdmin && (
-          <div className="mt-6 space-y-1">
-            <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-              Organization
+        {effectiveGroups.map((group, idx) => (
+          <div key={group.title} className={cn('space-y-1', idx > 0 && 'mt-6')}>
+            <p className="px-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.14em] mb-2">
+              {group.title}
             </p>
-            {orgNavigation.map((item) => {
-              const isActive = pathname === item.href || (item.href !== '/org' && pathname.startsWith(item.href));
+            {group.items.map((item) => {
+              const isRootSectionItem = item.href === '/org' || item.href === '/admin';
+              const isActive =
+                pathname === item.href ||
+                (!isRootSectionItem && pathname.startsWith(item.href + '/'));
+              const isAiTool = group.title === 'AI Tools';
               return (
                 <Link
                   key={item.name}
                   href={item.href}
                   className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                    'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all',
+                    isActive && isAiTool
+                      ? 'bg-gradient-to-r from-primary to-teal text-white shadow-sm'
+                      : isActive
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                   )}
                 >
                   <item.icon className="h-4 w-4" />
@@ -208,41 +215,13 @@ export function Sidebar() {
               );
             })}
           </div>
-        )}
-
-        {/* Platform Admin */}
-        {user && canAccessPlatformAdmin && (
-          <div className="mt-6 space-y-1">
-            <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-              Platform Admin
-            </p>
-            {platformNavigation.map((item) => {
-              const isActive = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href));
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                  )}
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.name}
-                </Link>
-              );
-            })}
-          </div>
-        )}
+        ))}
       </nav>
 
-      {/* User Section */}
-      <div className="border-t border-sidebar-border p-3">
+      <div className="border-t border-sidebar-border/80 p-3">
         {user ? (
           <div className="space-y-2">
-            <div className="flex items-center gap-3 px-3 py-2">
+            <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/60 border border-sidebar-border/60">
               <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
                 <span className="text-sm font-semibold text-primary">
                   {user.name?.charAt(0) || user.email.charAt(0).toUpperCase()}
@@ -260,7 +239,7 @@ export function Sidebar() {
             </div>
             <button
               onClick={logout}
-              className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-destructive transition-colors"
+              className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-destructive transition-colors"
             >
               <LogOut className="h-4 w-4" />
               Sign out
@@ -269,7 +248,7 @@ export function Sidebar() {
         ) : (
           <Link
             href="/login"
-            className="flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            className="flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           >
             Sign in
           </Link>
