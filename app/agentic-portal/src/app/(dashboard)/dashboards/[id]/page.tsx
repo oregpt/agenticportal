@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -15,8 +14,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Settings, Share, ArrowLeft, BarChart3, LineChart as LineChartIcon, PieChart as PieChartIcon, TrendingUp, Hash, Table2 } from 'lucide-react';
+import {
+  Plus,
+  Settings,
+  Share,
+  ArrowLeft,
+  BarChart3,
+  LineChart as LineChartIcon,
+  PieChart as PieChartIcon,
+  TrendingUp,
+  Hash,
+  Table2,
+  Move,
+  Loader2,
+} from 'lucide-react';
 import Link from 'next/link';
+import GridLayout, { type Layout } from 'react-grid-layout';
 import {
   BarChart,
   Bar,
@@ -41,6 +54,7 @@ const CHART_COLORS = ['#0066cc', '#e63946', '#2a9d8f', '#f4a261', '#9b5de5'];
 interface DashboardWidget {
   id: string;
   dashboardId: string;
+  viewId?: string;
   type: 'metric' | 'chart' | 'table';
   title: string;
   position: { x: number; y: number; width: number; height: number };
@@ -51,126 +65,17 @@ interface DashboardWidget {
   };
 }
 
-// Mock dashboard data - replace with API
-const MOCK_DASHBOARDS: Record<string, { name: string; description: string; widgets: DashboardWidget[] }> = {
-  '1': {
-    name: 'Sales Overview',
-    description: 'Q4 2025 sales metrics',
-    widgets: [
-      {
-        id: 'w1',
-        dashboardId: '1',
-        type: 'metric',
-        title: 'Total Revenue',
-        position: { x: 0, y: 0, width: 1, height: 1 },
-        config: {},
-      },
-      {
-        id: 'w2',
-        dashboardId: '1',
-        type: 'chart',
-        title: 'Monthly Sales',
-        position: { x: 1, y: 0, width: 2, height: 2 },
-        config: {
-          chartType: 'bar',
-          xField: 'month',
-          yFields: [{ field: 'sales', label: 'Sales', color: '#0066cc' }],
-        },
-      },
-      {
-        id: 'w3',
-        dashboardId: '1',
-        type: 'chart',
-        title: 'Revenue Trend',
-        position: { x: 0, y: 1, width: 2, height: 2 },
-        config: {
-          chartType: 'line',
-          xField: 'month',
-          yFields: [{ field: 'revenue', label: 'Revenue', color: '#2a9d8f' }],
-        },
-      },
-      {
-        id: 'w4',
-        dashboardId: '1',
-        type: 'chart',
-        title: 'Sales by Category',
-        position: { x: 2, y: 1, width: 1, height: 2 },
-        config: {
-          chartType: 'pie',
-          xField: 'category',
-          yFields: [{ field: 'value', label: 'Value' }],
-        },
-      },
-      {
-        id: 'w6',
-        dashboardId: '1',
-        type: 'table',
-        title: 'Top Products',
-        position: { x: 0, y: 2, width: 3, height: 2 },
-        config: {},
-      },
-    ],
-  },
-  '2': {
-    name: 'Customer Analytics',
-    description: 'Customer segmentation and retention',
-    widgets: [
-      {
-        id: 'w5',
-        dashboardId: '2',
-        type: 'chart',
-        title: 'Customer Growth',
-        position: { x: 0, y: 0, width: 2, height: 2 },
-        config: {
-          chartType: 'area',
-          xField: 'month',
-          yFields: [{ field: 'customers', label: 'Customers', color: '#9b5de5' }],
-        },
-      },
-    ],
-  },
-};
+interface DashboardData {
+  id: string;
+  name: string;
+  description: string | null;
+  widgets: DashboardWidget[];
+}
 
-// Mock chart data
-const MOCK_CHART_DATA = {
-  w2: [
-    { month: 'Jan', sales: 4000 },
-    { month: 'Feb', sales: 3000 },
-    { month: 'Mar', sales: 5000 },
-    { month: 'Apr', sales: 4500 },
-    { month: 'May', sales: 6000 },
-    { month: 'Jun', sales: 5500 },
-  ],
-  w3: [
-    { month: 'Jan', revenue: 12000 },
-    { month: 'Feb', revenue: 15000 },
-    { month: 'Mar', revenue: 18000 },
-    { month: 'Apr', revenue: 16000 },
-    { month: 'May', revenue: 21000 },
-    { month: 'Jun', revenue: 24000 },
-  ],
-  w4: [
-    { category: 'Electronics', value: 35 },
-    { category: 'Clothing', value: 25 },
-    { category: 'Food', value: 20 },
-    { category: 'Other', value: 20 },
-  ],
-  w5: [
-    { month: 'Jan', customers: 100 },
-    { month: 'Feb', customers: 150 },
-    { month: 'Mar', customers: 200 },
-    { month: 'Apr', customers: 280 },
-    { month: 'May', customers: 350 },
-    { month: 'Jun', customers: 450 },
-  ],
-  w6: [
-    { product: 'Widget Pro', category: 'Electronics', sales: 1250, revenue: '$62,500', trend: '+12%' },
-    { product: 'Gadget Plus', category: 'Electronics', sales: 980, revenue: '$49,000', trend: '+8%' },
-    { product: 'Smart Device', category: 'Electronics', sales: 756, revenue: '$37,800', trend: '+15%' },
-    { product: 'Basic Widget', category: 'Accessories', sales: 620, revenue: '$18,600', trend: '-3%' },
-    { product: 'Premium Pack', category: 'Bundles', sales: 450, revenue: '$45,000', trend: '+22%' },
-  ],
-};
+interface ViewOption {
+  id: string;
+  name: string;
+}
 
 const WIDGET_TYPES = [
   { id: 'metric', name: 'Metric Card', icon: Hash, description: 'Display a single KPI value' },
@@ -181,57 +86,384 @@ const WIDGET_TYPES = [
   { id: 'pie', name: 'Pie Chart', icon: PieChartIcon, description: 'Show proportions of a whole' },
 ];
 
+function inferWidgetFields(
+  widget: DashboardWidget,
+  rows: Array<Record<string, unknown>>
+): {
+  xField: string;
+  yFields: { field: string; label: string; color?: string }[];
+} {
+  const firstRow = rows[0] || {};
+  const keys = Object.keys(firstRow);
+  const numericKeys = keys.filter((k) => typeof firstRow[k] === 'number');
+  const xField = widget.config.xField || keys[0] || 'label';
+  const yFields =
+    widget.config.yFields && widget.config.yFields.length > 0
+      ? widget.config.yFields
+      : (numericKeys.slice(0, 3).map((k, i) => ({
+          field: k,
+          label: k,
+          color: CHART_COLORS[i % CHART_COLORS.length],
+        })) as { field: string; label: string; color?: string }[]);
+
+  return { xField, yFields };
+}
+
+function buildChartData(
+  rows: Array<Record<string, unknown>>,
+  xField: string,
+  yFields: { field: string; label: string; color?: string }[]
+): {
+  data: Array<Record<string, number | string>>;
+  yFields: { field: string; label: string; color?: string }[];
+} {
+  // If numeric fields are available, use raw rows.
+  if (yFields.length > 0) {
+    return {
+      data: rows as Array<Record<string, number | string>>,
+      yFields,
+    };
+  }
+
+  // Otherwise, generate a count series grouped by xField.
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const raw = row[xField];
+    const label = raw == null ? 'Unknown' : String(raw);
+    counts.set(label, (counts.get(label) || 0) + 1);
+  }
+
+  return {
+    data: Array.from(counts.entries()).map(([label, count]) => ({
+      [xField]: label,
+      count,
+    })),
+    yFields: [{ field: 'count', label: 'Count', color: CHART_COLORS[0] }],
+  };
+}
+
+function formatCellValue(value: unknown): string | number {
+  if (value == null) return '';
+  if (typeof value === 'string' || typeof value === 'number') {
+    return value;
+  }
+  if (typeof value === 'boolean') {
+    return value ? 'true' : 'false';
+  }
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
 export default function DashboardDetailPage() {
   const params = useParams();
   const dashboardId = params.id as string;
-  const [dashboard, setDashboard] = useState<typeof MOCK_DASHBOARDS['1'] | null>(null);
+  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
   // Add Widget Dialog
   const [showAddWidget, setShowAddWidget] = useState(false);
   const [newWidgetTitle, setNewWidgetTitle] = useState('');
   const [newWidgetType, setNewWidgetType] = useState('bar');
+  const [newWidgetViewId, setNewWidgetViewId] = useState('');
   const [isAddingWidget, setIsAddingWidget] = useState(false);
+  const [widgetRows, setWidgetRows] = useState<Record<string, Array<Record<string, unknown>>>>({});
+  const [views, setViews] = useState<ViewOption[]>([]);
+  const [isSavingLayout, setIsSavingLayout] = useState(false);
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  const [gridWidth, setGridWidth] = useState(1100);
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    // Simulate API fetch
-    setTimeout(() => {
-      setDashboard(MOCK_DASHBOARDS[dashboardId] || null);
-      setIsLoading(false);
-    }, 500);
+    const fetchDashboard = async () => {
+      try {
+        const response = await fetch(`/api/dashboards/${dashboardId}`);
+        if (!response.ok) {
+          setDashboard({
+            id: dashboardId,
+            name: 'Untitled Dashboard',
+            description: 'Loaded in local mode because the dashboard record could not be fetched.',
+            widgets: [],
+          });
+          return;
+        }
+
+        const data = await response.json();
+        const widgets: DashboardWidget[] = (data.widgets || []).map(
+          (widget: {
+            id: string;
+            dashboardId: string;
+            viewId: string;
+            type: string;
+            title: string | null;
+            position?: { x?: number; y?: number; width?: number; height?: number };
+            config?: {
+              chartType?: 'bar' | 'line' | 'area' | 'pie';
+              xField?: string;
+              yFields?: { field: string; label: string; color?: string }[];
+            };
+          }) => {
+            const widgetType =
+              widget.type === 'metric' || widget.type === 'table' ? widget.type : 'chart';
+            return {
+              id: widget.id,
+              dashboardId: widget.dashboardId,
+              viewId: widget.viewId,
+              type: widgetType,
+              title: widget.title || 'Untitled Widget',
+              position: {
+                x: widget.position?.x ?? 0,
+                y: widget.position?.y ?? 0,
+                width: widget.position?.width ?? 1,
+                height: widget.position?.height ?? 2,
+              },
+              config: widget.config || {},
+            };
+          }
+        );
+
+        setDashboard({
+          id: data.dashboard.id,
+          name: data.dashboard.name,
+          description: data.dashboard.description || null,
+          widgets,
+        });
+      } catch (error) {
+        console.error('Failed to fetch dashboard:', error);
+        setDashboard({
+          id: dashboardId,
+          name: 'Untitled Dashboard',
+          description: 'Loaded in local mode because dashboard fetch failed.',
+          widgets: [],
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDashboard();
   }, [dashboardId]);
+
+  useEffect(() => {
+    async function fetchViews() {
+      try {
+        const res = await fetch('/api/views');
+        if (!res.ok) return;
+        const data = await res.json();
+        const options = (data.views || []).map((v: { id: string; name: string }) => ({ id: v.id, name: v.name }));
+        setViews(options);
+        if (options.length > 0) {
+          setNewWidgetViewId(options[0].id);
+        }
+      } catch {
+        // best effort
+      }
+    }
+    fetchViews();
+  }, []);
+
+  useEffect(() => {
+    const updateWidth = () => {
+      if (!gridRef.current) return;
+      const next = Math.max(800, gridRef.current.clientWidth);
+      setGridWidth(next);
+    };
+    updateWidth();
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, []);
+
+  useEffect(() => {
+    async function loadWidgetRows() {
+      if (!dashboard || dashboard.widgets.length === 0) return;
+
+      try {
+        const meRes = await fetch('/api/auth/me');
+        if (!meRes.ok) return;
+        const me = await meRes.json();
+        const orgId = me?.user?.organizationId as string | undefined;
+        if (!orgId) return;
+
+        const entries = await Promise.all(
+          dashboard.widgets.map(async (widget) => {
+            if (!widget.viewId) return [widget.id, []] as const;
+
+            try {
+              const viewRes = await fetch(`/api/views/${widget.viewId}`);
+              if (!viewRes.ok) return [widget.id, []] as const;
+              const viewData = await viewRes.json();
+              const view = viewData.view as { dataSourceId: string; sql: string } | undefined;
+              if (!view?.dataSourceId || !view?.sql) return [widget.id, []] as const;
+
+              const queryRes = await fetch(
+                `/api/datasources/${view.dataSourceId}/query?organizationId=${encodeURIComponent(orgId)}`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ sql: view.sql, limit: 100 }),
+                }
+              );
+
+              if (!queryRes.ok) return [widget.id, []] as const;
+              const queryData = await queryRes.json();
+              const rows = (queryData?.result?.rows || []) as Array<Record<string, unknown>>;
+              return [widget.id, rows] as const;
+            } catch {
+              return [widget.id, []] as const;
+            }
+          })
+        );
+
+        setWidgetRows(Object.fromEntries(entries));
+      } catch (error) {
+        console.error('Failed to load widget data rows:', error);
+      }
+    }
+
+    loadWidgetRows();
+  }, [dashboard]);
+
+  const gridLayout = useMemo<Layout>(
+    () =>
+      (dashboard?.widgets || []).map((w) => ({
+        i: w.id,
+        x: w.position.x,
+        y: w.position.y,
+        w: Math.max(1, w.position.width),
+        h: Math.max(2, w.position.height),
+        minW: 1,
+        minH: 2,
+      })),
+    [dashboard]
+  );
+
+  const persistLayout = (nextWidgets: DashboardWidget[]) => {
+    if (persistTimerRef.current) {
+      clearTimeout(persistTimerRef.current);
+    }
+    persistTimerRef.current = setTimeout(async () => {
+      try {
+        setIsSavingLayout(true);
+        await Promise.all(
+          nextWidgets.map((w) =>
+            fetch(`/api/widgets/${w.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                position: {
+                  x: w.position.x,
+                  y: w.position.y,
+                  width: w.position.width,
+                  height: w.position.height,
+                },
+              }),
+            })
+          )
+        );
+      } catch (error) {
+        console.error('Failed to persist layout:', error);
+      } finally {
+        setIsSavingLayout(false);
+      }
+    }, 500);
+  };
+
+  const handleGridLayoutChange = (layout: Layout) => {
+    if (!dashboard) return;
+    const byId = new Map(layout.map((l) => [l.i, l]));
+    const nextWidgets = dashboard.widgets.map((widget) => {
+      const cell = byId.get(widget.id);
+      if (!cell) return widget;
+      return {
+        ...widget,
+        position: {
+          x: cell.x,
+          y: cell.y,
+          width: cell.w,
+          height: cell.h,
+        },
+      };
+    });
+    setDashboard({ ...dashboard, widgets: nextWidgets });
+    persistLayout(nextWidgets);
+  };
 
   const handleAddWidget = async () => {
     if (!newWidgetTitle.trim()) return;
     
     setIsAddingWidget(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Create new widget
     const widgetType = newWidgetType === 'metric' ? 'metric' : newWidgetType === 'table' ? 'table' : 'chart';
     const widgetWidth = newWidgetType === 'metric' ? 1 : newWidgetType === 'table' ? 3 : 2;
-    
-    const newWidget: DashboardWidget = {
-      id: `w${Date.now()}`,
-      dashboardId,
-      type: widgetType,
-      title: newWidgetTitle,
-      position: { x: 0, y: 0, width: widgetWidth, height: 2 },
-      config: widgetType === 'chart' ? {
-        chartType: newWidgetType as any,
-        xField: 'month',
-        yFields: [{ field: 'value', label: 'Value', color: CHART_COLORS[0] }],
-      } : {},
-    };
-    
-    // Add to dashboard (in real app, would POST to API)
-    if (dashboard) {
-      setDashboard({
-        ...dashboard,
-        widgets: [...dashboard.widgets, newWidget],
+
+    try {
+      const targetViewId =
+        newWidgetViewId || dashboard?.widgets.find((w) => w.viewId)?.viewId || views[0]?.id || '';
+      if (!targetViewId) {
+        alert('No available view to attach this widget.');
+        return;
+      }
+
+      const create = await fetch('/api/widgets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dashboardId,
+          viewId: targetViewId,
+          type: widgetType,
+          title: newWidgetTitle,
+          position: { x: 0, y: 9999, width: widgetWidth, height: 2 },
+          config:
+            widgetType === 'chart'
+              ? {
+                  chartType: newWidgetType as 'bar' | 'line' | 'area' | 'pie',
+                }
+              : {},
+        }),
       });
+      const created = await create.json();
+      if (!create.ok) {
+        throw new Error(created.error || 'Failed to create widget');
+      }
+
+      const widget = created.widget as {
+        id: string;
+        dashboardId: string;
+        viewId: string;
+        type: string;
+        title: string | null;
+        position: { x?: number; y?: number; width?: number; height?: number };
+        config?: DashboardWidget['config'];
+      };
+
+      if (dashboard) {
+        const normalizedType = widget.type === 'metric' || widget.type === 'table' ? widget.type : 'chart';
+        setDashboard({
+          ...dashboard,
+          widgets: [
+            ...dashboard.widgets,
+            {
+              id: widget.id,
+              dashboardId: widget.dashboardId,
+              viewId: widget.viewId,
+              type: normalizedType,
+              title: widget.title || newWidgetTitle,
+              position: {
+                x: widget.position?.x ?? 0,
+                y: widget.position?.y ?? 0,
+                width: widget.position?.width ?? widgetWidth,
+                height: widget.position?.height ?? 2,
+              },
+              config: widget.config || {},
+            },
+          ],
+        });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to create widget';
+      alert(message);
     }
     
     setShowAddWidget(false);
@@ -260,7 +492,7 @@ export default function DashboardDetailPage() {
       <div className="p-8">
         <div className="text-center py-12">
           <h2 className="text-xl font-semibold mb-2">Dashboard not found</h2>
-          <p className="text-muted-foreground mb-4">This dashboard doesn't exist or has been deleted.</p>
+          <p className="text-muted-foreground mb-4">This dashboard does not exist or has been deleted.</p>
           <Link href="/dashboards">
             <Button variant="outline">
               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -273,21 +505,31 @@ export default function DashboardDetailPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-8 bg-gradient-to-b from-[#f8fbff] via-[#f7f8fc] to-[#f6faf5] min-h-screen">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between mb-8 bg-white/70 backdrop-blur border border-[#dde7f3] rounded-2xl px-5 py-4 shadow-sm">
+        <div className="flex items-center gap-4 min-w-0">
           <Link href="/dashboards">
             <Button variant="ghost" size="icon">
               <ArrowLeft className="w-5 h-5" />
             </Button>
           </Link>
-          <div>
-            <h1 className="text-2xl font-bold">{dashboard.name}</h1>
-            <p className="text-muted-foreground">{dashboard.description}</p>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900 truncate">{dashboard.name}</h1>
+            <p className="text-slate-500 truncate">{dashboard.description || 'Interactive dashboard workspace'}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <div className="text-xs text-slate-500 mr-2 flex items-center gap-1.5">
+            <Move className="w-3.5 h-3.5" />
+            Drag + Resize Enabled
+          </div>
+          {isSavingLayout ? (
+            <div className="text-xs text-slate-500 mr-2 flex items-center gap-1.5">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              Saving layout...
+            </div>
+          ) : null}
           <Button variant="outline">
             <Share className="w-4 h-4 mr-2" />
             Share
@@ -322,6 +564,21 @@ export default function DashboardDetailPage() {
               />
             </div>
             <div className="space-y-2">
+              <Label>Source View</Label>
+              <select
+                value={newWidgetViewId}
+                onChange={(e) => setNewWidgetViewId(e.target.value)}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white"
+              >
+                {views.length === 0 ? <option value="">No views available</option> : null}
+                {views.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
               <Label>Widget Type</Label>
               <div className="grid grid-cols-2 gap-2">
                 {WIDGET_TYPES.map((type) => (
@@ -348,7 +605,7 @@ export default function DashboardDetailPage() {
             <Button variant="outline" onClick={() => setShowAddWidget(false)}>
               Cancel
             </Button>
-            <Button onClick={handleAddWidget} disabled={!newWidgetTitle.trim() || isAddingWidget}>
+            <Button onClick={handleAddWidget} disabled={!newWidgetTitle.trim() || isAddingWidget || views.length === 0}>
               {isAddingWidget ? 'Adding...' : 'Add Widget'}
             </Button>
           </DialogFooter>
@@ -356,81 +613,110 @@ export default function DashboardDetailPage() {
       </Dialog>
 
       {/* Widgets Grid */}
-      <div className="grid grid-cols-3 gap-6">
-        {dashboard.widgets.map((widget) => {
-          const data = (MOCK_CHART_DATA as any)[widget.id] || [];
+      <div ref={gridRef} className="rounded-2xl border border-[#dce8f5] bg-white/50 p-4">
+        <GridLayout
+          layout={gridLayout}
+          gridConfig={{
+            cols: 4,
+            rowHeight: 120,
+            margin: [16, 16],
+            containerPadding: [0, 0],
+            maxRows: Infinity,
+          }}
+          width={gridWidth}
+          dragConfig={{
+            enabled: true,
+            handle: '.widget-drag-handle',
+          }}
+          resizeConfig={{
+            enabled: true,
+          }}
+          onLayoutChange={handleGridLayoutChange}
+        >
+          {dashboard.widgets.map((widget) => {
+          const data = (widgetRows[widget.id] || []) as Array<Record<string, number | string>>;
           const chartType = widget.config.chartType;
+          const { xField, yFields } = inferWidgetFields(widget, data as Array<Record<string, unknown>>);
+          const chartPayload = buildChartData(data as Array<Record<string, unknown>>, xField, yFields);
           
           return (
-            <div
-              key={widget.id}
-              className={`${widget.position.width === 3 ? 'col-span-3' : widget.position.width === 2 ? 'col-span-2' : ''}`}
-            >
+            <div key={widget.id}>
               {widget.type === 'metric' ? (
-                <Card>
-                  <CardHeader className="pb-2">
+                <Card className="h-full border-[#d9e6f3] shadow-sm rounded-2xl overflow-hidden">
+                  <CardHeader className="pb-2 flex flex-row items-start justify-between space-y-0">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
                       {widget.title}
                     </CardTitle>
+                    <div className="widget-drag-handle text-slate-400 hover:text-slate-700 cursor-move">
+                      <Move className="w-4 h-4" />
+                    </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold">$124,500</div>
-                    <p className="text-xs text-green-600">+12.5% from last month</p>
+                    <div className="text-3xl font-bold">{data.length > 0 ? data.length : 'N/A'}</div>
+                    <p className="text-xs text-muted-foreground">Rows returned by this widget query</p>
                   </CardContent>
                 </Card>
               ) : widget.type === 'chart' ? (
-                <Card>
-                  <CardHeader className="pb-2">
+                <Card className="h-full border-[#d9e6f3] shadow-sm rounded-2xl overflow-hidden">
+                  <CardHeader className="pb-2 flex flex-row items-start justify-between space-y-0">
                     <CardTitle className="text-sm font-medium">{widget.title}</CardTitle>
+                    <div className="widget-drag-handle text-slate-400 hover:text-slate-700 cursor-move">
+                      <Move className="w-4 h-4" />
+                    </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-64">
+                    <div className="h-full min-h-52">
+                      {chartPayload.data.length === 0 ? (
+                        <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                          No query results available for this chart.
+                        </div>
+                      ) : (
                       <ResponsiveContainer width="100%" height="100%">
                         {chartType === 'bar' ? (
-                          <BarChart data={data}>
+                          <BarChart data={chartPayload.data}>
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey={widget.config.xField} />
+                            <XAxis dataKey={xField} />
                             <YAxis />
                             <Tooltip />
                             <Legend />
-                            {widget.config.yFields?.map((yf, i) => (
+                            {chartPayload.yFields.map((yf, i) => (
                               <Bar key={yf.field} dataKey={yf.field} fill={yf.color || CHART_COLORS[i]} name={yf.label} />
                             ))}
                           </BarChart>
                         ) : chartType === 'line' ? (
-                          <LineChart data={data}>
+                          <LineChart data={chartPayload.data}>
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey={widget.config.xField} />
+                            <XAxis dataKey={xField} />
                             <YAxis />
                             <Tooltip />
                             <Legend />
-                            {widget.config.yFields?.map((yf, i) => (
+                            {chartPayload.yFields.map((yf, i) => (
                               <Line key={yf.field} type="monotone" dataKey={yf.field} stroke={yf.color || CHART_COLORS[i]} name={yf.label} />
                             ))}
                           </LineChart>
                         ) : chartType === 'area' ? (
-                          <AreaChart data={data}>
+                          <AreaChart data={chartPayload.data}>
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey={widget.config.xField} />
+                            <XAxis dataKey={xField} />
                             <YAxis />
                             <Tooltip />
                             <Legend />
-                            {widget.config.yFields?.map((yf, i) => (
+                            {chartPayload.yFields.map((yf, i) => (
                               <Area key={yf.field} type="monotone" dataKey={yf.field} fill={yf.color || CHART_COLORS[i]} stroke={yf.color || CHART_COLORS[i]} name={yf.label} />
                             ))}
                           </AreaChart>
                         ) : chartType === 'pie' ? (
                           <PieChart>
                             <Pie
-                              data={data}
-                              dataKey={widget.config.yFields?.[0]?.field || 'value'}
-                              nameKey={widget.config.xField}
+                              data={chartPayload.data}
+                              dataKey={chartPayload.yFields[0]?.field || 'value'}
+                              nameKey={xField}
                               cx="50%"
                               cy="50%"
                               outerRadius={80}
                               label
                             >
-                              {data.map((_: any, i: number) => (
+                              {chartPayload.data.map((_, i: number) => (
                                 <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                               ))}
                             </Pie>
@@ -443,16 +729,23 @@ export default function DashboardDetailPage() {
                           </div>
                         )}
                       </ResponsiveContainer>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
               ) : widget.type === 'table' ? (
-                <Card>
-                  <CardHeader className="pb-2">
+                <Card className="h-full border-[#d9e6f3] shadow-sm rounded-2xl overflow-hidden">
+                  <CardHeader className="pb-2 flex flex-row items-start justify-between space-y-0">
                     <CardTitle className="text-sm font-medium">{widget.title}</CardTitle>
+                    <div className="widget-drag-handle text-slate-400 hover:text-slate-700 cursor-move">
+                      <Move className="w-4 h-4" />
+                    </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="border rounded-lg overflow-hidden">
+                  <CardContent className="h-full">
+                    <div className="border rounded-lg overflow-auto h-full">
+                      {data.length === 0 ? (
+                        <div className="p-6 text-sm text-muted-foreground">No data available for this widget yet.</div>
+                      ) : null}
                       <table className="w-full text-sm">
                         <thead className="bg-zinc-50">
                           <tr>
@@ -464,16 +757,16 @@ export default function DashboardDetailPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {data.map((row: any, i: number) => (
+                          {data.map((row, i: number) => (
                             <tr key={i} className="border-b last:border-0 hover:bg-zinc-50">
-                              {Object.values(row).map((value: any, j: number) => (
+                              {Object.values(row).map((value, j: number) => (
                                 <td key={j} className="px-4 py-3">
                                   {typeof value === 'string' && value.startsWith('+') ? (
                                     <span className="text-green-600 font-medium">{value}</span>
                                   ) : typeof value === 'string' && value.startsWith('-') ? (
                                     <span className="text-red-600 font-medium">{value}</span>
                                   ) : (
-                                    value
+                                    formatCellValue(value)
                                   )}
                                 </td>
                               ))}
@@ -485,7 +778,7 @@ export default function DashboardDetailPage() {
                   </CardContent>
                 </Card>
               ) : (
-                <Card>
+                <Card className="h-full border-[#d9e6f3] shadow-sm rounded-2xl overflow-hidden">
                   <CardContent className="p-4">
                     <p className="text-muted-foreground">Unknown widget type</p>
                   </CardContent>
@@ -494,7 +787,25 @@ export default function DashboardDetailPage() {
             </div>
           );
         })}
+        </GridLayout>
       </div>
+      <style jsx global>{`
+        .react-grid-item > .react-resizable-handle {
+          position: absolute;
+          width: 14px;
+          height: 14px;
+          bottom: 4px;
+          right: 4px;
+          background: linear-gradient(135deg, #5b7cfa, #16a34a);
+          border-radius: 3px;
+          opacity: 0.75;
+        }
+        .react-grid-item.react-grid-placeholder {
+          background: rgba(91, 124, 250, 0.16);
+          border: 1px dashed #5b7cfa;
+          border-radius: 16px;
+        }
+      `}</style>
     </div>
   );
 }

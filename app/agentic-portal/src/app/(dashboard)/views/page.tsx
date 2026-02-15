@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -33,7 +33,7 @@ interface DataSourceOption {
   name: string;
 }
 
-export default function ViewsPage() {
+function ViewsPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -279,5 +279,13 @@ export default function ViewsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ViewsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 max-w-7xl mx-auto text-muted-foreground">Loading views...</div>}>
+      <ViewsPageContent />
+    </Suspense>
   );
 }

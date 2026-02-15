@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { WorkstreamFilterBar } from '@/components/filters/WorkstreamFilterBar';
@@ -23,7 +23,7 @@ interface WorkstreamOption {
   name: string;
 }
 
-export default function DashboardsPage() {
+function DashboardsPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -212,5 +212,13 @@ export default function DashboardsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function DashboardsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 max-w-7xl mx-auto text-muted-foreground">Loading dashboards...</div>}>
+      <DashboardsPageContent />
+    </Suspense>
   );
 }

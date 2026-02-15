@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Plus,
@@ -55,7 +55,7 @@ const scheduleLabel = (value?: string) => {
   return schedule.charAt(0).toUpperCase() + schedule.slice(1);
 };
 
-export default function OutputsPage() {
+function OutputsPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -294,5 +294,13 @@ export default function OutputsPage() {
         </div>
       ) : null}
     </div>
+  );
+}
+
+export default function OutputsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 max-w-7xl mx-auto text-muted-foreground">Loading outputs...</div>}>
+      <OutputsPageContent />
+    </Suspense>
   );
 }

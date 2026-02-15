@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Network, Database, Table2, LayoutDashboard, FileOutput, ExternalLink, Plus, Minus, Link2, Move } from 'lucide-react';
@@ -74,7 +74,7 @@ function buildDefaultPositions(nodes: PipelineNode[]): Record<string, NodePositi
   return positions;
 }
 
-export default function RelationshipExplorerPage() {
+function RelationshipExplorerPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -384,5 +384,19 @@ export default function RelationshipExplorerPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function RelationshipExplorerPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-8 max-w-7xl mx-auto text-muted-foreground">
+          Loading relationship explorer...
+        </div>
+      }
+    >
+      <RelationshipExplorerPageContent />
+    </Suspense>
   );
 }

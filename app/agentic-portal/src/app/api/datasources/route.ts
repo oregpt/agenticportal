@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
           Array.isArray((fetchedSchema as { tables?: unknown[] }).tables)
         ) {
           const selectedSet = new Set(selectedTables as string[]);
-          const typedSchema = fetchedSchema as {
+          const typedSchema = fetchedSchema as unknown as {
             tables?: Array<{ name: string; columns?: unknown[] }>;
             [key: string]: unknown;
           };
