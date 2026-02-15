@@ -186,3 +186,66 @@ tests/ui-tests/canvas-end-to-end-flow.spec.ts
 ### Validation
 - Lint on touched files: no errors.
 - Canvas E2E template regression: passing after updates.
+
+## 2026-02-15 - Railway Dev/Prod Split + Build Stabilization
+
+### Session Summary
+Completed environment separation on Railway, switched deployment source to the new GitHub repo, and resolved all blocking Next.js build errors so `npm run build` passes.
+
+---
+
+### Infrastructure and Branching
+
+#### 1. Git + Branch Strategy
+- New canonical repo configured: `https://github.com/oregpt/agenticportal`
+- Branch model enabled:
+  - `main` for production
+  - `main_dev` for development/testing
+- Pushed both branches to the new repo and aligned them to latest fix commit.
+
+#### 2. Railway Environment Split
+- Confirmed separate Railway environments:
+  - `production`
+  - `development`
+- Wired deployment triggers:
+  - `production` -> `main`
+  - `development` -> `main_dev`
+- Fixed Railway service instance `rootDirectory` to:
+  - `app/agentic-portal`
+  This resolved Railpack root detection failures.
+
+---
+
+### Build/TypeScript Fixes
+
+#### 1. Data Source Schema Cast Failure
+- Fixed compile blocker in:
+  - `src/app/api/datasources/route.ts`
+- Adjusted strict cast for filtered schema table selection.
+
+#### 2. Dashboard Detail Grid Typing
+- Fixed type mismatches in:
+  - `src/app/(dashboard)/dashboards/[id]/page.tsx`
+- Changes:
+  - `formatCellValue` boolean normalization to string
+  - corrected `Layout` typing (array type alias misuse)
+  - migrated grid props to new `react-grid-layout` v2 API (`gridConfig`, `dragConfig`, `resizeConfig`)
+
+#### 3. Next.js 16 Suspense Prerender Requirements
+- Wrapped `useSearchParams()` pages in `Suspense` where missing:
+  - `src/app/(dashboard)/dashboards/page.tsx`
+  - `src/app/(dashboard)/outputs/page.tsx`
+  - `src/app/(dashboard)/relationship-explorer/page.tsx`
+  - `src/app/(dashboard)/views/page.tsx`
+
+---
+
+### Validation
+- Local build status:
+  - `npm run build` completed successfully.
+- Route generation finished without prerender errors after suspense and typing fixes.
+
+---
+
+### Commit
+- `b543441` - `Fix Next 16 build blockers for datasources and dashboard pages`
