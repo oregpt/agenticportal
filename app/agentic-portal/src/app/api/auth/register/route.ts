@@ -19,6 +19,12 @@ function resolveAuthErrorResponse(error: unknown) {
   }
 
   const dbError = error as { code?: string; message?: string };
+  if ((dbError.message || '').toLowerCase().includes('does not support ssl')) {
+    return NextResponse.json(
+      { error: 'Registration temporarily unavailable: database SSL setting is incorrect (server does not support SSL).' },
+      { status: 503 }
+    );
+  }
   if (dbError.code === '42P01') {
     return NextResponse.json({ error: 'Registration temporarily unavailable: database tables are not initialized.' }, { status: 503 });
   }

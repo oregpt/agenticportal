@@ -36,8 +36,10 @@ function resolveSslConfig(databaseUrl: string): PgSslConfig {
     // Keep default below when the URL is not parseable.
   }
 
-  // Railway/managed Postgres typically expects TLS.
-  return process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false;
+  // Default to no SSL unless explicitly requested.
+  // Some managed DB TCP proxies (including certain Railway setups) reject SSL with:
+  // "The server does not support SSL connections".
+  return false;
 }
 
 export function getDatabasePoolConfig(): PoolConfig {
