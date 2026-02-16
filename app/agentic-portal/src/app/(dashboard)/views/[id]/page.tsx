@@ -126,7 +126,9 @@ export default function ViewDetailPage({ params }: { params: Promise<{ id: strin
       const response = await fetch(`/api/views/${id}`, { method: 'DELETE' });
       if (response.ok) {
         toast({ title: 'View deleted' });
-        router.push('/views');
+        const isEmbedded = typeof window !== 'undefined'
+          && new URLSearchParams(window.location.search).get('embed') === '1';
+        router.push(isEmbedded ? '/views?embed=1' : '/views');
       } else {
         toast({ title: 'Failed to delete view', variant: 'destructive' });
       }

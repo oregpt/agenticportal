@@ -14,7 +14,6 @@ import {
   Building2,
   Bot,
   Plug,
-  Hexagon,
   Workflow,
   FileOutput,
   Sparkles,
@@ -131,17 +130,6 @@ export function Sidebar({ section }: SidebarProps) {
 
   return (
     <div className="flex h-full w-72 flex-col bg-sidebar/90 backdrop-blur-md border-r border-sidebar-border shadow-[0_1px_0_rgba(15,23,42,0.03)]">
-      <div className="flex h-16 items-center px-5 border-b border-sidebar-border/80">
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-teal flex items-center justify-center shadow-sm">
-            <Hexagon className="w-4.5 h-4.5 text-primary-foreground" strokeWidth={2.5} />
-          </div>
-          <span className="font-semibold text-lg text-sidebar-foreground tracking-tight">
-            Agentic<span className="text-primary">Portal</span>
-          </span>
-        </Link>
-      </div>
-
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         <div className="mb-4 rounded-xl border border-sidebar-border/60 bg-white/50 px-3 py-2.5">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
