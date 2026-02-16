@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { 
   ArrowLeft,
   Plus, 
+  Minus,
   Database, 
   Table2, 
   LayoutDashboard,
@@ -102,6 +103,21 @@ const nodeConfig = {
     addLabel: 'Add Output'
   }
 };
+
+function getEntityUrl(node: PipelineNode): string {
+  switch (node.type) {
+    case 'datasource':
+      return `/datasources/${node.id}`;
+    case 'view':
+      return `/views/${node.id}`;
+    case 'dashboard':
+      return `/dashboards/${node.id}`;
+    case 'output':
+      return `/outputs/${node.id}`;
+    default:
+      return '/workstreams';
+  }
+}
 
 function NodeCard({ node, onSelect, isSelected }: { 
   node: PipelineNode; 
@@ -1394,7 +1410,10 @@ export default function WorkstreamCanvasPage() {
   const [nodes, setNodes] = useState<PipelineNode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedNode, setSelectedNode] = useState<PipelineNode | null>(null);
-  const [showAIChat, setShowAIChat] = useState(false);
+  const [activeEntityUrl, setActiveEntityUrl] = useState<string | null>(null);
+  const [contentRefreshKey, setContentRefreshKey] = useState(0);
+  const [canvasCollapsed, setCanvasCollapsed] = useState(false);
+  const [canvasWidth, setCanvasWidth] = useState(460);
   
   // Modal states
   const [showConnectSource, setShowConnectSource] = useState(false);
@@ -1444,6 +1463,40 @@ export default function WorkstreamCanvasPage() {
 
   const hasNodes = nodes.length > 0;
 
+  const openNodeInPane = (node: PipelineNode) => {
+    setSelectedNode(node);
+    setActiveEntityUrl(getEntityUrl(node));
+    setCanvasCollapsed(false);
+  };
+
+  const handleDeleteSelectedNode = async () => {
+    if (!selectedNode) return;
+    if (!confirm(`Delete "${selectedNode.name}"? This cannot be undone.`)) return;
+
+    const typeToEndpoint: Record<NodeType, string> = {
+      datasource: 'datasources',
+      view: 'views',
+      dashboard: 'dashboards',
+      output: 'outputs',
+    };
+
+    try {
+      const res = await fetch(`/api/${typeToEndpoint[selectedNode.type]}/${selectedNode.id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setSelectedNode(null);
+        setActiveEntityUrl(null);
+        fetchData();
+      } else {
+        alert('Failed to delete');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background fade-in-up">
       {/* Subtle grid background */}
@@ -1479,9 +1532,12 @@ export default function WorkstreamCanvasPage() {
             </div>
             <div className="flex items-center gap-2">
               <Button
-                onClick={() => setShowAIChat(!showAIChat)}
-                variant={showAIChat ? "default" : "outline"}
-                className={`gap-2 ${showAIChat ? 'bg-gradient-to-r from-primary to-teal border-0' : ''}`}
+                onClick={() => {
+                  setSelectedNode(null);
+                  setActiveEntityUrl('/chat');
+                }}
+                variant="outline"
+                className="gap-2"
               >
                 <Sparkles className="w-4 h-4" />
                 AI Assistant
@@ -1495,164 +1551,146 @@ export default function WorkstreamCanvasPage() {
       </header>
 
       <div className="flex h-[calc(100vh-57px)]">
-        {/* Main Canvas */}
-        <div className="flex-1 overflow-auto p-8">
-          {!hasNodes ? (
-            <EmptyCanvas onConnectSource={() => setShowConnectSource(true)} />
-          ) : (
-            <>
-              {/* Column Headers */}
-              <div className="grid grid-cols-4 gap-8 mb-4 min-w-[980px] bg-white/70 border border-border rounded-2xl p-4 shadow-sm fade-in-up-delay-1">
-                {(['datasource', 'view', 'dashboard', 'output'] as NodeType[]).map((type) => {
-                  const config = nodeConfig[type];
-                  const Icon = config.icon;
-                  return (
-                    <div key={type} className="w-full">
-                      <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-gray-500 mb-3 px-1">
-                        <Icon className={`w-3.5 h-3.5 ${config.textColor}`} />
-                        <span className="font-medium">{config.label}s</span>
-                        <span className="text-gray-400">({nodesByType[type].length})</span>
-                      </div>
-                    </div>
-                  );
-                })}
+        {!canvasCollapsed ? (
+          <div className="border-r border-border bg-white/60 backdrop-blur-sm" style={{ width: canvasWidth }}>
+            <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+              <p className="text-xs uppercase tracking-wider text-gray-500">Canvas</p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCanvasWidth((w) => Math.max(320, w - 40))}
+                  className="p-1.5 rounded-md hover:bg-gray-100"
+                  aria-label="Narrow canvas"
+                >
+                  <Minus className="w-3.5 h-3.5 text-gray-500" />
+                </button>
+                <button
+                  onClick={() => setCanvasWidth((w) => Math.min(720, w + 40))}
+                  className="p-1.5 rounded-md hover:bg-gray-100"
+                  aria-label="Widen canvas"
+                >
+                  <Plus className="w-3.5 h-3.5 text-gray-500" />
+                </button>
+                <button
+                  onClick={() => setCanvasCollapsed(true)}
+                  className="p-1.5 rounded-md hover:bg-gray-100"
+                  aria-label="Collapse canvas"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5 text-gray-500" />
+                </button>
               </div>
-
-              {/* Nodes Grid */}
-              <div className="relative min-w-[980px] bg-white/50 border border-border rounded-2xl p-4 fade-in-up-delay-2">
-                <div className="grid grid-cols-4 gap-8">
-                  {(['datasource', 'view', 'dashboard', 'output'] as NodeType[]).map((type, colIndex) => (
-                    <div key={type} className="w-full space-y-3">
-                      {nodesByType[type].map((node) => (
-                        <div key={node.id} className="relative">
-                          {colIndex < 3 && nodesByType[type].length > 0 && (
-                            <div className="absolute left-full top-1/2 w-8 h-0.5 bg-gradient-to-r from-gray-300 to-gray-200" />
-                          )}
-                          <NodeCard 
-                            node={node} 
-                            onSelect={setSelectedNode}
+            </div>
+            <div className="h-[calc(100%-41px)] overflow-auto p-4">
+              {!hasNodes ? (
+                <EmptyCanvas onConnectSource={() => setShowConnectSource(true)} />
+              ) : (
+                <div className="space-y-5">
+                  {(['datasource', 'view', 'dashboard', 'output'] as NodeType[]).map((type) => {
+                    const config = nodeConfig[type];
+                    const Icon = config.icon;
+                    return (
+                      <div key={type} className="space-y-2">
+                        <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-gray-500 px-1">
+                          <Icon className={`w-3.5 h-3.5 ${config.textColor}`} />
+                          <span className="font-medium">{config.label}s</span>
+                          <span className="text-gray-400">({nodesByType[type].length})</span>
+                        </div>
+                        {nodesByType[type].map((node) => (
+                          <NodeCard
+                            key={node.id}
+                            node={node}
+                            onSelect={openNodeInPane}
                             isSelected={selectedNode?.id === node.id}
                           />
-                        </div>
-                      ))}
-                      
-                      <AddNodeButton 
-                        type={type} 
-                        onClick={() => {
-                          if (type === 'datasource') setShowConnectSource(true);
-                          else if (type === 'view') setShowCreateView(true);
-                          else if (type === 'dashboard') setShowCreateDashboard(true);
-                          else if (type === 'output') setShowAddOutput(true);
-                        }} 
-                      />
-                    </div>
-                  ))}
+                        ))}
+                        <AddNodeButton
+                          type={type}
+                          onClick={() => {
+                            if (type === 'datasource') setShowConnectSource(true);
+                            else if (type === 'view') setShowCreateView(true);
+                            else if (type === 'dashboard') setShowCreateDashboard(true);
+                            else if (type === 'output') setShowAddOutput(true);
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* AI Chat Sidebar */}
-        {showAIChat && (
-          <div className="w-80 border-l border-gray-200 bg-white flex flex-col">
-            <div className="p-4 border-b border-gray-100">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500 to-emerald-500 flex items-center justify-center">
-                    <Sparkles className="w-4 h-4 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-sm">AI Assistant</h3>
-                    <p className="text-xs text-gray-500">
-                      {selectedNode ? selectedNode.name : 'Ask anything'}
-                    </p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setShowAIChat(false)}
-                  className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <X className="w-4 h-4 text-gray-400" />
-                </button>
-              </div>
+              )}
             </div>
-
-            <div className="p-4 border-b border-gray-100">
-              <p className="text-xs text-gray-500 mb-2">Quick actions</p>
-              <div className="space-y-1.5">
-                <button 
-                  onClick={() => setShowCreateView(true)}
-                  className="w-full text-left px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 text-sm transition-colors"
-                >
-                  âœ¨ Create a view with AI
-                </button>
-                <button 
-                  onClick={() => setShowCreateDashboard(true)}
-                  className="w-full text-left px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 text-sm transition-colors"
-                >
-                  ðŸ“Š Build a dashboard
-                </button>
-              </div>
-            </div>
-
-            <div className="flex-1 p-4 overflow-auto">
-              <div className="flex gap-3">
-                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-emerald-500 flex-shrink-0" />
-                <div className="bg-gray-100 rounded-xl rounded-tl-none px-3 py-2 text-sm text-gray-700">
-                  Hi! I can help you build your pipeline. Select a node or ask me to create something.
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 border-t border-gray-100">
-              <div className="relative">
-                <Input
-                  type="text"
-                  placeholder="Ask AI..."
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 placeholder-gray-400"
-                />
-                <button className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md bg-primary hover:bg-primary/90 transition-colors">
-                  <Zap className="w-3.5 h-3.5 text-white" />
-                </button>
-              </div>
-            </div>
+          </div>
+        ) : (
+          <div className="w-11 border-r border-border bg-white/60 flex flex-col items-center py-2 gap-2">
+            <button
+              onClick={() => setCanvasCollapsed(false)}
+              className="p-1.5 rounded-md hover:bg-gray-100"
+              aria-label="Expand canvas"
+            >
+              <ArrowLeft className="w-4 h-4 text-gray-600 rotate-180" />
+            </button>
+            <span className="text-[10px] text-gray-500 [writing-mode:vertical-rl] rotate-180 tracking-widest">CANVAS</span>
           </div>
         )}
 
-        {/* Node Detail Sidebar */}
-        {selectedNode && !showAIChat && (
-          <NodeDetailSidebar
-            node={selectedNode}
-            onClose={() => setSelectedNode(null)}
-            onDelete={async () => {
-              if (!confirm(`Delete "${selectedNode.name}"? This cannot be undone.`)) return;
-              
-              const typeToEndpoint: Record<NodeType, string> = {
-                datasource: 'datasources',
-                view: 'views',
-                dashboard: 'dashboards',
-                output: 'outputs',
-              };
-              
-              try {
-                const res = await fetch(`/api/${typeToEndpoint[selectedNode.type]}/${selectedNode.id}`, {
-                  method: 'DELETE',
-                });
-                if (res.ok) {
-                  setSelectedNode(null);
-                  fetchData();
-                } else {
-                  alert('Failed to delete');
-                }
-              } catch (err) {
-                console.error(err);
-                alert('Failed to delete');
-              }
-            }}
-            onRefresh={fetchData}
-          />
-        )}
+        <div className="flex-1 bg-white/70">
+          <div className="h-full flex flex-col">
+            <div className="px-4 py-3 border-b border-border bg-white/80 flex items-center justify-between">
+              <div className="min-w-0">
+                <p className="text-xs uppercase tracking-wider text-gray-500">Content</p>
+                <p className="text-sm font-medium text-gray-800 truncate">
+                  {selectedNode ? `${nodeConfig[selectedNode.type].label}: ${selectedNode.name}` : 'Select a node to open it here'}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => { setSelectedNode(null); setActiveEntityUrl('/chat'); }}>
+                  <Sparkles className="w-4 h-4 mr-1.5" />
+                  AI Chat
+                </Button>
+                {activeEntityUrl ? (
+                  <Button variant="outline" size="sm" onClick={() => setContentRefreshKey((k) => k + 1)}>
+                    <RefreshCw className="w-4 h-4 mr-1.5" />
+                    Refresh
+                  </Button>
+                ) : null}
+                {selectedNode ? (
+                  <>
+                    <Button variant="outline" size="sm" onClick={() => router.push(getEntityUrl(selectedNode))}>
+                      <Eye className="w-4 h-4 mr-1.5" />
+                      Open Full
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      onClick={handleDeleteSelectedNode}
+                    >
+                      <Trash2 className="w-4 h-4 mr-1.5" />
+                      Delete
+                    </Button>
+                  </>
+                ) : null}
+              </div>
+            </div>
+            <div className="flex-1 bg-gray-50">
+              {activeEntityUrl ? (
+                <iframe
+                  key={`${activeEntityUrl}-${contentRefreshKey}`}
+                  src={activeEntityUrl}
+                  title="Canvas content"
+                  className="w-full h-full border-0 bg-white"
+                />
+              ) : (
+                <div className="h-full flex items-center justify-center p-8">
+                  <div className="max-w-lg text-center">
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Browse from relationships</h3>
+                    <p className="text-sm text-gray-600">
+                      Click any data source, view, dashboard, or output in the canvas. It will open here so users can browse without leaving this page.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Modals */}

@@ -1,7 +1,6 @@
 'use client';
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Network, Database, Table2, LayoutDashboard, FileOutput, ExternalLink, Plus, Minus, Link2, Move } from 'lucide-react';
 import { WorkstreamFilterBar } from '@/components/filters/WorkstreamFilterBar';
@@ -295,11 +294,16 @@ function RelationshipExplorerPageContent() {
                           <Link2 className="h-3 w-3" />
                           {relatedParentNodes.length + relatedChildNodes.length} related
                         </span>
-                        <Button size="sm" variant="outline" asChild>
-                          <Link href={getEntityUrl(node)}>
-                            <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                            Open
-                          </Link>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            router.push(getEntityUrl(node));
+                          }}
+                        >
+                          <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                          Open
                         </Button>
                       </div>
                     </div>
@@ -363,11 +367,17 @@ function RelationshipExplorerPageContent() {
                   <Move className="h-3.5 w-3.5 text-muted-foreground" />
                 </div>
                 <div className="mt-3 flex justify-end">
-                  <Button size="sm" variant="outline" asChild>
-                    <Link href={getEntityUrl(node)}>
-                      <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                      Open
-                    </Link>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      router.push(getEntityUrl(node));
+                    }}
+                  >
+                    <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                    Open
                   </Button>
                 </div>
               </div>
