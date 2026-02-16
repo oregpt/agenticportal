@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { 
   ArrowLeft,
   Plus, 
@@ -12,17 +11,10 @@ import {
   LayoutDashboard,
   FileOutput,
   Sparkles,
-  Play,
-  Settings,
-  Trash2,
   X,
-  Zap,
   MoreHorizontal,
-  Eye,
   RefreshCw,
-  Hexagon,
   FileText,
-  Download,
   Mail,
   Webhook,
   Check,
@@ -1243,143 +1235,6 @@ function AddOutputModal({
   );
 }
 
-// Node Detail Sidebar
-function NodeDetailSidebar({
-  node,
-  onClose,
-  onDelete,
-  onRefresh,
-}: {
-  node: PipelineNode;
-  onClose: () => void;
-  onDelete: () => void;
-  onRefresh: () => void;
-}) {
-  const router = useRouter();
-  const config = nodeConfig[node.type];
-  const Icon = config.icon;
-
-  const getDetailUrl = () => {
-    switch (node.type) {
-      case 'datasource':
-        return `/datasources/${node.id}`;
-      case 'view':
-        return `/views/${node.id}`;
-      case 'dashboard':
-        return `/dashboards/${node.id}`;
-      case 'output':
-        return `/outputs/${node.id}`;
-      default:
-        return null;
-    }
-  };
-
-  const handleViewDetails = () => {
-    const url = getDetailUrl();
-    if (url) router.push(url);
-  };
-
-  return (
-    <div className="w-80 border-l border-gray-200 bg-white flex flex-col">
-      {/* Header */}
-      <div className="p-4 border-b border-gray-100">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${config.iconBg}`}>
-              <Icon className={`w-5 h-5 ${config.textColor}`} />
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wider">{config.label}</p>
-              <h3 className="font-medium text-sm truncate max-w-[180px]">{node.name}</h3>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            <X className="w-4 h-4 text-gray-400" />
-          </button>
-        </div>
-      </div>
-
-      {/* Details */}
-      <div className="flex-1 p-4 space-y-4 overflow-auto">
-        {node.description && (
-          <div>
-            <label className="text-xs text-gray-500 block mb-1">Description</label>
-            <p className="text-sm text-gray-700">{node.description}</p>
-          </div>
-        )}
-
-        <div>
-          <label className="text-xs text-gray-500 block mb-1">Status</label>
-          <div className="flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full ${
-              node.status === 'active' ? 'bg-emerald-500' :
-              node.status === 'error' ? 'bg-red-500' :
-              node.status === 'syncing' ? 'bg-amber-500 animate-pulse' :
-              'bg-gray-400'
-            }`} />
-            <span className="text-sm capitalize">{node.status || 'active'}</span>
-          </div>
-        </div>
-
-        {node.parentIds && node.parentIds.length > 0 && (
-          <div>
-            <label className="text-xs text-gray-500 block mb-1">Connected to</label>
-            <p className="text-sm text-gray-600">{node.parentIds.length} upstream node(s)</p>
-          </div>
-        )}
-
-        {node.metadata && Object.keys(node.metadata).length > 0 && (
-          <div>
-            <label className="text-xs text-gray-500 block mb-2">Metadata</label>
-            <div className="bg-gray-50 rounded-lg p-3 text-xs font-mono overflow-auto max-h-32">
-              {Object.entries(node.metadata).map(([key, value]) => (
-                <div key={key} className="flex gap-2">
-                  <span className="text-gray-500">{key}:</span>
-                  <span className="text-gray-700">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Actions */}
-      <div className="p-4 border-t border-gray-100 space-y-2">
-        <Button 
-          variant="outline" 
-          className="w-full justify-start gap-2" 
-          size="sm"
-          onClick={handleViewDetails}
-        >
-          <Eye className="w-4 h-4" />
-          View Details
-        </Button>
-        <Button 
-          variant="outline" 
-          className="w-full justify-start gap-2" 
-          size="sm"
-          onClick={onRefresh}
-        >
-          <RefreshCw className="w-4 h-4" />
-          Refresh
-        </Button>
-        <Button 
-          variant="outline" 
-          className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-50" 
-          size="sm"
-          onClick={onDelete}
-        >
-          <Trash2 className="w-4 h-4" />
-          Delete
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 // Empty state component
 function EmptyCanvas({ onConnectSource }: { onConnectSource: () => void }) {
   return (
@@ -1411,7 +1266,6 @@ export default function WorkstreamCanvasPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedNode, setSelectedNode] = useState<PipelineNode | null>(null);
   const [activeEntityUrl, setActiveEntityUrl] = useState<string | null>(null);
-  const [contentRefreshKey, setContentRefreshKey] = useState(0);
   const [canvasCollapsed, setCanvasCollapsed] = useState(false);
   const [canvasWidth, setCanvasWidth] = useState(320);
   
@@ -1471,36 +1325,8 @@ export default function WorkstreamCanvasPage() {
     setCanvasCollapsed(false);
   };
 
-  const handleDeleteSelectedNode = async () => {
-    if (!selectedNode) return;
-    if (!confirm(`Delete "${selectedNode.name}"? This cannot be undone.`)) return;
-
-    const typeToEndpoint: Record<NodeType, string> = {
-      datasource: 'datasources',
-      view: 'views',
-      dashboard: 'dashboards',
-      output: 'outputs',
-    };
-
-    try {
-      const res = await fetch(`/api/${typeToEndpoint[selectedNode.type]}/${selectedNode.id}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        setSelectedNode(null);
-        setActiveEntityUrl(null);
-        fetchData();
-      } else {
-        alert('Failed to delete');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Failed to delete');
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-background fade-in-up">
+    <div className="h-full bg-background fade-in-up">
       {/* Subtle grid background */}
       <div 
         className="fixed inset-0 pointer-events-none opacity-35"
@@ -1510,49 +1336,7 @@ export default function WorkstreamCanvasPage() {
         }}
       />
 
-      {/* Header */}
-      <header className="relative border-b border-border bg-white/75 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-full mx-auto px-6 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/workstreams"
-                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5 text-gray-600" />
-              </Link>
-              <div 
-                className="w-8 h-8 rounded-xl flex items-center justify-center shadow-sm"
-                style={{ backgroundColor: `${workstream.color}20` }}
-              >
-                <Hexagon className="w-4 h-4" style={{ color: workstream.color }} />
-              </div>
-              <div>
-                <h1 className="text-lg font-semibold text-gray-900">{workstream.name}</h1>
-                <p className="text-xs text-gray-500">Visual pipeline canvas</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                  onClick={() => {
-                    setSelectedNode(null);
-                    setActiveEntityUrl('/chat?embed=1');
-                  }}
-                  variant="outline"
-                  className="gap-2"
-              >
-                <Sparkles className="w-4 h-4" />
-                AI Assistant
-              </Button>
-              <Button variant="ghost" size="icon">
-                <Settings className="w-5 h-5 text-gray-500" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="flex h-[calc(100vh-57px)]">
+      <div className="flex h-full">
         {!canvasCollapsed ? (
           <div className="border-r border-border bg-white/60 backdrop-blur-sm" style={{ width: canvasWidth }}>
             <div className="flex items-center justify-between px-3 py-2 border-b border-border">
@@ -1641,63 +1425,24 @@ export default function WorkstreamCanvasPage() {
         )}
 
         <div className="flex-1 bg-white/70">
-          <div className="h-full flex flex-col">
-            <div className="px-4 py-3 border-b border-border bg-white/80 flex items-center justify-between">
-              <div className="min-w-0">
-                <p className="text-xs uppercase tracking-wider text-gray-500">Content</p>
-                <p className="text-sm font-medium text-gray-800 truncate">
-                  {selectedNode ? `${nodeConfig[selectedNode.type].label}: ${selectedNode.name}` : 'Select a node to open it here'}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => { setSelectedNode(null); setActiveEntityUrl('/chat'); }}>
-                  <Sparkles className="w-4 h-4 mr-1.5" />
-                  AI Chat
-                </Button>
-                {activeEntityUrl ? (
-                  <Button variant="outline" size="sm" onClick={() => setContentRefreshKey((k) => k + 1)}>
-                    <RefreshCw className="w-4 h-4 mr-1.5" />
-                    Refresh
-                  </Button>
-                ) : null}
-                {selectedNode ? (
-                  <>
-                    <Button variant="outline" size="sm" onClick={() => router.push(getEntityUrl(selectedNode))}>
-                      <Eye className="w-4 h-4 mr-1.5" />
-                      Open Full
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      onClick={handleDeleteSelectedNode}
-                    >
-                      <Trash2 className="w-4 h-4 mr-1.5" />
-                      Delete
-                    </Button>
-                  </>
-                ) : null}
-              </div>
-            </div>
-            <div className="flex-1 bg-gray-50">
-              {activeEntityUrl ? (
-                <iframe
-                  key={`${activeEntityUrl}-${contentRefreshKey}`}
-                  src={activeEntityUrl}
-                  title="Canvas content"
-                  className="w-full h-full border-0 bg-white"
-                />
-              ) : (
-                <div className="h-full flex items-center justify-center p-8">
-                  <div className="max-w-lg text-center">
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Browse from relationships</h3>
-                    <p className="text-sm text-gray-600">
-                      Click any data source, view, dashboard, or output in the canvas. It will open here so users can browse without leaving this page.
-                    </p>
-                  </div>
+          <div className="h-full bg-gray-50">
+            {activeEntityUrl ? (
+              <iframe
+                key={activeEntityUrl}
+                src={activeEntityUrl}
+                title="Canvas content"
+                className="w-full h-full border-0 bg-white"
+              />
+            ) : (
+              <div className="h-full flex items-center justify-center p-8">
+                <div className="max-w-lg text-center">
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Browse from relationships</h3>
+                  <p className="text-sm text-gray-600">
+                    Click any data source, view, dashboard, or output in the canvas. It will open here so users can browse without leaving this page.
+                  </p>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
