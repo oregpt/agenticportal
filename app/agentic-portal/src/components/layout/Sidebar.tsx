@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -31,23 +32,23 @@ export function getSectionFromPath(pathname: string): NavSection {
 }
 
 const pipelineNavigation = [
-  { name: 'Workstreams', href: '/workstreams', icon: Workflow },
+  { name: 'Pipelines', href: '/workstreams', icon: Workflow },
   { name: 'Data Sources', href: '/datasources', icon: Database },
-  { name: 'Views', href: '/views', icon: Table2 },
+  { name: 'Saved Queries', href: '/views', icon: Table2 },
   { name: 'Dashboards', href: '/dashboards', icon: LayoutDashboard },
-  { name: 'Outputs', href: '/outputs', icon: FileOutput },
-  { name: 'Relationship Explorer', href: '/relationship-explorer', icon: Network },
+  { name: 'Exports', href: '/outputs', icon: FileOutput },
+  { name: 'Data Relationships', href: '/relationship-explorer', icon: Network },
 ];
 
 const aiNavigation = [
-  { name: 'AI Chat', href: '/chat', icon: Sparkles },
+  { name: 'Ask Data Assistant', href: '/chat', icon: Sparkles },
 ];
 
 const orgNavigation = [
   { name: 'Overview', href: '/org', icon: LayoutDashboard },
   { name: 'Team', href: '/org/members', icon: Users },
-  { name: 'Agents', href: '/org/agents', icon: Bot },
-  { name: 'MCP Hub', href: '/org/mcp', icon: Plug },
+  { name: 'AI Assistants', href: '/org/agents', icon: Bot },
+  { name: 'Tool Integrations', href: '/org/mcp', icon: Plug },
   { name: 'Settings', href: '/org/settings', icon: Settings },
 ];
 
@@ -62,11 +63,11 @@ const platformNavigation = [
 const sectionMeta: Record<NavSection, { label: string; description: string }> = {
   pipeline: {
     label: 'Pipeline',
-    description: 'Build data sources, views, dashboards, and outputs',
+    description: 'Connect data, save queries, and build dashboards',
   },
   organization: {
     label: 'Organization',
-    description: 'Manage team members, agents, and org settings',
+    description: 'Manage team, assistants, and organization settings',
   },
   platform: {
     label: 'Platform Admin',
@@ -81,6 +82,29 @@ interface SidebarProps {
 export function Sidebar({ section }: SidebarProps) {
   const pathname = usePathname();
   const { user, logout, canAccessPlatformAdmin, canAccessOrgAdmin } = useAuth();
+  const [hasDataSources, setHasDataSources] = React.useState(true);
+
+  React.useEffect(() => {
+    let active = true;
+    async function loadSetupState() {
+      try {
+        const res = await fetch('/api/datasources');
+        if (!res.ok || !active) return;
+        const payload = await res.json();
+        if (!active) return;
+        setHasDataSources((payload?.dataSources || []).length > 0);
+      } catch {
+        // Keep defaults when setup state is unavailable.
+      }
+    }
+    loadSetupState();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const orgBaseItems = orgNavigation.filter((item) => item.href === '/org' || item.href === '/org/members' || item.href === '/org/settings');
+  const orgAdvancedItems = orgNavigation.filter((item) => item.href === '/org/agents' || item.href === '/org/mcp');
 
   const navGroups =
     section === 'pipeline'
@@ -89,7 +113,10 @@ export function Sidebar({ section }: SidebarProps) {
           { title: 'AI Tools', items: aiNavigation },
         ]
       : section === 'organization'
-        ? [{ title: 'Organization', items: orgNavigation }]
+        ? [
+            { title: 'Organization', items: orgBaseItems },
+            ...(hasDataSources ? [{ title: 'Advanced', items: orgAdvancedItems }] : []),
+          ]
         : [{ title: 'Platform Admin', items: platformNavigation }];
 
   const canViewSection =

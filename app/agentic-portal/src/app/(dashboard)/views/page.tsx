@@ -158,7 +158,7 @@ function ViewsPageContent() {
       <div className="page-header">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">Views</h1>
-          <p className="text-muted-foreground mt-1">Saved queries ready to use in dashboards</p>
+          <p className="text-muted-foreground mt-1">Saved queries ready to reuse in dashboards</p>
         </div>
         <div className="flex gap-3">
           <Button variant="outline" asChild className="hover:bg-primary/5 hover:text-primary hover:border-primary/30">
@@ -170,7 +170,7 @@ function ViewsPageContent() {
           <Button className="bg-primary hover:bg-primary/90" asChild>
             <Link href="/chat">
               <MessageSquare className="w-4 h-4 mr-2" />
-              Ask AI
+              Ask Assistant
             </Link>
           </Button>
         </div>
@@ -217,6 +217,21 @@ function ViewsPageContent() {
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
         </div>
+      ) : dataSources.length === 0 ? (
+        <div className="ui-empty fade-in-up-delay-2">
+          <div className="flex flex-col items-center justify-center text-center">
+            <div className="w-16 h-16 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
+              <Database className="w-8 h-8 text-primary" />
+            </div>
+            <h3 className="text-lg font-medium mb-2">Connect data first</h3>
+            <p className="text-muted-foreground mb-6 max-w-sm">
+              Once a data source is connected, you can save queries and build dashboards.
+            </p>
+            <Button asChild>
+              <Link href="/datasources">Connect Data Source</Link>
+            </Button>
+          </div>
+        </div>
       ) : filteredViews.length === 0 && views.length === 0 ? (
         <div className="ui-empty fade-in-up-delay-2">
           <div className="flex flex-col items-center justify-center text-center">
@@ -235,7 +250,7 @@ function ViewsPageContent() {
               <Button className="bg-primary hover:bg-primary/90" asChild>
                 <Link href="/chat">
                   <MessageSquare className="w-4 h-4 mr-2" />
-                  Ask AI
+                  Ask Assistant
                 </Link>
               </Button>
             </div>

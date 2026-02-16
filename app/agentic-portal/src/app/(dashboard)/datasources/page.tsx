@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -103,6 +104,7 @@ function DataSourcesPageContent() {
     username: '',
     password: '',
   });
+  const [postgresConnectionString, setPostgresConnectionString] = useState('');
   const [bigqueryForm, setBigqueryForm] = useState<BigQueryForm>({
     name: '',
     projectId: '',
@@ -264,6 +266,34 @@ function DataSourcesPageContent() {
       toast({ title: 'Error', description: 'Failed to create data source', variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  function applyPostgresConnectionString() {
+    if (!postgresConnectionString.trim()) return;
+    try {
+      const parsed = new URL(postgresConnectionString.trim());
+      if (!parsed.protocol.startsWith('postgres')) {
+        throw new Error('Connection string must start with postgres:// or postgresql://');
+      }
+      setPostgresForm((prev) => ({
+        ...prev,
+        host: parsed.hostname || prev.host,
+        port: parsed.port || prev.port,
+        database: parsed.pathname?.replace(/^\//, '') || prev.database,
+        username: decodeURIComponent(parsed.username || prev.username),
+        password: decodeURIComponent(parsed.password || prev.password),
+      }));
+      toast({
+        title: 'Connection string imported',
+        description: 'Review the fields and click Test, then Connect.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Invalid connection string',
+        description: error instanceof Error ? error.message : 'Please check the format and try again.',
+        variant: 'destructive',
+      });
     }
   }
 
@@ -505,7 +535,7 @@ function DataSourcesPageContent() {
       <div className="page-header">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">Data Sources</h1>
-          <p className="text-muted-foreground mt-1">Connect and manage your data sources</p>
+          <p className="text-muted-foreground mt-1">Connect your data once, then build dashboards from saved queries</p>
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
@@ -519,8 +549,11 @@ function DataSourcesPageContent() {
               <>
                 <DialogHeader>
                   <DialogTitle>Add Data Source</DialogTitle>
-                  <DialogDescription>Choose the type of data source to connect</DialogDescription>
+                  <DialogDescription>Choose how you want to connect your data</DialogDescription>
                 </DialogHeader>
+                <p className="text-sm text-muted-foreground">
+                  New here? Start with PostgreSQL for the quickest setup.
+                </p>
                 <div className="grid gap-3 py-4">
                   {DATA_SOURCE_TYPES.map((type) => (
                     <button
@@ -541,9 +574,25 @@ function DataSourcesPageContent() {
               <>
                 <DialogHeader>
                   <DialogTitle>Connect PostgreSQL</DialogTitle>
-                  <DialogDescription>Enter your database connection details</DialogDescription>
+                  <DialogDescription>Paste a connection string or fill in fields manually</DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Connection String (optional)</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="postgresql://user:password@host:5432/database"
+                        value={postgresConnectionString}
+                        onChange={(e) => setPostgresConnectionString(e.target.value)}
+                      />
+                      <Button type="button" variant="outline" onClick={applyPostgresConnectionString}>
+                        Import
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      If you have a full connection URL, paste it here to autofill the form.
+                    </p>
+                  </div>
                   <div className="space-y-2">
                     <Label>Display Name</Label>
                     <Input
@@ -589,12 +638,13 @@ function DataSourcesPageContent() {
                     </div>
                     <div className="space-y-2">
                       <Label>Password</Label>
-                      <Input
-                        type="password"
-                        value={postgresForm.password}
-                        onChange={(e) => setPostgresForm({ ...postgresForm, password: e.target.value })}
-                      />
-                    </div>
+                    <Input
+                      type="password"
+                      value={postgresForm.password}
+                      onChange={(e) => setPostgresForm({ ...postgresForm, password: e.target.value })}
+                      placeholder="Your database password"
+                    />
+                  </div>
                   </div>
                   {testResult && (
                     <Alert variant={testResult.success ? 'default' : 'destructive'} className={testResult.success ? 'border-green-500 bg-green-50' : ''}>
@@ -824,11 +874,18 @@ function DataSourcesPageContent() {
               <Database className="w-8 h-8 text-primary" />
             </div>
             <h3 className="text-lg font-medium mb-2">No data sources</h3>
-            <p className="text-muted-foreground mb-6 max-w-sm">Connect your first data source to start querying your data</p>
-            <Button onClick={() => setIsAddDialogOpen(true)} className="bg-primary hover:bg-primary/90">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Data Source
-            </Button>
+            <p className="text-muted-foreground mb-6 max-w-sm">Connect your first data source to start querying your data.</p>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <Button onClick={() => setIsAddDialogOpen(true)} className="bg-primary hover:bg-primary/90">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Data Source
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/demo">
+                  Try Demo Data
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
       ) : (

@@ -21,8 +21,8 @@ export default function MCPHubPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">MCP Hub</h1>
-          <p className="text-muted-foreground mt-1">Connect Model Context Protocol servers to extend AI capabilities</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Tool Integrations</h1>
+          <p className="text-muted-foreground mt-1">Advanced: connect external tools for AI assistants</p>
         </div>
         <Button className="bg-primary hover:bg-primary/90">
           <Plus className="w-4 h-4 mr-2" />
@@ -34,7 +34,7 @@ export default function MCPHubPage() {
       <div className="relative mb-6">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
-          placeholder="Search MCP servers..."
+          placeholder="Search integration servers..."
           className="pl-10 max-w-md border-border bg-card"
         />
       </div>

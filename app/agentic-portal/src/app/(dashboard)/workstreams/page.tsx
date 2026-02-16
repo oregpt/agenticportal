@@ -17,6 +17,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
   DialogContent,
@@ -55,8 +56,14 @@ const colorOptions = [
 ];
 
 export default function WorkstreamsPage() {
+  const { toast } = useToast();
   const [workstreams, setWorkstreams] = useState<Workstream[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [setupState, setSetupState] = useState({
+    dataSources: 0,
+    views: 0,
+    dashboards: 0,
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -80,8 +87,31 @@ export default function WorkstreamsPage() {
     }
   };
 
+  const fetchSetupState = async () => {
+    try {
+      const [dataSourcesRes, viewsRes, dashboardsRes] = await Promise.all([
+        fetch('/api/datasources'),
+        fetch('/api/views'),
+        fetch('/api/dashboards'),
+      ]);
+      const [dataSourcesData, viewsData, dashboardsData] = await Promise.all([
+        dataSourcesRes.ok ? dataSourcesRes.json() : Promise.resolve({}),
+        viewsRes.ok ? viewsRes.json() : Promise.resolve({}),
+        dashboardsRes.ok ? dashboardsRes.json() : Promise.resolve({}),
+      ]);
+      setSetupState({
+        dataSources: (dataSourcesData?.dataSources || []).length,
+        views: (viewsData?.views || []).length,
+        dashboards: (dashboardsData?.dashboards || []).length,
+      });
+    } catch {
+      // Best effort only.
+    }
+  };
+
   useEffect(() => {
     fetchWorkstreams();
+    fetchSetupState();
   }, []);
 
   const handleCreate = async () => {
@@ -100,9 +130,12 @@ export default function WorkstreamsPage() {
         setWorkstreams(prev => [data.workstream, ...prev]);
         setShowCreateModal(false);
         setNewWorkstream({ name: '', description: '', color: '#8b5cf6' });
+        toast({ title: 'Pipeline created', description: 'You can now add data sources, queries, and dashboards.' });
+      } else {
+        toast({ title: 'Could not create pipeline', variant: 'destructive' });
       }
-    } catch (error) {
-      console.error('Error creating workstream:', error);
+    } catch {
+      toast({ title: 'Could not create pipeline', variant: 'destructive' });
     } finally {
       setIsCreating(false);
     }
@@ -135,16 +168,54 @@ export default function WorkstreamsPage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight mb-1">
-            Workstreams
+            Pipelines
           </h1>
           <p className="text-muted-foreground">
-            Your data pipelines — from sources to outputs
+            Organize your data flow from connection to dashboard
           </p>
         </div>
         <Button className="gap-2" onClick={() => setShowCreateModal(true)}>
           <Plus className="w-4 h-4" />
-          New Workstream
+          New Pipeline
         </Button>
+      </div>
+
+      <div className="mb-6 rounded-xl border border-border bg-card p-5">
+        <h2 className="text-base font-semibold mb-2">Quick setup checklist</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Complete this once, then keep reusing dashboards with your team.
+        </p>
+        <div className="grid gap-2 text-sm">
+          <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+            <span>1. Connect a data source</span>
+            <span className={setupState.dataSources > 0 ? 'text-emerald-600 font-medium' : 'text-muted-foreground'}>
+              {setupState.dataSources > 0 ? 'Done' : 'Pending'}
+            </span>
+          </div>
+          <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+            <span>2. Save your first query</span>
+            <span className={setupState.views > 0 ? 'text-emerald-600 font-medium' : 'text-muted-foreground'}>
+              {setupState.views > 0 ? 'Done' : 'Pending'}
+            </span>
+          </div>
+          <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+            <span>3. Build your dashboard</span>
+            <span className={setupState.dashboards > 0 ? 'text-emerald-600 font-medium' : 'text-muted-foreground'}>
+              {setupState.dashboards > 0 ? 'Done' : 'Pending'}
+            </span>
+          </div>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Link href="/datasources">
+            <Button variant="outline">Connect Data</Button>
+          </Link>
+          <Link href="/views/new?mode=chat">
+            <Button variant="outline">Create Saved Query</Button>
+          </Link>
+          <Link href="/dashboards/new?mode=quick">
+            <Button>Quick Dashboard</Button>
+          </Link>
+        </div>
       </div>
 
       {/* Pipeline Legend */}
@@ -178,7 +249,7 @@ export default function WorkstreamsPage() {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search workstreams..."
+          placeholder="Search pipelines..."
           className="w-full bg-background border border-input rounded-lg pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
@@ -273,18 +344,18 @@ export default function WorkstreamsPage() {
             <Layers className="w-8 h-8 text-muted-foreground" />
           </div>
           <h3 className="text-lg font-medium mb-2">
-            {searchQuery ? 'No workstreams found' : 'No workstreams yet'}
+            {searchQuery ? 'No pipelines found' : 'No pipelines yet'}
           </h3>
           <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
             {searchQuery 
               ? "Try adjusting your search"
-              : "Workstreams help you organize your data pipeline from sources to outputs."
+              : "Pipelines help you organize your data flow from sources to dashboards."
             }
           </p>
           {!searchQuery && (
             <Button className="gap-2" onClick={() => setShowCreateModal(true)}>
               <Plus className="w-4 h-4" />
-              Create Workstream
+              Create Pipeline
             </Button>
           )}
         </div>
@@ -319,10 +390,10 @@ export default function WorkstreamsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Workflow className="w-5 h-5 text-primary" />
-              Create Workstream
+              Create Pipeline
             </DialogTitle>
             <DialogDescription>
-              A workstream groups your data pipeline from sources to outputs
+              A pipeline groups your data from source to dashboard
             </DialogDescription>
           </DialogHeader>
 
@@ -343,7 +414,7 @@ export default function WorkstreamsPage() {
               <textarea
                 value={newWorkstream.description}
                 onChange={(e) => setNewWorkstream(ws => ({ ...ws, description: e.target.value }))}
-                placeholder="What is this workstream for?"
+                placeholder="What is this pipeline for?"
                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent min-h-[80px] resize-none"
               />
             </div>
@@ -374,7 +445,7 @@ export default function WorkstreamsPage() {
                 disabled={!newWorkstream.name || isCreating}
               >
                 {isCreating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Create Workstream
+                Create Pipeline
               </Button>
             </div>
           </div>

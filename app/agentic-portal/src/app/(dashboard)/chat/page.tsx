@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -120,9 +121,19 @@ export default function ChatPage() {
         if (res.ok) {
           const data = await res.json();
           setDataSources(data.dataSources || []);
+        } else {
+          toast({
+            title: 'Could not load data sources',
+            description: 'Please refresh the page or connect one from Data Sources.',
+            variant: 'destructive',
+          });
         }
-      } catch (error) {
-        console.error('Failed to fetch data sources:', error);
+      } catch {
+        toast({
+          title: 'Could not load data sources',
+          description: 'Please check your connection and try again.',
+          variant: 'destructive',
+        });
       } finally {
         setIsLoadingDataSources(false);
       }
@@ -293,6 +304,28 @@ export default function ChatPage() {
       {/* Messages */}
       <ScrollArea ref={scrollRef} className="flex-1 p-6">
         <div className="max-w-3xl mx-auto space-y-6">
+          {!isLoadingDataSources && dataSources.length === 0 && (
+            <Card className="border-dashed border-border bg-muted/30">
+              <CardContent className="pt-6">
+                <h2 className="text-base font-semibold mb-2">Connect data to start chatting</h2>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Add a data source first, or try sample data in the demo experience.
+                </p>
+                <div className="flex gap-3">
+                  <Button asChild>
+                    <Link href="/datasources">
+                      Connect Data Source
+                    </Link>
+                  </Button>
+                  <Button variant="outline" asChild>
+                    <Link href="/demo">
+                      Try Demo Data
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           {messages.map((message) => (
             <div
               key={message.id}

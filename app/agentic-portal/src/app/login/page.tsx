@@ -44,6 +44,15 @@ function LoginPageContent() {
   const [registerPassword, setRegisterPassword] = useState('');
   const [registerName, setRegisterName] = useState('');
   const [registerOrgName, setRegisterOrgName] = useState('');
+  const [registerFieldErrors, setRegisterFieldErrors] = useState<{
+    name?: string;
+    email?: string;
+    password?: string;
+  }>({});
+  const isRegisterFormReady =
+    registerName.trim().length > 0 &&
+    registerEmail.trim().length > 0 &&
+    registerPassword.trim().length >= 8;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,8 +62,8 @@ function LoginPageContent() {
     try {
       await login(loginEmail, loginPassword);
       router.push('/workstreams');
-    } catch (err: any) {
-      setError(err.message || 'Login failed');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setIsLoading(false);
     }
@@ -62,14 +71,35 @@ function LoginPageContent() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const nextFieldErrors: { name?: string; email?: string; password?: string } = {};
+    if (!registerName.trim()) {
+      nextFieldErrors.name = 'Full name is required.';
+    }
+    if (!registerEmail.trim()) {
+      nextFieldErrors.email = 'Email is required.';
+    }
+    if (!registerPassword.trim()) {
+      nextFieldErrors.password = 'Password is required.';
+    } else if (registerPassword.length < 8) {
+      nextFieldErrors.password = 'Use at least 8 characters.';
+    }
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setRegisterFieldErrors(nextFieldErrors);
+      setError('Please complete the required fields.');
+      return;
+    }
+
+    setRegisterFieldErrors({});
     setIsLoading(true);
     setError('');
     
     try {
       await register(registerEmail, registerPassword, registerName, registerOrgName);
       router.push('/workstreams');
-    } catch (err: any) {
-      setError(err.message || 'Registration failed');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
       setIsLoading(false);
     }
@@ -159,7 +189,7 @@ function LoginPageContent() {
                   <Button 
                     type="submit" 
                     className="w-full h-11 bg-primary hover:bg-primary/90"
-                    disabled={isLoading}
+                    disabled={isLoading || !isRegisterFormReady}
                   >
                     {isLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -177,39 +207,54 @@ function LoginPageContent() {
               <TabsContent value="register" className="mt-0">
                 <form onSubmit={handleRegister} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="register-name">Full Name</Label>
+                    <Label htmlFor="register-name">Full Name *</Label>
                     <Input
                       id="register-name"
                       placeholder="John Doe"
                       value={registerName}
-                      onChange={(e) => setRegisterName(e.target.value)}
-                      required
+                      onChange={(e) => {
+                        setRegisterName(e.target.value);
+                        setRegisterFieldErrors((prev) => ({ ...prev, name: undefined }));
+                      }}
                       className="h-11"
                     />
+                    {registerFieldErrors.name && (
+                      <p className="text-xs text-destructive">{registerFieldErrors.name}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="register-email">Email</Label>
+                    <Label htmlFor="register-email">Email *</Label>
                     <Input
                       id="register-email"
                       type="email"
                       placeholder="you@example.com"
                       value={registerEmail}
-                      onChange={(e) => setRegisterEmail(e.target.value)}
-                      required
+                      onChange={(e) => {
+                        setRegisterEmail(e.target.value);
+                        setRegisterFieldErrors((prev) => ({ ...prev, email: undefined }));
+                      }}
                       className="h-11"
                     />
+                    {registerFieldErrors.email && (
+                      <p className="text-xs text-destructive">{registerFieldErrors.email}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="register-password">Password</Label>
+                    <Label htmlFor="register-password">Password *</Label>
                     <Input
                       id="register-password"
                       type="password"
-                      placeholder="Create a strong password"
+                      placeholder="Use at least 8 characters"
                       value={registerPassword}
-                      onChange={(e) => setRegisterPassword(e.target.value)}
-                      required
+                      onChange={(e) => {
+                        setRegisterPassword(e.target.value);
+                        setRegisterFieldErrors((prev) => ({ ...prev, password: undefined }));
+                      }}
                       className="h-11"
                     />
+                    {registerFieldErrors.password && (
+                      <p className="text-xs text-destructive">{registerFieldErrors.password}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="register-org">Organization Name</Label>

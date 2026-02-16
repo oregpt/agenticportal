@@ -173,8 +173,8 @@ export default function OrgAgentsPage() {
     <div className="p-8 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">AI Agents</h1>
-        <p className="text-muted-foreground mt-1">Configure AI agents for your organization</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">AI Assistants</h1>
+        <p className="text-muted-foreground mt-1">Advanced: configure assistants for your organization</p>
       </div>
 
       {/* Actions Bar */}
@@ -497,7 +497,7 @@ export default function OrgAgentsPage() {
             <TabsContent value="soul" className="space-y-4 mt-4">
               <div className="bg-purple-50 dark:bg-purple-950/30 rounded-lg p-4 mb-4">
                 <p className="text-sm text-purple-700 dark:text-purple-300">
-                  Define the agent's personality, tone, and behavioral guidelines.
+                  Define the agent&apos;s personality, tone, and behavioral guidelines.
                 </p>
               </div>
 

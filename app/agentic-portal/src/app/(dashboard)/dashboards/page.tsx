@@ -30,6 +30,7 @@ function DashboardsPageContent() {
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [workstreams, setWorkstreams] = useState<WorkstreamOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [setupCounts, setSetupCounts] = useState({ dataSources: 0, views: 0 });
 
   const selectedWorkstreamId = searchParams.get('workstreamId') || undefined;
   const selectedWidgetStates = (searchParams.get('widgetStates') || '')
@@ -50,6 +51,28 @@ function DashboardsPageContent() {
     };
 
     fetchWorkstreams();
+  }, []);
+
+  useEffect(() => {
+    const fetchSetupCounts = async () => {
+      try {
+        const [dataSourcesRes, viewsRes] = await Promise.all([
+          fetch('/api/datasources'),
+          fetch('/api/views'),
+        ]);
+        const [dataSourcesData, viewsData] = await Promise.all([
+          dataSourcesRes.ok ? dataSourcesRes.json() : Promise.resolve({}),
+          viewsRes.ok ? viewsRes.json() : Promise.resolve({}),
+        ]);
+        setSetupCounts({
+          dataSources: (dataSourcesData?.dataSources || []).length,
+          views: (viewsData?.views || []).length,
+        });
+      } catch {
+        // Best effort only.
+      }
+    };
+    fetchSetupCounts();
   }, []);
 
   useEffect(() => {
@@ -122,9 +145,15 @@ function DashboardsPageContent() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">Dashboards</h1>
-          <p className="text-muted-foreground mt-1">Create and manage your data dashboards</p>
+          <p className="text-muted-foreground mt-1">Create and reuse dashboards for your team</p>
         </div>
         <div className="flex items-center gap-3">
+          <Button asChild>
+            <Link href="/dashboards/new?mode=quick">
+              <Plus className="w-4 h-4 mr-2" />
+              Quick Dashboard
+            </Link>
+          </Button>
           <Button variant="outline" asChild>
             <Link href="/relationship-explorer">
               <Network className="w-4 h-4 mr-2" />
@@ -201,13 +230,32 @@ function DashboardsPageContent() {
               <LayoutDashboard className="w-8 h-8 text-primary" />
             </div>
             <h3 className="text-lg font-medium mb-2">No dashboards found</h3>
-            <p className="text-muted-foreground mb-6 max-w-sm">Try changing filters or create a new dashboard.</p>
-            <Button className="bg-primary hover:bg-primary/90" asChild>
-              <Link href="/dashboards/new">
-                <Plus className="w-4 h-4 mr-2" />
-                Create Dashboard
-              </Link>
-            </Button>
+            {setupCounts.dataSources === 0 ? (
+              <p className="text-muted-foreground mb-6 max-w-sm">
+                Connect a data source first, then you can create dashboards in one click.
+              </p>
+            ) : setupCounts.views === 0 ? (
+              <p className="text-muted-foreground mb-6 max-w-sm">
+                Create one saved query first, then use Quick Dashboard to build and reuse dashboards fast.
+              </p>
+            ) : (
+              <p className="text-muted-foreground mb-6 max-w-sm">
+                Use Quick Dashboard to create a dashboard from your existing saved queries.
+              </p>
+            )}
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <Button className="bg-primary hover:bg-primary/90" asChild>
+                <Link href="/dashboards/new?mode=quick">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Quick Dashboard
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href={setupCounts.views > 0 ? '/views' : '/views/new?mode=chat'}>
+                  {setupCounts.views > 0 ? 'Browse Saved Queries' : 'Create Saved Query'}
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
       )}
