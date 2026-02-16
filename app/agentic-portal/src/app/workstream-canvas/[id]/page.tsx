@@ -1266,7 +1266,7 @@ export default function WorkstreamCanvasPage() {
   const [selectedNode, setSelectedNode] = useState<PipelineNode | null>(null);
   const [activeEntityUrl, setActiveEntityUrl] = useState<string | null>(null);
   const [canvasCollapsed, setCanvasCollapsed] = useState(false);
-  const [canvasWidth, setCanvasWidth] = useState(320);
+  const [canvasWidth, setCanvasWidth] = useState(260);
   const [sectionOpen, setSectionOpen] = useState<Record<NodeType, boolean>>({
     datasource: false,
     view: false,
@@ -1322,6 +1322,7 @@ export default function WorkstreamCanvasPage() {
 
   const hasNodes = nodes.length > 0;
   const areAllSectionsOpen = sectionOrder.every((type) => sectionOpen[type]);
+  const effectiveCanvasWidth = areAllSectionsOpen ? canvasWidth : Math.min(canvasWidth, 210);
 
   const openNodeInPane = (node: PipelineNode) => {
     setSelectedNode(node);
@@ -1344,19 +1345,19 @@ export default function WorkstreamCanvasPage() {
 
       <div className="flex h-full">
         {!canvasCollapsed ? (
-          <div className="border-r border-border bg-white/60 backdrop-blur-sm" style={{ width: canvasWidth }}>
+          <div className="border-r border-border bg-white/60 backdrop-blur-sm" style={{ width: effectiveCanvasWidth }}>
             <div className="flex items-center justify-between px-3 py-2 border-b border-border">
               <p className="text-xs uppercase tracking-wider text-gray-500">Canvas</p>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setCanvasWidth((w) => Math.max(320, w - 40))}
+                  onClick={() => setCanvasWidth((w) => Math.max(210, w - 40))}
                   className="p-1.5 rounded-md hover:bg-gray-100"
                   aria-label="Narrow canvas"
                 >
                   <Minus className="w-3.5 h-3.5 text-gray-500" />
                 </button>
                 <button
-                  onClick={() => setCanvasWidth((w) => Math.min(720, w + 40))}
+                  onClick={() => setCanvasWidth((w) => Math.min(620, w + 40))}
                   className="p-1.5 rounded-md hover:bg-gray-100"
                   aria-label="Widen canvas"
                 >
