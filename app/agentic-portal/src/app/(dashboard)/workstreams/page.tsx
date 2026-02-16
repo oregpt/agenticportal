@@ -130,12 +130,12 @@ export default function WorkstreamsPage() {
         setWorkstreams(prev => [data.workstream, ...prev]);
         setShowCreateModal(false);
         setNewWorkstream({ name: '', description: '', color: '#8b5cf6' });
-        toast({ title: 'Pipeline created', description: 'You can now add data sources, queries, and dashboards.' });
+        toast({ title: 'Workstream created', description: 'You can now add data sources, views, and dashboards.' });
       } else {
-        toast({ title: 'Could not create pipeline', variant: 'destructive' });
+        toast({ title: 'Could not create workstream', variant: 'destructive' });
       }
     } catch {
-      toast({ title: 'Could not create pipeline', variant: 'destructive' });
+      toast({ title: 'Could not create workstream', variant: 'destructive' });
     } finally {
       setIsCreating(false);
     }
@@ -249,7 +249,7 @@ export default function WorkstreamsPage() {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search pipelines..."
+          placeholder="Search workstreams..."
           className="w-full bg-background border border-input rounded-lg pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
@@ -294,7 +294,7 @@ export default function WorkstreamsPage() {
                   </div>
                 </div>
 
-                {/* Visual Pipeline Mini-view */}
+                {/* Visual flow mini-view */}
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-sm">
                     <Database className="w-4 h-4 text-blue-500" />
@@ -344,18 +344,18 @@ export default function WorkstreamsPage() {
             <Layers className="w-8 h-8 text-muted-foreground" />
           </div>
           <h3 className="text-lg font-medium mb-2">
-            {searchQuery ? 'No pipelines found' : 'No pipelines yet'}
+            {searchQuery ? 'No workstreams found' : 'No workstreams yet'}
           </h3>
           <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
             {searchQuery 
               ? "Try adjusting your search"
-              : "Pipelines help you organize your data flow from sources to dashboards."
+              : "Workstreams help you organize your data flow from sources to dashboards."
             }
           </p>
           {!searchQuery && (
             <Button className="gap-2" onClick={() => setShowCreateModal(true)}>
               <Plus className="w-4 h-4" />
-              Create Pipeline
+              Create Workstream
             </Button>
           )}
         </div>
@@ -390,10 +390,10 @@ export default function WorkstreamsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Workflow className="w-5 h-5 text-primary" />
-              Create Pipeline
+              Create Workstream
             </DialogTitle>
             <DialogDescription>
-              A pipeline groups your data from source to dashboard
+              A workstream groups your data from source to dashboard
             </DialogDescription>
           </DialogHeader>
 
@@ -414,7 +414,7 @@ export default function WorkstreamsPage() {
               <textarea
                 value={newWorkstream.description}
                 onChange={(e) => setNewWorkstream(ws => ({ ...ws, description: e.target.value }))}
-                placeholder="What is this pipeline for?"
+                placeholder="What is this workstream for?"
                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent min-h-[80px] resize-none"
               />
             </div>
@@ -445,7 +445,7 @@ export default function WorkstreamsPage() {
                 disabled={!newWorkstream.name || isCreating}
               >
                 {isCreating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Create Pipeline
+                Create Workstream
               </Button>
             </div>
           </div>
