@@ -51,14 +51,8 @@ function LoginPageContent() {
     setError('');
     
     try {
-      const user = await login(loginEmail, loginPassword);
-      if (user.isPlatformAdmin) {
-        router.push('/admin');
-      } else if (user.role === 'org_admin') {
-        router.push('/org');
-      } else {
-        router.push('/chat');
-      }
+      await login(loginEmail, loginPassword);
+      router.push('/workstreams');
     } catch (err: any) {
       setError(err.message || 'Login failed');
     } finally {
@@ -72,12 +66,8 @@ function LoginPageContent() {
     setError('');
     
     try {
-      const user = await register(registerEmail, registerPassword, registerName, registerOrgName);
-      if (user.organizationId) {
-        router.push('/org');
-      } else {
-        router.push('/chat');
-      }
+      await register(registerEmail, registerPassword, registerName, registerOrgName);
+      router.push('/workstreams');
     } catch (err: any) {
       setError(err.message || 'Registration failed');
     } finally {

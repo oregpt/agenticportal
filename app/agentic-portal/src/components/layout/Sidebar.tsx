@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -16,22 +15,12 @@ import {
   LogOut,
   Shield,
   Plug,
-  ChevronDown,
-  Check,
-  Plus,
   Hexagon,
   Workflow,
   FileOutput,
   Sparkles,
   Network,
 } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 export type NavSection = 'pipeline' | 'organization' | 'platform';
 
@@ -70,12 +59,6 @@ const platformNavigation = [
   { name: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 
-const mockOrganizations = [
-  { id: '1', name: 'ClarkAI', slug: 'clarkai' },
-  { id: '2', name: 'Agenticledger', slug: 'agenticledger' },
-  { id: '3', name: 'Demo Org', slug: 'demo' },
-];
-
 const sectionMeta: Record<NavSection, { label: string; description: string }> = {
   pipeline: {
     label: 'Pipeline',
@@ -98,7 +81,6 @@ interface SidebarProps {
 export function Sidebar({ section }: SidebarProps) {
   const pathname = usePathname();
   const { user, logout, canAccessPlatformAdmin, canAccessOrgAdmin } = useAuth();
-  const [currentOrg, setCurrentOrg] = useState(mockOrganizations[0]);
 
   const navGroups =
     section === 'pipeline'
@@ -135,43 +117,18 @@ export function Sidebar({ section }: SidebarProps) {
         </Link>
       </div>
 
-      {user && (
+      {user?.organizationName && (
         <div className="px-3 py-3 border-b border-sidebar-border/80">
-          <DropdownMenu>
-            <DropdownMenuTrigger className="w-full">
-              <div className="flex items-center justify-between px-3 py-2.5 rounded-xl border border-sidebar-border hover:bg-sidebar-accent transition-colors">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center">
-                    <Building2 className="w-3.5 h-3.5 text-primary" />
-                  </div>
-                  <span className="text-sm font-medium text-sidebar-foreground">{currentOrg.name}</span>
-                </div>
-                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+          <div className="flex items-center justify-between px-3 py-2.5 rounded-xl border border-sidebar-border bg-white/60">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center">
+                <Building2 className="w-3.5 h-3.5 text-primary" />
               </div>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56">
-              {mockOrganizations.map((org) => (
-                <DropdownMenuItem
-                  key={org.id}
-                  onClick={() => setCurrentOrg(org)}
-                  className="flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-muted-foreground" />
-                    <span>{org.name}</span>
-                  </div>
-                  {currentOrg.id === org.id && (
-                    <Check className="w-4 h-4 text-primary" />
-                  )}
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-primary">
-                <Plus className="w-4 h-4 mr-2" />
-                Create Organization
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <span className="text-sm font-medium text-sidebar-foreground truncate">
+                {user.organizationName}
+              </span>
+            </div>
+          </div>
         </div>
       )}
 

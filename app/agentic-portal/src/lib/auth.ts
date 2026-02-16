@@ -19,6 +19,12 @@ export interface AuthUser {
   isPlatformAdmin: boolean;
 }
 
+export interface OrganizationOption {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 export interface AuthSession {
   userId: string;
   organizationId: string | null;
@@ -63,12 +69,15 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   
   if (!user) return null;
   
+  // Session org context overrides the user default org.
+  const activeOrganizationId = session.organizationId || user.organizationId;
+
   let organizationName: string | undefined;
-  if (user.organizationId) {
+  if (activeOrganizationId) {
     const [org] = await db
       .select({ name: schema.organizations.name })
       .from(schema.organizations)
-      .where(eq(schema.organizations.id, user.organizationId))
+      .where(eq(schema.organizations.id, activeOrganizationId))
       .limit(1);
     organizationName = org?.name;
   }
@@ -78,7 +87,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     email: user.email,
     name: user.name,
     avatarUrl: user.avatarUrl,
-    organizationId: user.organizationId,
+    organizationId: activeOrganizationId,
     organizationName,
     role: user.role as UserRole,
     isPlatformAdmin: user.isPlatformAdmin === 1,
@@ -95,6 +104,33 @@ export function createSessionToken(userId: string, organizationId: string | null
     expiresAt: new Date(Date.now() + SESSION_EXPIRY_DAYS * 24 * 60 * 60 * 1000),
   };
   return Buffer.from(JSON.stringify(session)).toString('base64');
+}
+
+export async function getAccessibleOrganizations(user: AuthUser): Promise<OrganizationOption[]> {
+  if (user.isPlatformAdmin) {
+    const orgs = await db
+      .select({
+        id: schema.organizations.id,
+        name: schema.organizations.name,
+        slug: schema.organizations.slug,
+      })
+      .from(schema.organizations);
+    return orgs;
+  }
+
+  if (!user.organizationId) return [];
+
+  const [org] = await db
+    .select({
+      id: schema.organizations.id,
+      name: schema.organizations.name,
+      slug: schema.organizations.slug,
+    })
+    .from(schema.organizations)
+    .where(eq(schema.organizations.id, user.organizationId))
+    .limit(1);
+
+  return org ? [org] : [];
 }
 
 /**
