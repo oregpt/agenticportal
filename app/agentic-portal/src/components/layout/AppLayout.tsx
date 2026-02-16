@@ -16,6 +16,7 @@ import {
 
 interface AppLayoutProps {
   children: ReactNode;
+  initialEmbedded?: boolean;
 }
 
 interface OrganizationOption {
@@ -24,7 +25,7 @@ interface OrganizationOption {
   slug: string;
 }
 
-export function AppLayout({ children }: AppLayoutProps) {
+export function AppLayout({ children, initialEmbedded = false }: AppLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout, canAccessOrgAdmin, canAccessPlatformAdmin } = useAuth();
@@ -32,7 +33,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [organizations, setOrganizations] = useState<OrganizationOption[]>([]);
   const [activeOrganizationId, setActiveOrganizationId] = useState<string | null>(null);
   const [isSwitchingOrg, setIsSwitchingOrg] = useState(false);
-  const [isEmbedded, setIsEmbedded] = useState(false);
+  const [isEmbedded, setIsEmbedded] = useState(initialEmbedded);
 
   useEffect(() => {
     let isMounted = true;

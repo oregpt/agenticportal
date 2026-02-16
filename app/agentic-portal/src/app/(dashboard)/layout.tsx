@@ -1,9 +1,12 @@
 import { AppLayout } from '@/components/layout/AppLayout';
+import { headers } from 'next/headers';
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <AppLayout>{children}</AppLayout>;
+  const requestHeaders = await headers();
+  const initialEmbedded = requestHeaders.get('sec-fetch-dest') === 'iframe';
+  return <AppLayout initialEmbedded={initialEmbedded}>{children}</AppLayout>;
 }

@@ -29,7 +29,7 @@ export function getSectionFromPath(pathname: string): NavSection {
 }
 
 const pipelineNavigation = [
-  { name: 'Pipelines', href: '/workstreams', icon: Workflow },
+  { name: 'Overview', href: '/workstreams', icon: Workflow },
   { name: 'Data Sources', href: '/datasources', icon: Database },
   { name: 'Views', href: '/views', icon: Table2 },
   { name: 'Dashboards', href: '/dashboards', icon: LayoutDashboard },
@@ -59,7 +59,7 @@ const platformNavigation = [
 
 const sectionMeta: Record<NavSection, { label: string; description: string }> = {
   pipeline: {
-    label: 'Pipeline',
+    label: 'Overview',
     description: 'Connect data, save queries, and build dashboards',
   },
   organization: {
@@ -106,7 +106,7 @@ export function Sidebar({ section }: SidebarProps) {
   const navGroups =
     section === 'pipeline'
       ? [
-          { title: 'Pipeline', items: pipelineNavigation },
+          { title: 'Overview', items: pipelineNavigation },
           { title: 'AI Tools', items: aiNavigation },
         ]
       : section === 'organization'
@@ -125,7 +125,7 @@ export function Sidebar({ section }: SidebarProps) {
 
   const effectiveGroups = canViewSection
     ? navGroups
-    : [{ title: 'Pipeline', items: pipelineNavigation }];
+    : [{ title: 'Overview', items: pipelineNavigation }];
   const meta = sectionMeta[section];
 
   return (

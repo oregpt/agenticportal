@@ -168,7 +168,7 @@ export default function WorkstreamsPage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight mb-1">
-            Pipelines
+            Overview
           </h1>
           <p className="text-muted-foreground">
             Organize your data flow from connection to dashboard
