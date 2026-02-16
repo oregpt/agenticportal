@@ -7,8 +7,8 @@ Design goals:
 - Stops on first failure by default
 
 Usage (PowerShell):
-  # Create live-tests/.env first (ignored by git)
-  python live-tests\\run_volume_test.py --iterations 500 --delay-seconds 60
+  # Create runtest/.env first (ignored by git)
+  python runtest\\run_volume_test.py --iterations 500 --delay-seconds 60
 """
 
 from __future__ import annotations
@@ -167,4 +167,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

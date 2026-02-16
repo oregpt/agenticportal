@@ -2,8 +2,8 @@
 Smoke Test (repeatable): log in, then visit a list of routes and assert the app renders.
 
 Customize:
-- live-tests/.env (ignored) for BASE_URL/TEST_EMAIL/TEST_PASSWORD and login selectors
-- live-tests/paths.txt for the routes to cover
+- runtest/.env (ignored) for BASE_URL/TEST_EMAIL/TEST_PASSWORD and login selectors
+- runtest/paths.txt for the routes to cover
 """
 
 from __future__ import annotations
