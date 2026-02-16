@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -159,7 +159,7 @@ function ViewsPageContent() {
       <div className="page-header">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">Views</h1>
-          <p className="text-muted-foreground mt-1">Saved queries ready to reuse in dashboards</p>
+          <p className="text-muted-foreground mt-1">Views ready to reuse in dashboards</p>
         </div>
         <div className="flex gap-3">
           <Button variant="outline" asChild className="hover:bg-primary/5 hover:text-primary hover:border-primary/30">
@@ -223,7 +223,7 @@ function ViewsPageContent() {
             </div>
             <h3 className="text-lg font-medium mb-2">Connect data first</h3>
             <p className="text-muted-foreground mb-6 max-w-sm">
-              Once a data source is connected, you can save queries and build dashboards.
+              Once a data source is connected, you can save views and build dashboards.
             </p>
             <Button asChild>
               <Link href="/datasources">Connect Data Source</Link>
@@ -302,3 +302,4 @@ export default function ViewsPage() {
     </Suspense>
   );
 }
+

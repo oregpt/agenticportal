@@ -16,7 +16,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     const { id } = await context.params;
     const body = await request.json();
-    const { position, config, title, type } = body;
+    const { position, config, title, type, viewId } = body;
 
     const [widget] = await db
       .select({
@@ -46,6 +46,23 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
+    if (viewId !== undefined) {
+      const [view] = await db
+        .select()
+        .from(schema.views)
+        .where(
+          and(
+            eq(schema.views.id, viewId),
+            eq(schema.views.organizationId, user.organizationId)
+          )
+        )
+        .limit(1);
+
+      if (!view) {
+        return NextResponse.json({ error: 'View not found' }, { status: 404 });
+      }
+    }
+
     const [updated] = await db
       .update(schema.widgets)
       .set({
@@ -53,6 +70,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         ...(config !== undefined ? { config } : {}),
         ...(title !== undefined ? { title } : {}),
         ...(type !== undefined ? { type } : {}),
+        ...(viewId !== undefined ? { viewId } : {}),
         updatedAt: new Date(),
       })
       .where(eq(schema.widgets.id, id))

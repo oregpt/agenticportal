@@ -1,6 +1,6 @@
-'use client';
+﻿'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, use, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,9 +9,6 @@ import {
   Play, 
   Copy, 
   Trash2, 
-  Edit2, 
-  Table2, 
-  BarChart3,
   Code,
   Loader2,
   AlertCircle,
@@ -50,6 +47,7 @@ export default function ViewDetailPage({ params }: { params: Promise<{ id: strin
   const [isRunning, setIsRunning] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [results, setResults] = useState<QueryResult | null>(null);
+  const [isPreviewResult, setIsPreviewResult] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -62,7 +60,7 @@ export default function ViewDetailPage({ params }: { params: Promise<{ id: strin
         } else {
           setError('View not found');
         }
-      } catch (err) {
+      } catch {
         setError('Failed to load view');
       } finally {
         setIsLoading(false);
@@ -72,40 +70,53 @@ export default function ViewDetailPage({ params }: { params: Promise<{ id: strin
     fetchView();
   }, [id]);
 
-  const handleRunQuery = async () => {
+  const runQueryWithLimit = useCallback(async (limit: number, previewOnly: boolean) => {
     if (!view) return;
-    
-    setIsRunning(true);
+
+    if (!previewOnly) {
+      setIsRunning(true);
+    }
     setError(null);
-    
+
     try {
-      // Get organizationId from the view's data source
       const dsResponse = await fetch(`/api/datasources/${view.dataSourceId}`);
       let orgId = '';
       if (dsResponse.ok) {
         const dsData = await dsResponse.json();
         orgId = dsData.dataSource?.organizationId || '';
       }
-      
+
       const response = await fetch(`/api/datasources/${view.dataSourceId}/query?organizationId=${orgId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sql: view.sql }),
+        body: JSON.stringify({ sql: view.sql, limit }),
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setResults(data.result);
+        setIsPreviewResult(previewOnly);
       } else {
         const data = await response.json();
         setError(data.error || 'Query failed');
       }
-    } catch (err) {
+    } catch {
       setError('Failed to execute query');
     } finally {
-      setIsRunning(false);
+      if (!previewOnly) {
+        setIsRunning(false);
+      }
     }
+  }, [view]);
+
+  const handleRunQuery = async () => {
+    await runQueryWithLimit(100, false);
   };
+
+  useEffect(() => {
+    if (!view) return;
+    void runQueryWithLimit(5, true);
+  }, [view, runQueryWithLimit]);
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this view?')) return;
@@ -119,7 +130,7 @@ export default function ViewDetailPage({ params }: { params: Promise<{ id: strin
       } else {
         toast({ title: 'Failed to delete view', variant: 'destructive' });
       }
-    } catch (err) {
+    } catch {
       toast({ title: 'Failed to delete view', variant: 'destructive' });
     } finally {
       setIsDeleting(false);
@@ -186,7 +197,7 @@ export default function ViewDetailPage({ params }: { params: Promise<{ id: strin
             ) : (
               <Play className="w-4 h-4 mr-2" />
             )}
-            Run Query
+            Run Full Query
           </Button>
         </div>
       </div>
@@ -233,7 +244,7 @@ export default function ViewDetailPage({ params }: { params: Promise<{ id: strin
         <Card>
           <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
             <span className="text-sm text-muted-foreground">
-              {results.rowCount} rows • {results.executionTimeMs}ms
+              {results.rowCount} rows - {results.executionTimeMs}ms
             </span>
           </div>
           <div className="overflow-x-auto max-h-[500px]">
@@ -248,7 +259,7 @@ export default function ViewDetailPage({ params }: { params: Promise<{ id: strin
                 </tr>
               </thead>
               <tbody>
-                {results.rows.slice(0, 100).map((row, i) => (
+                {results.rows.map((row, i) => (
                   <tr key={i} className="border-b">
                     {results.columns.map((col) => (
                       <td key={col.name} className="px-4 py-2">
@@ -260,9 +271,9 @@ export default function ViewDetailPage({ params }: { params: Promise<{ id: strin
               </tbody>
             </table>
           </div>
-          {results.rowCount > 100 && (
+          {isPreviewResult && results.rowCount > results.rows.length && (
             <div className="text-center py-3 text-sm text-muted-foreground border-t">
-              Showing 100 of {results.rowCount} rows
+              Showing {results.rows.length} sample rows of {results.rowCount}
             </div>
           )}
         </Card>
@@ -270,3 +281,6 @@ export default function ViewDetailPage({ params }: { params: Promise<{ id: strin
     </div>
   );
 }
+
+
+

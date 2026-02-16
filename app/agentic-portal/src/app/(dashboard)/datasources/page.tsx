@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -31,9 +31,9 @@ interface TestResult {
 }
 
 const DATA_SOURCE_TYPES = [
-  { id: 'postgres', name: 'PostgreSQL', icon: '🐘', description: 'Connect to PostgreSQL databases' },
-  { id: 'bigquery', name: 'BigQuery', icon: '📊', description: 'Connect to Google BigQuery' },
-  { id: 'google_sheets_live', name: 'Google Sheets', icon: '📗', description: 'Query Google Sheets with SQL (via BigQuery)' },
+  { id: 'postgres', name: 'PostgreSQL', icon: 'ðŸ˜', description: 'Connect to PostgreSQL databases' },
+  { id: 'bigquery', name: 'BigQuery', icon: 'ðŸ“Š', description: 'Connect to Google BigQuery' },
+  { id: 'google_sheets_live', name: 'Google Sheets', icon: 'ðŸ“—', description: 'Query Google Sheets with SQL (via BigQuery)' },
 ];
 
 interface DataSource {
@@ -520,7 +520,7 @@ function DataSourcesPageContent() {
 
   function getTypeIcon(type: string) {
     const typeConfig = DATA_SOURCE_TYPES.find((t) => t.id === type);
-    return typeConfig?.icon || '📁';
+    return typeConfig?.icon || 'ðŸ“';
   }
 
   const filteredDataSources =
@@ -535,7 +535,7 @@ function DataSourcesPageContent() {
       <div className="page-header">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">Data Sources</h1>
-          <p className="text-muted-foreground mt-1">Connect your data once, then build dashboards from saved queries</p>
+          <p className="text-muted-foreground mt-1">Connect your data once, then build dashboards from Views</p>
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
@@ -1019,6 +1019,7 @@ export default function DataSourcesPage() {
     </Suspense>
   );
 }
+
 
 
 

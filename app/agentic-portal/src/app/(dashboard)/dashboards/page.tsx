@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -287,11 +287,11 @@ function DashboardsPageContent() {
               </p>
             ) : setupCounts.views === 0 ? (
               <p className="text-muted-foreground mb-6 max-w-sm">
-                Create one saved query first, then use Quick Dashboard to build and reuse dashboards fast.
+                Create one view first, then use Quick Dashboard to build and reuse dashboards fast.
               </p>
             ) : (
               <p className="text-muted-foreground mb-6 max-w-sm">
-                Use Quick Dashboard to create a dashboard from your existing saved queries.
+                Use Quick Dashboard to create a dashboard from your existing views.
               </p>
             )}
             <div className="flex flex-wrap items-center justify-center gap-3">
@@ -303,7 +303,7 @@ function DashboardsPageContent() {
               </Button>
               <Button variant="outline" asChild>
                 <Link href={setupCounts.views > 0 ? '/views' : '/views/new?mode=chat'}>
-                  {setupCounts.views > 0 ? 'Browse Saved Queries' : 'Create Saved Query'}
+                  {setupCounts.views > 0 ? 'Browse Views' : 'Create View'}
                 </Link>
               </Button>
             </div>
@@ -321,3 +321,5 @@ export default function DashboardsPage() {
     </Suspense>
   );
 }
+
+

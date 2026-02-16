@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -258,12 +258,12 @@ function NewDashboardPageContent() {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Saved Queries (optional source context)</Label>
+                  <Label>Views (optional source context)</Label>
                   {availableViews.length === 0 ? (
                     <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-                      No saved queries for this data source yet. Create one in{' '}
+                      No views for this data source yet. Create one in{' '}
                       <Link href="/views/new?mode=chat" className="text-primary underline underline-offset-4">
-                        Saved Queries
+                        Views
                       </Link>
                       .
                     </div>
@@ -309,7 +309,7 @@ function NewDashboardPageContent() {
             ) : (
               <>
                 <li>- An empty dashboard will be created.</li>
-                <li>- Add widgets later from any saved query.</li>
+                <li>- Add widgets later from any View.</li>
               </>
             )}
           </ul>
@@ -341,3 +341,5 @@ export default function NewDashboardPage() {
     </Suspense>
   );
 }
+
+

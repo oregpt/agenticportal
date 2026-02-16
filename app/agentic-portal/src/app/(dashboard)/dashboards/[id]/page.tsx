@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'next/navigation';
@@ -29,6 +29,7 @@ import {
   Loader2,
   Trash2,
   Database,
+  Edit2,
 } from 'lucide-react';
 import Link from 'next/link';
 import GridLayout, { type Layout } from 'react-grid-layout';
@@ -64,6 +65,8 @@ interface DashboardWidget {
     chartType?: 'bar' | 'line' | 'area' | 'pie';
     xField?: string;
     yFields?: { field: string; label: string; color?: string }[];
+    metricField?: string;
+    metricAggregation?: 'count' | 'sum' | 'avg' | 'min' | 'max';
   };
 }
 
@@ -78,6 +81,7 @@ interface DashboardData {
 interface ViewOption {
   id: string;
   name: string;
+  columns?: { name: string; type?: string }[];
 }
 
 const WIDGET_TYPES = [
@@ -110,6 +114,66 @@ function inferWidgetFields(
         })) as { field: string; label: string; color?: string }[]);
 
   return { xField, yFields };
+}
+
+function isLikelyNumericType(type?: string): boolean {
+  if (!type) return false;
+  const normalized = type.toLowerCase();
+  return (
+    normalized.includes('int') ||
+    normalized.includes('float') ||
+    normalized.includes('double') ||
+    normalized.includes('decimal') ||
+    normalized.includes('numeric') ||
+    normalized.includes('number') ||
+    normalized.includes('real')
+  );
+}
+
+function getNumericColumns(columns: { name: string; type?: string }[]): { name: string; type?: string }[] {
+  return columns.filter((column) => isLikelyNumericType(column.type));
+}
+
+function computeMetricValue(
+  widget: DashboardWidget,
+  rows: Array<Record<string, unknown>>
+): { value: string | number; description: string } {
+  const aggregation = widget.config.metricAggregation || 'count';
+  const field = widget.config.metricField;
+
+  if (aggregation === 'count') {
+    if (!field) {
+      return { value: rows.length, description: 'Row count' };
+    }
+    const nonNullCount = rows.filter((row) => row[field] !== null && row[field] !== undefined).length;
+    return { value: nonNullCount, description: `Count of ${field}` };
+  }
+
+  if (!field) {
+    return { value: 'N/A', description: 'Choose a numeric field in Edit widget' };
+  }
+
+  const numbers = rows
+    .map((row) => row[field])
+    .map((value) => (typeof value === 'number' ? value : Number(value)))
+    .filter((value) => Number.isFinite(value));
+
+  if (numbers.length === 0) {
+    return { value: 'N/A', description: `No numeric values found for ${field}` };
+  }
+
+  if (aggregation === 'sum') {
+    const total = numbers.reduce((sum, value) => sum + value, 0);
+    return { value: total.toLocaleString(), description: `Sum of ${field}` };
+  }
+  if (aggregation === 'avg') {
+    const avg = numbers.reduce((sum, value) => sum + value, 0) / numbers.length;
+    return { value: avg.toFixed(2), description: `Average of ${field}` };
+  }
+  if (aggregation === 'min') {
+    return { value: Math.min(...numbers), description: `Minimum ${field}` };
+  }
+  return { value: Math.max(...numbers), description: `Maximum ${field}` };
 }
 
 function buildChartData(
@@ -171,10 +235,24 @@ export default function DashboardDetailPage() {
   const [newWidgetTitle, setNewWidgetTitle] = useState('');
   const [newWidgetType, setNewWidgetType] = useState('bar');
   const [newWidgetViewId, setNewWidgetViewId] = useState('');
+  const [newChartXField, setNewChartXField] = useState('');
+  const [newChartYField, setNewChartYField] = useState('');
+  const [newMetricAggregation, setNewMetricAggregation] = useState<'count' | 'sum' | 'avg' | 'min' | 'max'>('count');
+  const [newMetricField, setNewMetricField] = useState('');
   const [isAddingWidget, setIsAddingWidget] = useState(false);
   const [widgetRows, setWidgetRows] = useState<Record<string, Array<Record<string, unknown>>>>({});
   const [views, setViews] = useState<ViewOption[]>([]);
   const [availableSourceViews, setAvailableSourceViews] = useState<ViewOption[]>([]);
+  const [showEditWidget, setShowEditWidget] = useState(false);
+  const [editingWidgetId, setEditingWidgetId] = useState<string | null>(null);
+  const [editWidgetTitle, setEditWidgetTitle] = useState('');
+  const [editWidgetType, setEditWidgetType] = useState('bar');
+  const [editWidgetViewId, setEditWidgetViewId] = useState('');
+  const [editChartXField, setEditChartXField] = useState('');
+  const [editChartYField, setEditChartYField] = useState('');
+  const [editMetricAggregation, setEditMetricAggregation] = useState<'count' | 'sum' | 'avg' | 'min' | 'max'>('count');
+  const [editMetricField, setEditMetricField] = useState('');
+  const [isSavingWidgetEdit, setIsSavingWidgetEdit] = useState(false);
   const [isSavingLayout, setIsSavingLayout] = useState(false);
   const gridRef = useRef<HTMLDivElement | null>(null);
   const [gridWidth, setGridWidth] = useState(1100);
@@ -262,7 +340,13 @@ export default function DashboardDetailPage() {
         const res = await fetch(url);
         if (!res.ok) return;
         const data = await res.json();
-        const options = (data.views || []).map((v: { id: string; name: string }) => ({ id: v.id, name: v.name }));
+        const options = (data.views || []).map(
+          (v: { id: string; name: string; columns?: { name: string; type?: string }[] }) => ({
+            id: v.id,
+            name: v.name,
+            columns: v.columns || [],
+          })
+        );
         setViews(options);
         setAvailableSourceViews(options);
         if (options.length > 0) {
@@ -335,6 +419,73 @@ export default function DashboardDetailPage() {
 
     loadWidgetRows();
   }, [dashboard]);
+
+  const selectedNewView = useMemo(
+    () => views.find((view) => view.id === newWidgetViewId) || null,
+    [views, newWidgetViewId]
+  );
+  const selectedNewViewColumns = useMemo(
+    () => selectedNewView?.columns || [],
+    [selectedNewView]
+  );
+  const selectedNewNumericColumns = useMemo(
+    () => getNumericColumns(selectedNewViewColumns),
+    [selectedNewViewColumns]
+  );
+
+  const selectedEditView = useMemo(
+    () => views.find((view) => view.id === editWidgetViewId) || null,
+    [views, editWidgetViewId]
+  );
+  const selectedEditViewColumns = useMemo(
+    () => selectedEditView?.columns || [],
+    [selectedEditView]
+  );
+  const selectedEditNumericColumns = useMemo(
+    () => getNumericColumns(selectedEditViewColumns),
+    [selectedEditViewColumns]
+  );
+
+  useEffect(() => {
+    if (!selectedNewView) return;
+    if (!newChartXField && selectedNewViewColumns.length > 0) {
+      setNewChartXField(selectedNewViewColumns[0].name);
+    }
+    if (!newChartYField && selectedNewNumericColumns.length > 0) {
+      setNewChartYField(selectedNewNumericColumns[0].name);
+    }
+    if (!newMetricField && selectedNewNumericColumns.length > 0) {
+      setNewMetricField(selectedNewNumericColumns[0].name);
+    }
+  }, [
+    selectedNewView,
+    selectedNewViewColumns,
+    selectedNewNumericColumns,
+    newChartXField,
+    newChartYField,
+    newMetricField,
+  ]);
+
+  useEffect(() => {
+    if (!showEditWidget) return;
+    if ((editWidgetType === 'bar' || editWidgetType === 'line' || editWidgetType === 'area' || editWidgetType === 'pie') && !editChartXField && selectedEditViewColumns.length > 0) {
+      setEditChartXField(selectedEditViewColumns[0].name);
+    }
+    if ((editWidgetType === 'bar' || editWidgetType === 'line' || editWidgetType === 'area' || editWidgetType === 'pie') && !editChartYField && selectedEditNumericColumns.length > 0) {
+      setEditChartYField(selectedEditNumericColumns[0].name);
+    }
+    if (editWidgetType === 'metric' && !editMetricField && selectedEditNumericColumns.length > 0) {
+      setEditMetricField(selectedEditNumericColumns[0].name);
+    }
+  }, [
+    showEditWidget,
+    editWidgetType,
+    editChartXField,
+    editChartYField,
+    editMetricField,
+    selectedEditViewColumns,
+    selectedEditNumericColumns,
+  ]);
 
   const gridLayout = useMemo<Layout>(
     () =>
@@ -417,6 +568,34 @@ export default function DashboardDetailPage() {
         return;
       }
 
+      if (widgetType === 'chart') {
+        if (!newChartXField || !newChartYField) {
+          alert('Choose both X and Y fields for chart widgets.');
+          return;
+        }
+      }
+
+      if (widgetType === 'metric') {
+        if (newMetricAggregation !== 'count' && !newMetricField) {
+          alert('Choose a numeric field for this metric.');
+          return;
+        }
+      }
+
+      const config: DashboardWidget['config'] =
+        widgetType === 'chart'
+          ? {
+              chartType: newWidgetType as 'bar' | 'line' | 'area' | 'pie',
+              xField: newChartXField,
+              yFields: [{ field: newChartYField, label: newChartYField }],
+            }
+          : widgetType === 'metric'
+          ? {
+              metricAggregation: newMetricAggregation,
+              metricField: newMetricField || undefined,
+            }
+          : {};
+
       const create = await fetch('/api/widgets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -426,12 +605,7 @@ export default function DashboardDetailPage() {
           type: widgetType,
           title: newWidgetTitle,
           position: { x: 0, y: 9999, width: widgetWidth, height: 2 },
-          config:
-            widgetType === 'chart'
-              ? {
-                  chartType: newWidgetType as 'bar' | 'line' | 'area' | 'pie',
-                }
-              : {},
+          config,
         }),
       });
       const created = await create.json();
@@ -480,6 +654,10 @@ export default function DashboardDetailPage() {
     setShowAddWidget(false);
     setNewWidgetTitle('');
     setNewWidgetType('bar');
+    setNewChartXField('');
+    setNewChartYField('');
+    setNewMetricAggregation('count');
+    setNewMetricField('');
     setIsAddingWidget(false);
   };
 
@@ -506,6 +684,93 @@ export default function DashboardDetailPage() {
       });
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Failed to delete widget');
+    }
+  };
+
+  const openEditWidget = (widget: DashboardWidget) => {
+    const widgetTypeId =
+      widget.type === 'chart' ? widget.config.chartType || 'bar' : widget.type;
+    setEditingWidgetId(widget.id);
+    setEditWidgetTitle(widget.title);
+    setEditWidgetType(widgetTypeId);
+    setEditWidgetViewId(widget.viewId || '');
+    setEditChartXField(widget.config.xField || '');
+    setEditChartYField(widget.config.yFields?.[0]?.field || '');
+    setEditMetricAggregation(widget.config.metricAggregation || 'count');
+    setEditMetricField(widget.config.metricField || '');
+    setShowEditWidget(true);
+  };
+
+  const handleSaveWidgetEdit = async () => {
+    if (!dashboard || !editingWidgetId || !editWidgetTitle.trim()) return;
+
+    const widgetType = editWidgetType === 'metric' ? 'metric' : editWidgetType === 'table' ? 'table' : 'chart';
+
+    if (widgetType === 'chart' && (!editChartXField || !editChartYField)) {
+      alert('Choose both X and Y fields for chart widgets.');
+      return;
+    }
+    if (widgetType === 'metric' && editMetricAggregation !== 'count' && !editMetricField) {
+      alert('Choose a numeric field for this metric.');
+      return;
+    }
+    if (!editWidgetViewId) {
+      alert('Choose a source view.');
+      return;
+    }
+
+    const config: DashboardWidget['config'] =
+      widgetType === 'chart'
+        ? {
+            chartType: editWidgetType as 'bar' | 'line' | 'area' | 'pie',
+            xField: editChartXField,
+            yFields: [{ field: editChartYField, label: editChartYField }],
+          }
+        : widgetType === 'metric'
+        ? {
+            metricAggregation: editMetricAggregation,
+            metricField: editMetricField || undefined,
+          }
+        : {};
+
+    setIsSavingWidgetEdit(true);
+    try {
+      const response = await fetch(`/api/widgets/${editingWidgetId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: editWidgetTitle.trim(),
+          viewId: editWidgetViewId,
+          type: widgetType,
+          config,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update widget');
+      }
+
+      setDashboard({
+        ...dashboard,
+        widgets: dashboard.widgets.map((widget) =>
+          widget.id === editingWidgetId
+            ? {
+                ...widget,
+                title: editWidgetTitle.trim(),
+                viewId: editWidgetViewId,
+                type: widgetType,
+                config,
+              }
+            : widget
+        ),
+      });
+
+      setShowEditWidget(false);
+      setEditingWidgetId(null);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to update widget');
+    } finally {
+      setIsSavingWidgetEdit(false);
     }
   };
 
@@ -623,9 +888,7 @@ export default function DashboardDetailPage() {
                     key={type.id}
                     onClick={() => setNewWidgetType(type.id)}
                     className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-colors ${
-                      newWidgetType === type.id
-                        ? 'border-orange-500 bg-orange-50'
-                        : 'border-zinc-200 hover:border-zinc-300'
+                      newWidgetType === type.id ? 'border-orange-500 bg-orange-50' : 'border-zinc-200 hover:border-zinc-300'
                     }`}
                   >
                     <type.icon className={`w-5 h-5 ${newWidgetType === type.id ? 'text-orange-500' : 'text-zinc-500'}`} />
@@ -637,6 +900,73 @@ export default function DashboardDetailPage() {
                 ))}
               </div>
             </div>
+            {(newWidgetType === 'bar' || newWidgetType === 'line' || newWidgetType === 'area' || newWidgetType === 'pie') && (
+              <>
+                <div className="space-y-2">
+                  <Label>X Field</Label>
+                  <select
+                    value={newChartXField}
+                    onChange={(e) => setNewChartXField(e.target.value)}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white"
+                  >
+                    <option value="">Select field...</option>
+                    {selectedNewViewColumns.map((column) => (
+                      <option key={`new-x-${column.name}`} value={column.name}>
+                        {column.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Y Field</Label>
+                  <select
+                    value={newChartYField}
+                    onChange={(e) => setNewChartYField(e.target.value)}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white"
+                  >
+                    <option value="">Select numeric field...</option>
+                    {selectedNewNumericColumns.map((column) => (
+                      <option key={`new-y-${column.name}`} value={column.name}>
+                        {column.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
+            {newWidgetType === 'metric' && (
+              <>
+                <div className="space-y-2">
+                  <Label>Aggregation</Label>
+                  <select
+                    value={newMetricAggregation}
+                    onChange={(e) => setNewMetricAggregation(e.target.value as 'count' | 'sum' | 'avg' | 'min' | 'max')}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white"
+                  >
+                    <option value="count">Count</option>
+                    <option value="sum">Sum</option>
+                    <option value="avg">Average</option>
+                    <option value="min">Minimum</option>
+                    <option value="max">Maximum</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Field (optional for Count)</Label>
+                  <select
+                    value={newMetricField}
+                    onChange={(e) => setNewMetricField(e.target.value)}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white"
+                  >
+                    <option value="">All rows</option>
+                    {selectedNewNumericColumns.map((column) => (
+                      <option key={`new-metric-${column.name}`} value={column.name}>
+                        {column.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddWidget(false)}>
@@ -644,6 +974,129 @@ export default function DashboardDetailPage() {
             </Button>
             <Button onClick={handleAddWidget} disabled={!newWidgetTitle.trim() || isAddingWidget || views.length === 0}>
               {isAddingWidget ? 'Adding...' : 'Add Widget'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showEditWidget} onOpenChange={setShowEditWidget}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Widget</DialogTitle>
+            <DialogDescription>Update this widget&apos;s source and display settings.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Widget Title</Label>
+              <Input value={editWidgetTitle} onChange={(e) => setEditWidgetTitle(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Source View</Label>
+              <select
+                value={editWidgetViewId}
+                onChange={(e) => setEditWidgetViewId(e.target.value)}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white"
+              >
+                {views.map((view) => (
+                  <option key={view.id} value={view.id}>
+                    {view.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>Widget Type</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {WIDGET_TYPES.map((type) => (
+                  <button
+                    key={`edit-${type.id}`}
+                    onClick={() => setEditWidgetType(type.id)}
+                    className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-colors ${
+                      editWidgetType === type.id ? 'border-orange-500 bg-orange-50' : 'border-zinc-200 hover:border-zinc-300'
+                    }`}
+                  >
+                    <type.icon className={`w-5 h-5 ${editWidgetType === type.id ? 'text-orange-500' : 'text-zinc-500'}`} />
+                    <div>
+                      <div className="font-medium text-sm">{type.name}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            {(editWidgetType === 'bar' || editWidgetType === 'line' || editWidgetType === 'area' || editWidgetType === 'pie') && (
+              <>
+                <div className="space-y-2">
+                  <Label>X Field</Label>
+                  <select
+                    value={editChartXField}
+                    onChange={(e) => setEditChartXField(e.target.value)}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white"
+                  >
+                    <option value="">Select field...</option>
+                    {selectedEditViewColumns.map((column) => (
+                      <option key={`edit-x-${column.name}`} value={column.name}>
+                        {column.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Y Field</Label>
+                  <select
+                    value={editChartYField}
+                    onChange={(e) => setEditChartYField(e.target.value)}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white"
+                  >
+                    <option value="">Select numeric field...</option>
+                    {selectedEditNumericColumns.map((column) => (
+                      <option key={`edit-y-${column.name}`} value={column.name}>
+                        {column.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
+            {editWidgetType === 'metric' && (
+              <>
+                <div className="space-y-2">
+                  <Label>Aggregation</Label>
+                  <select
+                    value={editMetricAggregation}
+                    onChange={(e) => setEditMetricAggregation(e.target.value as 'count' | 'sum' | 'avg' | 'min' | 'max')}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white"
+                  >
+                    <option value="count">Count</option>
+                    <option value="sum">Sum</option>
+                    <option value="avg">Average</option>
+                    <option value="min">Minimum</option>
+                    <option value="max">Maximum</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Field (optional for Count)</Label>
+                  <select
+                    value={editMetricField}
+                    onChange={(e) => setEditMetricField(e.target.value)}
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white"
+                  >
+                    <option value="">All rows</option>
+                    {selectedEditNumericColumns.map((column) => (
+                      <option key={`edit-metric-${column.name}`} value={column.name}>
+                        {column.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditWidget(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveWidgetEdit} disabled={!editWidgetTitle.trim() || isSavingWidgetEdit}>
+              {isSavingWidgetEdit ? 'Saving...' : 'Save Changes'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -658,7 +1111,7 @@ export default function DashboardDetailPage() {
           </div>
           {availableSourceViews.length === 0 ? (
             <p className="text-xs text-slate-500">
-              No saved queries available yet. Create one in Saved Queries.
+              No views available yet. Create one in Views.
             </p>
           ) : (
             <div className="flex flex-wrap gap-2">
@@ -697,6 +1150,7 @@ export default function DashboardDetailPage() {
           const chartType = widget.config.chartType;
           const { xField, yFields } = inferWidgetFields(widget, data as Array<Record<string, unknown>>);
           const chartPayload = buildChartData(data as Array<Record<string, unknown>>, xField, yFields);
+          const metricDisplay = computeMetricValue(widget, data as Array<Record<string, unknown>>);
           
           return (
             <div key={widget.id}>
@@ -707,6 +1161,13 @@ export default function DashboardDetailPage() {
                       {widget.title}
                     </CardTitle>
                     <div className="flex items-center gap-1">
+                      <button
+                        className="text-slate-400 hover:text-slate-700"
+                        onClick={() => openEditWidget(widget)}
+                        aria-label="Edit widget"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
                       <button
                         className="text-slate-400 hover:text-red-600"
                         onClick={() => handleDeleteWidget(widget.id)}
@@ -720,8 +1181,8 @@ export default function DashboardDetailPage() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold">{data.length > 0 ? data.length : 'N/A'}</div>
-                    <p className="text-xs text-muted-foreground">Rows returned by this widget query</p>
+                    <div className="text-3xl font-bold">{metricDisplay.value}</div>
+                    <p className="text-xs text-muted-foreground">{metricDisplay.description}</p>
                   </CardContent>
                 </Card>
               ) : widget.type === 'chart' ? (
@@ -729,6 +1190,13 @@ export default function DashboardDetailPage() {
                   <CardHeader className="pb-2 flex flex-row items-start justify-between space-y-0">
                     <CardTitle className="text-sm font-medium">{widget.title}</CardTitle>
                     <div className="flex items-center gap-1">
+                      <button
+                        className="text-slate-400 hover:text-slate-700"
+                        onClick={() => openEditWidget(widget)}
+                        aria-label="Edit widget"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
                       <button
                         className="text-slate-400 hover:text-red-600"
                         onClick={() => handleDeleteWidget(widget.id)}
@@ -816,6 +1284,13 @@ export default function DashboardDetailPage() {
                     <CardTitle className="text-sm font-medium">{widget.title}</CardTitle>
                     <div className="flex items-center gap-1">
                       <button
+                        className="text-slate-400 hover:text-slate-700"
+                        onClick={() => openEditWidget(widget)}
+                        aria-label="Edit widget"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
                         className="text-slate-400 hover:text-red-600"
                         onClick={() => handleDeleteWidget(widget.id)}
                         aria-label="Delete widget"
@@ -895,3 +1370,4 @@ export default function DashboardDetailPage() {
     </div>
   );
 }
+

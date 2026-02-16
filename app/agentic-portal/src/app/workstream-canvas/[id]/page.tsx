@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -209,9 +209,9 @@ function ConnectSourceModal({
   const [tableSearch, setTableSearch] = useState('');
 
   const sourceTypes = [
-    { id: 'postgres', name: 'PostgreSQL', icon: '🐘', desc: 'Connect to PostgreSQL databases' },
-    { id: 'bigquery', name: 'BigQuery', icon: '📊', desc: 'Connect to Google BigQuery' },
-    { id: 'google_sheets', name: 'Google Sheets', icon: '📗', desc: 'Query Google Sheets with SQL' },
+    { id: 'postgres', name: 'PostgreSQL', icon: 'ðŸ˜', desc: 'Connect to PostgreSQL databases' },
+    { id: 'bigquery', name: 'BigQuery', icon: 'ðŸ“Š', desc: 'Connect to Google BigQuery' },
+    { id: 'google_sheets', name: 'Google Sheets', icon: 'ðŸ“—', desc: 'Query Google Sheets with SQL' },
   ];
 
   // Reset when modal closes
@@ -413,7 +413,7 @@ function ConnectSourceModal({
                   type="password"
                   value={formData.password}
                   onChange={(e) => setFormData(f => ({ ...f, password: e.target.value }))}
-                  placeholder="••••••••"
+                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                   className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
               </div>
@@ -958,12 +958,12 @@ function CreateDashboardModal({
             <label className="text-sm font-medium text-gray-700 block mb-2">Available Sources</label>
             {views.length === 0 ? (
               <p className="text-sm text-gray-500 bg-gray-50 rounded-lg p-4 text-center">
-                No saved queries yet. Create a view first.
+                No views yet. Create a view first.
               </p>
             ) : (
               <div className="space-y-2 max-h-44 overflow-y-auto border border-gray-200 rounded-lg p-3">
                 <p className="text-xs text-gray-500 mb-2">
-                  These saved queries can be used when adding widgets after dashboard creation.
+                  These Views can be used when adding widgets after dashboard creation.
                 </p>
                 {views.map(view => (
                   <div
@@ -1585,13 +1585,13 @@ export default function WorkstreamCanvasPage() {
                   onClick={() => setShowCreateView(true)}
                   className="w-full text-left px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 text-sm transition-colors"
                 >
-                  ✨ Create a view with AI
+                  âœ¨ Create a view with AI
                 </button>
                 <button 
                   onClick={() => setShowCreateDashboard(true)}
                   className="w-full text-left px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 text-sm transition-colors"
                 >
-                  📊 Build a dashboard
+                  ðŸ“Š Build a dashboard
                 </button>
               </div>
             </div>
@@ -1686,3 +1686,5 @@ export default function WorkstreamCanvasPage() {
     </div>
   );
 }
+
+

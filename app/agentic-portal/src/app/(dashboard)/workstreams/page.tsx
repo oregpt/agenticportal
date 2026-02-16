@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -210,7 +210,7 @@ export default function WorkstreamsPage() {
             <Button variant="outline">Connect Data</Button>
           </Link>
           <Link href="/views/new?mode=chat">
-            <Button variant="outline">Create Saved Query</Button>
+            <Button variant="outline">Create View</Button>
           </Link>
           <Link href="/dashboards/new?mode=quick">
             <Button>Quick Dashboard</Button>
@@ -454,3 +454,4 @@ export default function WorkstreamsPage() {
     </div>
   );
 }
+
