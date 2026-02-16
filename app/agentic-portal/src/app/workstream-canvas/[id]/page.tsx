@@ -1413,7 +1413,7 @@ export default function WorkstreamCanvasPage() {
   const [activeEntityUrl, setActiveEntityUrl] = useState<string | null>(null);
   const [contentRefreshKey, setContentRefreshKey] = useState(0);
   const [canvasCollapsed, setCanvasCollapsed] = useState(false);
-  const [canvasWidth, setCanvasWidth] = useState(460);
+  const [canvasWidth, setCanvasWidth] = useState(320);
   
   // Modal states
   const [showConnectSource, setShowConnectSource] = useState(false);
@@ -1465,7 +1465,9 @@ export default function WorkstreamCanvasPage() {
 
   const openNodeInPane = (node: PipelineNode) => {
     setSelectedNode(node);
-    setActiveEntityUrl(getEntityUrl(node));
+    const url = new URL(getEntityUrl(node), window.location.origin);
+    url.searchParams.set('embed', '1');
+    setActiveEntityUrl(`${url.pathname}${url.search}`);
     setCanvasCollapsed(false);
   };
 
@@ -1532,12 +1534,12 @@ export default function WorkstreamCanvasPage() {
             </div>
             <div className="flex items-center gap-2">
               <Button
-                onClick={() => {
-                  setSelectedNode(null);
-                  setActiveEntityUrl('/chat');
-                }}
-                variant="outline"
-                className="gap-2"
+                  onClick={() => {
+                    setSelectedNode(null);
+                    setActiveEntityUrl('/chat?embed=1');
+                  }}
+                  variant="outline"
+                  className="gap-2"
               >
                 <Sparkles className="w-4 h-4" />
                 AI Assistant
@@ -1576,6 +1578,13 @@ export default function WorkstreamCanvasPage() {
                   aria-label="Collapse canvas"
                 >
                   <ArrowLeft className="w-3.5 h-3.5 text-gray-500" />
+                </button>
+                <button
+                  onClick={() => router.push('/workstreams')}
+                  className="p-1.5 rounded-md hover:bg-gray-100"
+                  aria-label="Exit canvas mode"
+                >
+                  <X className="w-3.5 h-3.5 text-gray-500" />
                 </button>
               </div>
             </div>

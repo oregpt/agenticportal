@@ -32,6 +32,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [organizations, setOrganizations] = useState<OrganizationOption[]>([]);
   const [activeOrganizationId, setActiveOrganizationId] = useState<string | null>(null);
   const [isSwitchingOrg, setIsSwitchingOrg] = useState(false);
+  const [isEmbedded, setIsEmbedded] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -54,6 +55,12 @@ export function AppLayout({ children }: AppLayoutProps) {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const embedded = new URLSearchParams(window.location.search).get('embed') === '1';
+    setIsEmbedded(embedded);
+  }, [pathname]);
 
   const sectionTabs: Array<{ key: NavSection; label: string; href: string; icon: ComponentType<{ className?: string }> }> = [
     { key: 'pipeline', label: 'Pipeline', href: '/workstreams', icon: Layers3 },
@@ -93,6 +100,10 @@ export function AppLayout({ children }: AppLayoutProps) {
     } finally {
       setIsSwitchingOrg(false);
     }
+  }
+
+  if (isEmbedded) {
+    return <div className="min-h-screen bg-background text-foreground">{children}</div>;
   }
 
   return (

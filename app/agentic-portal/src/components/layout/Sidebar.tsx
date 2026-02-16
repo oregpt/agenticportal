@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React from 'react';
 import Link from 'next/link';
@@ -34,7 +34,7 @@ export function getSectionFromPath(pathname: string): NavSection {
 const pipelineNavigation = [
   { name: 'Pipelines', href: '/workstreams', icon: Workflow },
   { name: 'Data Sources', href: '/datasources', icon: Database },
-  { name: 'Saved Queries', href: '/views', icon: Table2 },
+  { name: 'Views', href: '/views', icon: Table2 },
   { name: 'Dashboards', href: '/dashboards', icon: LayoutDashboard },
   { name: 'Exports', href: '/outputs', icon: FileOutput },
   { name: 'Data Relationships', href: '/relationship-explorer', icon: Network },
@@ -241,3 +241,4 @@ export function Sidebar({ section }: SidebarProps) {
     </div>
   );
 }
+
