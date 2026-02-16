@@ -270,7 +270,7 @@ export default function WorkstreamCanvasPage() {
               </Link>
               <div>
                 <h1 className="text-xl font-medium">Agent Execution Monitoring</h1>
-                <p className="text-sm text-zinc-500">Visual pipeline canvas</p>
+                <p className="text-sm text-zinc-500">Visual workstream canvas</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -459,7 +459,7 @@ export default function WorkstreamCanvasPage() {
                 <div className="flex gap-3">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-emerald-500 flex-shrink-0" />
                   <div className="bg-zinc-800 rounded-2xl rounded-tl-none px-4 py-3 text-sm">
-                    Hi! I can help you build your data pipeline. Select a node to work with it, or ask me to create something new.
+                    Hi! I can help you build your data workflow. Select a node to work with it, or ask me to create something new.
                   </div>
                 </div>
               </div>

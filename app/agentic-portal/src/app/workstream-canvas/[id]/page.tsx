@@ -96,6 +96,8 @@ const nodeConfig = {
   }
 };
 
+const sectionOrder: NodeType[] = ['dashboard', 'output', 'view', 'datasource'];
+
 function getEntityUrl(node: PipelineNode): string {
   switch (node.type) {
     case 'datasource':
@@ -124,20 +126,20 @@ function NodeCard({ node, onSelect, isSelected }: {
       onClick={() => onSelect(node)}
       className={`
         group relative cursor-pointer transition-all
-        ${isSelected ? 'ring-2 ring-primary ring-offset-2 rounded-xl' : ''}
+        ${isSelected ? 'ring-2 ring-primary ring-offset-1 rounded-lg' : ''}
       `}
     >
       <div className={`
-        relative p-4 rounded-2xl border-2 ${config.borderColor} ${config.bgColor} ${config.hoverBorder}
+        relative p-2 rounded-lg border ${config.borderColor} ${config.bgColor} ${config.hoverBorder}
         transition-all w-full hover:shadow-md hover:-translate-y-0.5
       `}>
-        <div className="flex items-start gap-3">
-          <div className={`p-2 rounded-lg ${config.iconBg}`}>
-            <Icon className={`w-5 h-5 ${config.textColor}`} />
+        <div className="flex items-center gap-2">
+          <div className={`p-1.5 rounded-md ${config.iconBg}`}>
+            <Icon className={`w-3.5 h-3.5 ${config.textColor}`} />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h4 className="font-medium text-gray-900 truncate">{node.name}</h4>
+            <div className="flex items-center gap-1.5">
+              <h4 className="text-xs font-medium text-gray-900 truncate">{node.name}</h4>
               {node.status === 'error' && (
                 <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
               )}
@@ -145,15 +147,12 @@ function NodeCard({ node, onSelect, isSelected }: {
                 <RefreshCw className="w-3 h-3 text-gray-400 animate-spin" />
               )}
             </div>
-            {node.description && (
-              <p className="text-sm text-gray-500 truncate">{node.description}</p>
-            )}
           </div>
         </div>
 
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button className="p-1.5 rounded-lg bg-white/80 hover:bg-white shadow-sm border border-gray-200">
-            <MoreHorizontal className="w-4 h-4 text-gray-500" />
+        <div className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button className="p-1 rounded-md bg-white/80 hover:bg-white shadow-sm border border-gray-200">
+            <MoreHorizontal className="w-3.5 h-3.5 text-gray-500" />
           </button>
         </div>
       </div>
@@ -168,15 +167,15 @@ function AddNodeButton({ type, onClick }: { type: NodeType; onClick: () => void 
     <button
       onClick={onClick}
       className={`
-        group relative p-4 rounded-2xl border-2 border-dashed border-gray-300
+        group relative p-2 rounded-lg border border-dashed border-gray-300
         hover:border-primary/40 hover:bg-white/80 transition-all w-full hover:-translate-y-0.5
-        flex items-center gap-3
+        flex items-center gap-2
       `}
     >
-      <div className="p-2 rounded-lg bg-gray-100 group-hover:bg-gray-200 transition-colors">
-        <Plus className="w-5 h-5 text-gray-500 group-hover:text-gray-700 transition-colors" />
+      <div className="p-1.5 rounded-md bg-gray-100 group-hover:bg-gray-200 transition-colors">
+        <Plus className="w-3.5 h-3.5 text-gray-500 group-hover:text-gray-700 transition-colors" />
       </div>
-      <span className="text-sm text-gray-500 group-hover:text-gray-700 transition-colors">
+      <span className="text-xs text-gray-500 group-hover:text-gray-700 transition-colors">
         {config.addLabel}
       </span>
     </button>
@@ -1268,6 +1267,12 @@ export default function WorkstreamCanvasPage() {
   const [activeEntityUrl, setActiveEntityUrl] = useState<string | null>(null);
   const [canvasCollapsed, setCanvasCollapsed] = useState(false);
   const [canvasWidth, setCanvasWidth] = useState(320);
+  const [sectionOpen, setSectionOpen] = useState<Record<NodeType, boolean>>({
+    datasource: false,
+    view: false,
+    dashboard: false,
+    output: false,
+  });
   
   // Modal states
   const [showConnectSource, setShowConnectSource] = useState(false);
@@ -1316,6 +1321,7 @@ export default function WorkstreamCanvasPage() {
   }
 
   const hasNodes = nodes.length > 0;
+  const areAllSectionsOpen = sectionOrder.every((type) => sectionOpen[type]);
 
   const openNodeInPane = (node: PipelineNode) => {
     setSelectedNode(node);
@@ -1370,6 +1376,19 @@ export default function WorkstreamCanvasPage() {
                 >
                   <X className="w-3.5 h-3.5 text-gray-500" />
                 </button>
+                <button
+                  onClick={() =>
+                    setSectionOpen({
+                      datasource: !areAllSectionsOpen,
+                      view: !areAllSectionsOpen,
+                      dashboard: !areAllSectionsOpen,
+                      output: !areAllSectionsOpen,
+                    })
+                  }
+                  className="px-2.5 py-1 text-xs rounded-md border border-gray-200 hover:bg-gray-100 text-gray-600"
+                >
+                  {areAllSectionsOpen ? 'Collapse all' : 'Show all'}
+                </button>
               </div>
             </div>
             <div className="h-[calc(100%-41px)] overflow-auto p-4">
@@ -1377,33 +1396,46 @@ export default function WorkstreamCanvasPage() {
                 <EmptyCanvas onConnectSource={() => setShowConnectSource(true)} />
               ) : (
                 <div className="space-y-5">
-                  {(['datasource', 'view', 'dashboard', 'output'] as NodeType[]).map((type) => {
+                  {sectionOrder.map((type) => {
                     const config = nodeConfig[type];
                     const Icon = config.icon;
+                    const isOpen = sectionOpen[type];
                     return (
                       <div key={type} className="space-y-2">
-                        <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-gray-500 px-1">
-                          <Icon className={`w-3.5 h-3.5 ${config.textColor}`} />
-                          <span className="font-medium">{config.label}s</span>
-                          <span className="text-gray-400">({nodesByType[type].length})</span>
+                        <div className="flex items-center justify-between gap-2 text-xs uppercase tracking-wider text-gray-500 px-1">
+                          <div className="flex items-center gap-2">
+                            <Icon className={`w-3.5 h-3.5 ${config.textColor}`} />
+                            <span className="font-medium">{config.label}s</span>
+                            <span className="text-gray-400">({nodesByType[type].length})</span>
+                          </div>
+                          <button
+                            onClick={() => setSectionOpen((prev) => ({ ...prev, [type]: !prev[type] }))}
+                            className="px-2 py-0.5 rounded-md border border-gray-200 text-[10px] hover:bg-gray-100"
+                          >
+                            {isOpen ? 'Hide' : 'Open'}
+                          </button>
                         </div>
-                        {nodesByType[type].map((node) => (
-                          <NodeCard
-                            key={node.id}
-                            node={node}
-                            onSelect={openNodeInPane}
-                            isSelected={selectedNode?.id === node.id}
-                          />
-                        ))}
-                        <AddNodeButton
-                          type={type}
-                          onClick={() => {
-                            if (type === 'datasource') setShowConnectSource(true);
-                            else if (type === 'view') setShowCreateView(true);
-                            else if (type === 'dashboard') setShowCreateDashboard(true);
-                            else if (type === 'output') setShowAddOutput(true);
-                          }}
-                        />
+                        {isOpen ? (
+                          <div className="space-y-1.5">
+                            {nodesByType[type].map((node) => (
+                              <NodeCard
+                                key={node.id}
+                                node={node}
+                                onSelect={openNodeInPane}
+                                isSelected={selectedNode?.id === node.id}
+                              />
+                            ))}
+                            <AddNodeButton
+                              type={type}
+                              onClick={() => {
+                                if (type === 'datasource') setShowConnectSource(true);
+                                else if (type === 'view') setShowCreateView(true);
+                                else if (type === 'dashboard') setShowCreateDashboard(true);
+                                else if (type === 'output') setShowAddOutput(true);
+                              }}
+                            />
+                          </div>
+                        ) : null}
                       </div>
                     );
                   })}
