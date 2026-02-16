@@ -884,25 +884,11 @@ function CreateDashboardModal({
   onSuccess: () => void;
 }) {
   const [name, setName] = useState('');
-  const [selectedViews, setSelectedViews] = useState<string[]>([]);
+  const [description, setDescription] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
-  useEffect(() => {
-    if (views.length === 1) {
-      setSelectedViews([views[0].id]);
-    }
-  }, [views]);
-
-  const toggleView = (viewId: string) => {
-    setSelectedViews(prev => 
-      prev.includes(viewId) 
-        ? prev.filter(id => id !== viewId)
-        : [...prev, viewId]
-    );
-  };
-
   const handleCreate = async () => {
-    if (!name || selectedViews.length === 0) return;
+    if (!name.trim()) return;
     
     setIsCreating(true);
     try {
@@ -910,9 +896,9 @@ function CreateDashboardModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name,
+          name: name.trim(),
+          description: description.trim() || null,
           workstreamId,
-          viewIds: selectedViews,
         }),
       });
 
@@ -920,7 +906,7 @@ function CreateDashboardModal({
         onSuccess();
         onClose();
         setName('');
-        setSelectedViews([]);
+        setDescription('');
       } else {
         const err = await response.json();
         alert(err.error || 'Failed to create dashboard');
@@ -942,7 +928,7 @@ function CreateDashboardModal({
             Create Dashboard
           </DialogTitle>
           <DialogDescription>
-            Combine views into a dashboard for visualization
+            Create a dashboard shell. You can add or remove widgets anytime.
           </DialogDescription>
         </DialogHeader>
 
@@ -959,31 +945,34 @@ function CreateDashboardModal({
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-2">Select Views</label>
+            <label className="text-sm font-medium text-gray-700">Description (optional)</label>
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="What should this dashboard monitor?"
+              className="mt-1"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-2">Available Sources</label>
             {views.length === 0 ? (
               <p className="text-sm text-gray-500 bg-gray-50 rounded-lg p-4 text-center">
-                No views available. Create a view first.
+                No saved queries yet. Create a view first.
               </p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2 max-h-44 overflow-y-auto border border-gray-200 rounded-lg p-3">
+                <p className="text-xs text-gray-500 mb-2">
+                  These saved queries can be used when adding widgets after dashboard creation.
+                </p>
                 {views.map(view => (
-                  <label
+                  <div
                     key={view.id}
-                    className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                      selectedViews.includes(view.id)
-                        ? 'border-violet-400 bg-violet-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
+                    className="flex items-center gap-3 p-2 rounded-lg border border-gray-200 bg-gray-50"
                   >
-                    <input
-                      type="checkbox"
-                      checked={selectedViews.includes(view.id)}
-                      onChange={() => toggleView(view.id)}
-                      className="w-4 h-4 text-violet-600 rounded focus:ring-violet-500"
-                    />
                     <Table2 className="w-4 h-4 text-emerald-600" />
                     <span className="text-sm font-medium">{view.name}</span>
-                  </label>
+                  </div>
                 ))}
               </div>
             )}
@@ -993,7 +982,7 @@ function CreateDashboardModal({
             <Button variant="outline" onClick={onClose}>Cancel</Button>
             <Button 
               className="flex-1 gap-2" 
-              disabled={!name || selectedViews.length === 0 || isCreating}
+              disabled={!name.trim() || isCreating}
               onClick={handleCreate}
             >
               {isCreating ? (

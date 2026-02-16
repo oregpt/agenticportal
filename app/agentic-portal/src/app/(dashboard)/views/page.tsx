@@ -129,16 +129,6 @@ function ViewsPageContent() {
     return date.toLocaleDateString();
   };
 
-  const updateFilterParam = (key: string, value?: string) => {
-    const next = new URLSearchParams(searchParams.toString());
-    if (!value || value === 'all') {
-      next.delete(key);
-    } else {
-      next.set(key, value);
-    }
-    router.replace(`/views${next.toString() ? `?${next.toString()}` : ''}`, { scroll: false });
-  };
-
   const updateMultiFilterParam = (key: string, values: string[]) => {
     const next = new URLSearchParams(searchParams.toString());
     if (values.length === 0) {
@@ -151,6 +141,17 @@ function ViewsPageContent() {
 
   const applyPreset = (query: string) => {
     router.replace(`/views${query ? `?${query}` : ''}`, { scroll: false });
+  };
+
+  const handleWorkstreamChange = (value: string | undefined) => {
+    const next = new URLSearchParams(searchParams.toString());
+    if (!value || value === 'all') {
+      next.delete('workstreamId');
+    } else {
+      next.set('workstreamId', value);
+    }
+    next.delete('dataSourceIds');
+    router.replace(`/views${next.toString() ? `?${next.toString()}` : ''}`, { scroll: false });
   };
 
   return (
@@ -179,10 +180,7 @@ function ViewsPageContent() {
       <WorkstreamFilterBar
         workstreams={workstreams}
         selectedWorkstreamId={selectedWorkstreamId}
-        onWorkstreamChange={(value) => {
-          updateFilterParam('workstreamId', value);
-          updateMultiFilterParam('dataSourceIds', []);
-        }}
+        onWorkstreamChange={handleWorkstreamChange}
         rightSlot={
           <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-end">
             <div className="w-full md:w-72">

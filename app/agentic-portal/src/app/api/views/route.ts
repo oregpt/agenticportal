@@ -116,6 +116,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let inferredColumns: Array<{ name: string; type: string; nullable?: boolean }> = [];
+    if (sourceTable) {
+      const schemaCache = dataSource.schemaCache as
+        | { tables?: Array<{ name: string; columns?: Array<{ name: string; type?: string; nullable?: boolean }> }> }
+        | null;
+      const matchedTable = schemaCache?.tables?.find((table) => table.name === sourceTable);
+      if (matchedTable?.columns?.length) {
+        inferredColumns = matchedTable.columns.map((column) => ({
+          name: column.name,
+          type: column.type || 'unknown',
+          nullable: column.nullable,
+        }));
+      }
+    }
+
     const viewId = randomUUID();
     const now = new Date();
 
@@ -130,7 +145,7 @@ export async function POST(request: NextRequest) {
       description: description || null,
       sql,
       naturalLanguageQuery: naturalLanguageQuery || null,
-      columns: [], // Will be populated on first query
+      columns: inferredColumns,
       createdBy: user.id,
       createdAt: now,
       updatedAt: now,

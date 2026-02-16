@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, LayoutDashboard, Loader2, Sparkles, CheckCircle2 } from 'lucide-react';
@@ -27,7 +27,7 @@ interface WorkstreamOption {
   name: string;
 }
 
-export default function NewDashboardPage() {
+function NewDashboardPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -99,7 +99,7 @@ export default function NewDashboardPage() {
     setSelectedViewIds((prev) => prev.filter((id) => availableViews.some((view) => view.id === id)));
   }, [availableViews]);
 
-  const canCreateDashboard = name.trim().length > 0 && (!isQuickMode || selectedViewIds.length > 0);
+  const canCreateDashboard = name.trim().length > 0;
 
   const handleToggleView = (viewId: string) => {
     setSelectedViewIds((prev) =>
@@ -160,7 +160,7 @@ export default function NewDashboardPage() {
           <h1 className="text-2xl font-bold">Create Dashboard</h1>
           <p className="text-muted-foreground">
             {isQuickMode
-              ? 'Quick mode: build from existing data and saved queries'
+              ? 'Quick mode: choose available sources, then add widgets manually'
               : 'Manual mode: create an empty dashboard'}
           </p>
         </div>
@@ -229,7 +229,7 @@ export default function NewDashboardPage() {
               <Sparkles className="w-5 h-5 text-primary" />
               Quick Setup
             </CardTitle>
-            <CardDescription>Select an existing data source and saved queries to turn into widgets.</CardDescription>
+            <CardDescription>Select the data context this dashboard should pull from.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {dataSources.length === 0 ? (
@@ -258,7 +258,7 @@ export default function NewDashboardPage() {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Saved Queries (select at least one)</Label>
+                  <Label>Saved Queries (optional source context)</Label>
                   {availableViews.length === 0 ? (
                     <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
                       No saved queries for this data source yet. Create one in{' '}
@@ -269,6 +269,9 @@ export default function NewDashboardPage() {
                     </div>
                   ) : (
                     <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground">
+                        Selecting these does not create widgets automatically. You will choose widgets on the dashboard screen.
+                      </p>
                       {availableViews.map((view) => (
                         <label
                           key={view.id}
@@ -300,8 +303,8 @@ export default function NewDashboardPage() {
           <ul className="text-sm text-muted-foreground space-y-1 mb-4">
             {isQuickMode ? (
               <>
-                <li>- A dashboard will be created with widgets for your selected saved queries.</li>
-                <li>- You can keep reusing it by updating saved queries and widgets.</li>
+                <li>- A dashboard shell will be created with your selected context.</li>
+                <li>- Add and remove widgets manually from available sources.</li>
               </>
             ) : (
               <>
@@ -328,5 +331,13 @@ export default function NewDashboardPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function NewDashboardPage() {
+  return (
+    <Suspense fallback={<div className="p-8 max-w-4xl mx-auto text-muted-foreground">Loading dashboard setup...</div>}>
+      <NewDashboardPageContent />
+    </Suspense>
   );
 }

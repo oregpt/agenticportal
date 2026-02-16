@@ -1,28 +1,43 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/lib/db';
 import { eq, and } from 'drizzle-orm';
 import { cookies } from 'next/headers';
+
+interface CachedColumn {
+  name: string;
+  type?: string;
+  nullable?: boolean;
+}
+
+interface CachedTable {
+  name: string;
+  columns?: CachedColumn[];
+}
+
+interface DataSourceSchemaCache {
+  tables?: CachedTable[];
+}
 
 // Helper to get current user from session
 async function getCurrentUser() {
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get('agentic_session');
-  
+
   if (!sessionCookie?.value) {
     return null;
   }
-  
+
   try {
     const decoded = Buffer.from(sessionCookie.value, 'base64').toString('utf-8');
     const session = JSON.parse(decoded);
     if (!session.userId) return null;
-    
+
     const [user] = await db
       .select()
       .from(schema.users)
       .where(eq(schema.users.id, session.userId))
       .limit(1);
-    
+
     return user;
   } catch {
     return null;
@@ -39,7 +54,6 @@ export async function GET(
     const user = await getCurrentUser();
     const orgId = user?.organizationId || request.headers.get('x-org-id') || 'default-org';
 
-    // Get workstream
     const [workstream] = await db
       .select()
       .from(schema.workstreams)
@@ -51,13 +65,9 @@ export async function GET(
       );
 
     if (!workstream) {
-      return NextResponse.json(
-        { error: 'Workstream not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Workstream not found' }, { status: 404 });
     }
 
-    // Get all nodes for this workstream
     const dataSources = await db
       .select({
         id: schema.dataSources.id,
@@ -75,6 +85,7 @@ export async function GET(
         name: schema.views.name,
         description: schema.views.description,
         dataSourceId: schema.views.dataSourceId,
+        sourceTable: schema.views.sourceTable,
         columns: schema.views.columns,
       })
       .from(schema.views)
@@ -89,7 +100,6 @@ export async function GET(
       .from(schema.dashboards)
       .where(eq(schema.dashboards.workstreamId, workstreamId));
 
-    // Get widgets for each dashboard to know which views they use
     const dashboardsWithViews = await Promise.all(
       dashboards.map(async (dash) => {
         const widgets = await db
@@ -101,7 +111,7 @@ export async function GET(
 
         return {
           ...dash,
-          viewIds: [...new Set(widgets.map(w => w.viewId))],
+          viewIds: [...new Set(widgets.map((widget) => widget.viewId))],
           widgetCount: widgets.length,
         };
       })
@@ -115,48 +125,63 @@ export async function GET(
         dashboardId: schema.outputs.dashboardId,
         schedule: schema.outputs.schedule,
         status: schema.outputs.status,
-        lastRunAt: schema.outputs.lastRunAt,
       })
       .from(schema.outputs)
       .where(eq(schema.outputs.workstreamId, workstreamId));
 
-    // Transform to node format
+    const dataSourceSchemaById = new Map(
+      dataSources.map((ds) => [
+        ds.id,
+        (ds.schemaCache as DataSourceSchemaCache | null) || null,
+      ])
+    );
+
     const nodes = [
-      ...dataSources.map(ds => ({
+      ...dataSources.map((ds) => ({
         id: ds.id,
         type: 'datasource' as const,
         name: ds.name,
-        description: `${ds.type} • ${(ds.schemaCache as any)?.tables?.length || 0} tables`,
+        description: `${ds.type} - ${((ds.schemaCache as DataSourceSchemaCache | null)?.tables?.length || 0)} tables`,
         parentIds: [],
         status: ds.lastSyncedAt ? 'active' : 'syncing',
         metadata: { type: ds.type, schemaCache: ds.schemaCache },
       })),
-      ...views.map(v => ({
-        id: v.id,
-        type: 'view' as const,
-        name: v.name,
-        description: v.description || `${(v.columns as any[])?.length || 0} columns`,
-        parentIds: [v.dataSourceId],
-        status: 'active',
-        metadata: { columns: v.columns },
-      })),
-      ...dashboardsWithViews.map(d => ({
-        id: d.id,
+      ...views.map((view) => {
+        const viewColumns = (view.columns as Array<{ name: string; type: string }> | null) || [];
+        const sourceTableColumns =
+          dataSourceSchemaById
+            .get(view.dataSourceId)
+            ?.tables?.find((table) => table.name === view.sourceTable)
+            ?.columns || [];
+        const effectiveColumnCount = viewColumns.length || sourceTableColumns.length;
+
+        return {
+          id: view.id,
+          type: 'view' as const,
+          name: view.name,
+          description: view.description || `${effectiveColumnCount} columns`,
+          parentIds: [view.dataSourceId],
+          status: 'active',
+          metadata: { columns: viewColumns, sourceTable: view.sourceTable },
+        };
+      }),
+      ...dashboardsWithViews.map((dashboard) => ({
+        id: dashboard.id,
         type: 'dashboard' as const,
-        name: d.name,
-        description: d.description || `${d.widgetCount} widgets`,
-        parentIds: d.viewIds,
+        name: dashboard.name,
+        description: dashboard.description || `${dashboard.widgetCount} widgets`,
+        parentIds: dashboard.viewIds,
         status: 'active',
-        metadata: { widgetCount: d.widgetCount },
+        metadata: { widgetCount: dashboard.widgetCount },
       })),
-      ...outputs.map(o => ({
-        id: o.id,
+      ...outputs.map((output) => ({
+        id: output.id,
         type: 'output' as const,
-        name: o.name,
-        description: `${o.type} • ${o.schedule || 'Manual'}`,
-        parentIds: [o.dashboardId],
-        status: o.status || 'active',
-        metadata: { type: o.type, schedule: o.schedule },
+        name: output.name,
+        description: `${output.type} - ${output.schedule || 'Manual'}`,
+        parentIds: [output.dashboardId],
+        status: output.status || 'active',
+        metadata: { type: output.type, schedule: output.schedule },
       })),
     ];
 
@@ -166,10 +191,7 @@ export async function GET(
     });
   } catch (error) {
     console.error('Error fetching workstream:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch workstream' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch workstream' }, { status: 500 });
   }
 }
 
@@ -209,10 +231,7 @@ export async function PATCH(
     return NextResponse.json({ workstream });
   } catch (error) {
     console.error('Error updating workstream:', error);
-    return NextResponse.json(
-      { error: 'Failed to update workstream' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to update workstream' }, { status: 500 });
   }
 }
 
@@ -238,9 +257,7 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting workstream:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete workstream' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to delete workstream' }, { status: 500 });
   }
 }
+

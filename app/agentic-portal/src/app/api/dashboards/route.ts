@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, description, workstreamId, viewIds = [] } = body;
+    const { name, description, workstreamId } = body;
 
     if (!name) {
       return NextResponse.json(
@@ -98,20 +98,6 @@ export async function POST(request: NextRequest) {
         createdBy: context.userId,
       })
       .returning();
-
-    if (Array.isArray(viewIds) && viewIds.length > 0) {
-      const widgetValues = viewIds.map((viewId: string, index: number) => ({
-        id: uuidv4(),
-        dashboardId: id,
-        viewId,
-        type: 'table',
-        title: `View ${index + 1}`,
-        position: { x: 0, y: index * 6, width: 12, height: 6 },
-        config: {},
-      }));
-
-      await db.insert(schema.widgets).values(widgetValues);
-    }
 
     return NextResponse.json({ dashboard }, { status: 201 });
   } catch (error) {

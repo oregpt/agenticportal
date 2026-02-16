@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { WorkstreamFilterBar } from '@/components/filters/WorkstreamFilterBar';
 import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
 import { FilterPresetManager } from '@/components/filters/FilterPresetManager';
-import { Plus, LayoutDashboard, Clock, Network } from 'lucide-react';
+import { Plus, LayoutDashboard, Clock, Network, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast';
 
 interface Dashboard {
   id: string;
@@ -26,11 +27,13 @@ interface WorkstreamOption {
 function DashboardsPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { toast } = useToast();
 
   const [dashboards, setDashboards] = useState<Dashboard[]>([]);
   const [workstreams, setWorkstreams] = useState<WorkstreamOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [setupCounts, setSetupCounts] = useState({ dataSources: 0, views: 0 });
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const selectedWorkstreamId = searchParams.get('workstreamId') || undefined;
   const selectedWidgetStates = (searchParams.get('widgetStates') || '')
@@ -140,6 +143,29 @@ function DashboardsPageContent() {
     return date.toLocaleDateString();
   };
 
+  const handleDeleteDashboard = async (dashboard: Dashboard) => {
+    const confirmed = window.confirm(`Delete dashboard "${dashboard.name}"? This cannot be undone.`);
+    if (!confirmed) return;
+
+    setDeletingId(dashboard.id);
+    try {
+      const res = await fetch(`/api/dashboards/${dashboard.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        throw new Error('Failed to delete dashboard');
+      }
+      setDashboards((prev) => prev.filter((item) => item.id !== dashboard.id));
+      toast({ title: 'Dashboard deleted' });
+    } catch (error) {
+      toast({
+        title: 'Could not delete dashboard',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <div className="p-8 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-8">
@@ -201,9 +227,21 @@ function DashboardsPageContent() {
       ) : filteredDashboards.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredDashboards.map((dashboard) => (
-            <Link key={dashboard.id} href={`/dashboards/${dashboard.id}`}>
-              <div className="bg-card border border-border rounded-xl p-5 hover:shadow-md hover:border-primary/20 transition-all cursor-pointer h-full">
-                <div className="flex items-start gap-3 mb-4">
+            <div
+              key={dashboard.id}
+              className="bg-card border border-border rounded-xl p-5 hover:shadow-md hover:border-primary/20 transition-all cursor-pointer h-full"
+              onClick={() => router.push(`/dashboards/${dashboard.id}`)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  router.push(`/dashboards/${dashboard.id}`);
+                }
+              }}
+            >
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <div className="flex items-start gap-3">
                   <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center">
                     <LayoutDashboard className="w-5 h-5 text-primary" />
                   </div>
@@ -211,6 +249,20 @@ function DashboardsPageContent() {
                     <h3 className="font-semibold text-foreground truncate">{dashboard.name}</h3>
                     <p className="text-sm text-muted-foreground line-clamp-2">{dashboard.description || 'No description'}</p>
                   </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-destructive"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteDashboard(dashboard);
+                    }}
+                    disabled={deletingId === dashboard.id}
+                    aria-label={`Delete dashboard ${dashboard.name}`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground pt-3 border-t border-border">
                   <span>{Number(dashboard.widgetCount || 0)} widgets</span>
@@ -220,7 +272,6 @@ function DashboardsPageContent() {
                   </span>
                 </div>
               </div>
-            </Link>
           ))}
         </div>
       ) : (

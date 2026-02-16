@@ -27,6 +27,8 @@ import {
   Table2,
   Move,
   Loader2,
+  Trash2,
+  Database,
 } from 'lucide-react';
 import Link from 'next/link';
 import GridLayout, { type Layout } from 'react-grid-layout';
@@ -69,6 +71,7 @@ interface DashboardData {
   id: string;
   name: string;
   description: string | null;
+  workstreamId?: string | null;
   widgets: DashboardWidget[];
 }
 
@@ -171,6 +174,7 @@ export default function DashboardDetailPage() {
   const [isAddingWidget, setIsAddingWidget] = useState(false);
   const [widgetRows, setWidgetRows] = useState<Record<string, Array<Record<string, unknown>>>>({});
   const [views, setViews] = useState<ViewOption[]>([]);
+  const [availableSourceViews, setAvailableSourceViews] = useState<ViewOption[]>([]);
   const [isSavingLayout, setIsSavingLayout] = useState(false);
   const gridRef = useRef<HTMLDivElement | null>(null);
   const [gridWidth, setGridWidth] = useState(1100);
@@ -228,6 +232,7 @@ export default function DashboardDetailPage() {
           id: data.dashboard.id,
           name: data.dashboard.name,
           description: data.dashboard.description || null,
+          workstreamId: data.dashboard.workstreamId || null,
           widgets,
         });
       } catch (error) {
@@ -236,6 +241,7 @@ export default function DashboardDetailPage() {
           id: dashboardId,
           name: 'Untitled Dashboard',
           description: 'Loaded in local mode because dashboard fetch failed.',
+          workstreamId: null,
           widgets: [],
         });
       } finally {
@@ -249,11 +255,16 @@ export default function DashboardDetailPage() {
   useEffect(() => {
     async function fetchViews() {
       try {
-        const res = await fetch('/api/views');
+        let url = '/api/views';
+        if (dashboard?.workstreamId) {
+          url += `?workstreamId=${encodeURIComponent(dashboard.workstreamId)}`;
+        }
+        const res = await fetch(url);
         if (!res.ok) return;
         const data = await res.json();
         const options = (data.views || []).map((v: { id: string; name: string }) => ({ id: v.id, name: v.name }));
         setViews(options);
+        setAvailableSourceViews(options);
         if (options.length > 0) {
           setNewWidgetViewId(options[0].id);
         }
@@ -262,7 +273,7 @@ export default function DashboardDetailPage() {
       }
     }
     fetchViews();
-  }, []);
+  }, [dashboard?.workstreamId]);
 
   useEffect(() => {
     const updateWidth = () => {
@@ -472,6 +483,32 @@ export default function DashboardDetailPage() {
     setIsAddingWidget(false);
   };
 
+  const handleDeleteWidget = async (widgetId: string) => {
+    const confirmed = window.confirm('Delete this widget?');
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`/api/widgets/${widgetId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        throw new Error('Failed to delete widget');
+      }
+
+      if (dashboard) {
+        setDashboard({
+          ...dashboard,
+          widgets: dashboard.widgets.filter((widget) => widget.id !== widgetId),
+        });
+      }
+      setWidgetRows((prev) => {
+        const next = { ...prev };
+        delete next[widgetId];
+        return next;
+      });
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to delete widget');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="p-8">
@@ -614,6 +651,28 @@ export default function DashboardDetailPage() {
 
       {/* Widgets Grid */}
       <div ref={gridRef} className="rounded-2xl border border-[#dce8f5] bg-white/50 p-4">
+        <div className="mb-4 rounded-xl border border-[#d9e6f3] bg-white/70 p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Database className="w-4 h-4 text-primary" />
+            <p className="text-sm font-medium text-slate-700">Available Sources</p>
+          </div>
+          {availableSourceViews.length === 0 ? (
+            <p className="text-xs text-slate-500">
+              No saved queries available yet. Create one in Saved Queries.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {availableSourceViews.map((view) => (
+                <span
+                  key={view.id}
+                  className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600"
+                >
+                  {view.name}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
         <GridLayout
           layout={gridLayout}
           gridConfig={{
@@ -647,8 +706,17 @@ export default function DashboardDetailPage() {
                     <CardTitle className="text-sm font-medium text-muted-foreground">
                       {widget.title}
                     </CardTitle>
-                    <div className="widget-drag-handle text-slate-400 hover:text-slate-700 cursor-move">
-                      <Move className="w-4 h-4" />
+                    <div className="flex items-center gap-1">
+                      <button
+                        className="text-slate-400 hover:text-red-600"
+                        onClick={() => handleDeleteWidget(widget.id)}
+                        aria-label="Delete widget"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                      <div className="widget-drag-handle text-slate-400 hover:text-slate-700 cursor-move">
+                        <Move className="w-4 h-4" />
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -660,8 +728,17 @@ export default function DashboardDetailPage() {
                 <Card className="h-full border-[#d9e6f3] shadow-sm rounded-2xl overflow-hidden">
                   <CardHeader className="pb-2 flex flex-row items-start justify-between space-y-0">
                     <CardTitle className="text-sm font-medium">{widget.title}</CardTitle>
-                    <div className="widget-drag-handle text-slate-400 hover:text-slate-700 cursor-move">
-                      <Move className="w-4 h-4" />
+                    <div className="flex items-center gap-1">
+                      <button
+                        className="text-slate-400 hover:text-red-600"
+                        onClick={() => handleDeleteWidget(widget.id)}
+                        aria-label="Delete widget"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                      <div className="widget-drag-handle text-slate-400 hover:text-slate-700 cursor-move">
+                        <Move className="w-4 h-4" />
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -737,8 +814,17 @@ export default function DashboardDetailPage() {
                 <Card className="h-full border-[#d9e6f3] shadow-sm rounded-2xl overflow-hidden">
                   <CardHeader className="pb-2 flex flex-row items-start justify-between space-y-0">
                     <CardTitle className="text-sm font-medium">{widget.title}</CardTitle>
-                    <div className="widget-drag-handle text-slate-400 hover:text-slate-700 cursor-move">
-                      <Move className="w-4 h-4" />
+                    <div className="flex items-center gap-1">
+                      <button
+                        className="text-slate-400 hover:text-red-600"
+                        onClick={() => handleDeleteWidget(widget.id)}
+                        aria-label="Delete widget"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                      <div className="widget-drag-handle text-slate-400 hover:text-slate-700 cursor-move">
+                        <Move className="w-4 h-4" />
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="h-full">
