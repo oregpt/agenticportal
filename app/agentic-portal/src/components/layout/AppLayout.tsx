@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Layers3, Shield, Building2, ChevronDown } from 'lucide-react';
+import { Layers3, Shield, Building2, ChevronDown, Hexagon, LogOut, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { Sidebar, getSectionFromPath, type NavSection } from './Sidebar';
@@ -63,21 +63,21 @@ export function AppLayout({ children }: AppLayoutProps) {
   }, [pathname]);
 
   const sectionTabs: Array<{ key: NavSection; label: string; href: string; icon: ComponentType<{ className?: string }> }> = [
-    { key: 'pipeline', label: 'Pipeline', href: '/workstreams', icon: Layers3 },
-    { key: 'organization', label: 'Organization', href: '/org', icon: Building2 },
+    { key: 'pipeline', label: 'Home', href: '/workstreams', icon: Layers3 },
     { key: 'platform', label: 'Platform Admin', href: '/admin', icon: Shield },
   ];
 
   const visibleTabs = sectionTabs.filter((tab) => {
-    if (tab.key === 'organization') return canAccessOrgAdmin;
     if (tab.key === 'platform') return canAccessPlatformAdmin;
     return true;
   });
 
-  const effectiveSection =
-    visibleTabs.some((tab) => tab.key === activeSection)
-      ? activeSection
-      : (visibleTabs[0]?.key ?? 'pipeline');
+  const effectiveSection: NavSection =
+    activeSection === 'platform' && !canAccessPlatformAdmin
+      ? 'pipeline'
+      : activeSection === 'organization' && !canAccessOrgAdmin
+        ? 'pipeline'
+        : activeSection;
 
   const activeOrg = useMemo(
     () => organizations.find((org) => org.id === activeOrganizationId) || null,
@@ -111,6 +111,14 @@ export function AppLayout({ children }: AppLayoutProps) {
       <header className="h-14 border-b border-border/80 bg-white/70 backdrop-blur-md">
         <div className="mx-auto flex h-full max-w-[1600px] items-center justify-between gap-2 px-4">
           <div className="flex items-center gap-2">
+            <Link href="/" className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-muted transition-colors">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-teal flex items-center justify-center shadow-sm">
+                <Hexagon className="w-4 h-4 text-primary-foreground" strokeWidth={2.5} />
+              </div>
+              <span className="font-semibold text-sm text-foreground tracking-tight">
+                Agentic<span className="text-primary">Portal</span>
+              </span>
+            </Link>
             {visibleTabs.map((tab) => {
               const isActive = effectiveSection === tab.key;
               return (
@@ -132,6 +140,21 @@ export function AppLayout({ children }: AppLayoutProps) {
           </div>
 
           <div className="flex items-center gap-2">
+            {canAccessOrgAdmin ? (
+              <Link
+                href="/org"
+                className={cn(
+                  'inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
+                  activeSection === 'organization'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                )}
+              >
+                <Building2 className="h-4 w-4" />
+                Organization
+              </Link>
+            ) : null}
+
             {organizations.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -163,22 +186,31 @@ export function AppLayout({ children }: AppLayoutProps) {
             )}
 
             {user ? (
-              <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-2 py-1">
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                  {user.name?.charAt(0) || user.email.charAt(0).toUpperCase()}
-                </div>
-                <div className="max-w-[180px] leading-tight">
-                  <p className="truncate text-xs font-medium">{user.name || 'User'}</p>
-                  <p className="truncate text-[11px] text-muted-foreground">{user.email}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={logout}
-                  className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-                >
-                  Sign out
-                </button>
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors"
+                    aria-label="Open user menu"
+                  >
+                    {user.name?.charAt(0) || user.email.charAt(0).toUpperCase()}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  <div className="px-3 py-2 border-b border-border">
+                    <p className="text-sm font-medium truncate">{user.name || 'User'}</p>
+                    <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                  </div>
+                  <DropdownMenuItem onClick={() => router.push('/org/settings')}>
+                    <User className="h-4 w-4 mr-2" />
+                    Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={logout}>
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : null}
           </div>
         </div>

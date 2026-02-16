@@ -13,8 +13,6 @@ import {
   Users,
   Building2,
   Bot,
-  LogOut,
-  Shield,
   Plug,
   Hexagon,
   Workflow,
@@ -81,7 +79,7 @@ interface SidebarProps {
 
 export function Sidebar({ section }: SidebarProps) {
   const pathname = usePathname();
-  const { user, logout, canAccessPlatformAdmin, canAccessOrgAdmin } = useAuth();
+  const { canAccessPlatformAdmin, canAccessOrgAdmin } = useAuth();
   const [hasDataSources, setHasDataSources] = React.useState(true);
 
   React.useEffect(() => {
@@ -144,21 +142,6 @@ export function Sidebar({ section }: SidebarProps) {
         </Link>
       </div>
 
-      {user?.organizationName && (
-        <div className="px-3 py-3 border-b border-sidebar-border/80">
-          <div className="flex items-center justify-between px-3 py-2.5 rounded-xl border border-sidebar-border bg-white/60">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center">
-                <Building2 className="w-3.5 h-3.5 text-primary" />
-              </div>
-              <span className="text-sm font-medium text-sidebar-foreground truncate">
-                {user.organizationName}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         <div className="mb-4 rounded-xl border border-sidebar-border/60 bg-white/50 px-3 py-2.5">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
@@ -201,43 +184,6 @@ export function Sidebar({ section }: SidebarProps) {
           </div>
         ))}
       </nav>
-
-      <div className="border-t border-sidebar-border/80 p-3">
-        {user ? (
-          <div className="space-y-2">
-            <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-white/60 border border-sidebar-border/60">
-              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-sm font-semibold text-primary">
-                  {user.name?.charAt(0) || user.email.charAt(0).toUpperCase()}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-sidebar-foreground truncate flex items-center gap-1.5">
-                  {user.name || 'User'}
-                  {user.role === 'platform_admin' && (
-                    <Shield className="w-3.5 h-3.5 text-amber-500" />
-                  )}
-                </p>
-                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-              </div>
-            </div>
-            <button
-              onClick={logout}
-              className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-accent hover:text-destructive transition-colors"
-            >
-              <LogOut className="h-4 w-4" />
-              Sign out
-            </button>
-          </div>
-        ) : (
-          <Link
-            href="/login"
-            className="flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            Sign in
-          </Link>
-        )}
-      </div>
     </div>
   );
 }
