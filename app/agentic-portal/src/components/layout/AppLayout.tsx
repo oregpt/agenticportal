@@ -58,7 +58,9 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const embedded = new URLSearchParams(window.location.search).get('embed') === '1';
+    const isInIframe = window.self !== window.top;
+    const embeddedByQuery = new URLSearchParams(window.location.search).get('embed') === '1';
+    const embedded = isInIframe || embeddedByQuery;
     setIsEmbedded(embedded);
   }, [pathname]);
 
