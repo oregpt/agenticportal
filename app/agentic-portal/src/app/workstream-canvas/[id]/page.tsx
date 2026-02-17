@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { 
   ArrowLeft,
@@ -1264,6 +1264,7 @@ export default function WorkstreamCanvasPage() {
 
   const [workstream, setWorkstream] = useState<Workstream | null>(null);
   const [nodes, setNodes] = useState<PipelineNode[]>([]);
+  const [orgDataSources, setOrgDataSources] = useState<PipelineNode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedNode, setSelectedNode] = useState<PipelineNode | null>(null);
   const [activeEntityUrl, setActiveEntityUrl] = useState<string | null>(defaultEntityUrl);
@@ -1284,16 +1285,42 @@ export default function WorkstreamCanvasPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const response = await fetch(`/api/workstreams/${workstreamId}`, { cache: 'no-store' });
-      if (response.ok) {
-        const data = await response.json();
+      const [workstreamRes, dataSourcesRes] = await Promise.all([
+        fetch(`/api/workstreams/${workstreamId}`, { cache: 'no-store' }),
+        fetch('/api/datasources', { cache: 'no-store' }),
+      ]);
+
+      if (workstreamRes.ok) {
+        const data = await workstreamRes.json();
+        const workstreamNodes = (data.nodes || []) as PipelineNode[];
         setWorkstream(data.workstream);
-        setNodes(data.nodes || []);
-      } else if (response.status === 404) {
+        setNodes(workstreamNodes);
+
+        if (dataSourcesRes.ok) {
+          const dataSourcesData = await dataSourcesRes.json();
+          const existingDataSourceIds = new Set(
+            workstreamNodes.filter((node) => node.type === 'datasource').map((node) => node.id)
+          );
+          const sharedDataSourceNodes: PipelineNode[] = (dataSourcesData.dataSources || [])
+            .filter((ds: { id: string }) => !existingDataSourceIds.has(ds.id))
+            .map((ds: { id: string; name: string; status?: string | null; type?: string | null }) => ({
+              id: ds.id,
+              type: 'datasource' as const,
+              name: ds.name,
+              status: ds.status || undefined,
+              parentIds: [],
+              metadata: { type: ds.type || 'database', shared: true },
+            }));
+          setOrgDataSources(sharedDataSourceNodes);
+        } else {
+          setOrgDataSources([]);
+        }
+      } else if (workstreamRes.status === 404) {
         router.push('/workstreams');
       }
     } catch (error) {
       console.error('Error fetching workstream:', error);
+      setOrgDataSources([]);
     } finally {
       setIsLoading(false);
     }
@@ -1323,8 +1350,14 @@ export default function WorkstreamCanvasPage() {
     return () => window.removeEventListener('message', handleEntityDeleted);
   }, [defaultEntityUrl, fetchData, selectedNode]);
 
+  const combinedDataSources = useMemo(() => {
+    const projectDataSources = nodes.filter((n) => n.type === 'datasource');
+    if (orgDataSources.length === 0) return projectDataSources;
+    return [...projectDataSources, ...orgDataSources];
+  }, [nodes, orgDataSources]);
+
   const nodesByType = {
-    datasource: nodes.filter(n => n.type === 'datasource'),
+    datasource: combinedDataSources,
     view: nodes.filter(n => n.type === 'view'),
     dashboard: nodes.filter(n => n.type === 'dashboard'),
     output: nodes.filter(n => n.type === 'output')
@@ -1342,7 +1375,7 @@ export default function WorkstreamCanvasPage() {
     return null;
   }
 
-  const hasNodes = nodes.length > 0;
+  const hasNodes = nodes.length > 0 || orgDataSources.length > 0;
   const areAllSectionsOpen = sectionOrder.every((type) => sectionOpen[type]);
   const effectiveCanvasWidth = areAllSectionsOpen ? canvasWidth : Math.min(canvasWidth, 260);
 

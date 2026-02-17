@@ -12,13 +12,15 @@ import {
   Mail,
   Search,
   Webhook,
+  Trash2,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { WorkstreamFilterBar } from '@/components/filters/WorkstreamFilterBar';
 import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
 import { FilterPresetManager } from '@/components/filters/FilterPresetManager';
-import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast';
 
 interface Output {
   id: string;
@@ -58,12 +60,14 @@ const scheduleLabel = (value?: string) => {
 function OutputsPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { toast } = useToast();
 
   const [outputs, setOutputs] = useState<Output[]>([]);
   const [workstreams, setWorkstreams] = useState<WorkstreamOption[]>([]);
   const [dashboards, setDashboards] = useState<DashboardOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const selectedWorkstreamId = searchParams.get('workstreamId') || undefined;
   const selectedDashboardIds = (searchParams.get('dashboardIds') || '')
@@ -176,6 +180,39 @@ function OutputsPageContent() {
     return date.toLocaleString();
   };
 
+  const handleDeleteOutput = async (output: Output) => {
+    const confirmed = window.confirm(`Delete output "${output.name}"? This cannot be undone.`);
+    if (!confirmed) return;
+
+    setDeletingId(output.id);
+    try {
+      const res = await fetch(`/api/outputs/${output.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        throw new Error('Failed to delete output');
+      }
+      setOutputs((prev) => prev.filter((item) => item.id !== output.id));
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage(
+          {
+            type: 'agenticportal:entity-deleted',
+            entityType: 'output',
+            id: output.id,
+          },
+          window.location.origin
+        );
+      }
+      toast({ title: 'Output deleted' });
+    } catch (error) {
+      toast({
+        title: 'Could not delete output',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <div className="p-8 max-w-7xl mx-auto fade-in-up">
       <div className="page-header">
@@ -238,9 +275,20 @@ function OutputsPageContent() {
             const Icon = config.icon;
 
             return (
-              <Link key={output.id} href={`/outputs/${output.id}`}>
-                <div className="group ui-card ui-card-hover p-5">
-                  <div className="flex items-start justify-between">
+              <div
+                key={output.id}
+                className="group ui-card ui-card-hover p-5 cursor-pointer"
+                onClick={() => router.push(`/outputs/${output.id}`)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    router.push(`/outputs/${output.id}`);
+                  }
+                }}
+              >
+                <div className="flex items-start justify-between">
                     <div className="flex items-start gap-4">
                       <div className={`p-3 rounded-xl ${config.bg} ${config.border} border`}>
                         <Icon className={`w-5 h-5 ${config.color}`} />
@@ -272,9 +320,21 @@ function OutputsPageContent() {
                         </div>
                       </div>
                     </div>
-                  </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteOutput(output);
+                      }}
+                      disabled={deletingId === output.id}
+                      aria-label={`Delete output ${output.name}`}
+                    >
+                      {deletingId === output.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    </Button>
                 </div>
-              </Link>
+              </div>
             );
           })}
         </div>
