@@ -10,7 +10,6 @@ import {
   LayoutDashboard,
   FileOutput,
   ChevronRight,
-  Sparkles,
   Calendar,
   Layers,
   Search,
@@ -310,29 +309,6 @@ export default function WorkstreamsPage() {
               Create Workstream
             </Button>
           )}
-        </div>
-      )}
-
-      {/* AI Hint */}
-      {!isLoading && workstreams.length > 0 && (
-        <div className="mt-8 p-5 bg-gradient-to-r from-violet-500/10 via-transparent to-emerald-500/10 border border-border rounded-xl">
-          <div className="flex items-center gap-4">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-emerald-500 flex items-center justify-center flex-shrink-0">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <div className="flex-1">
-              <h4 className="font-medium mb-0.5">AI-Powered at Every Step</h4>
-              <p className="text-sm text-muted-foreground">
-                Use natural language to create views, design dashboards, and generate reports. 
-                AI helps you at every stage except data source connections.
-              </p>
-            </div>
-            <Link href="/chat">
-              <Button variant="outline" size="sm">
-                Open AI Chat
-              </Button>
-            </Link>
-          </div>
         </div>
       )}
 
