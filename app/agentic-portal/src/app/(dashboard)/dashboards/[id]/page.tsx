@@ -1142,6 +1142,7 @@ export default function DashboardDetailPage() {
           }}
           resizeConfig={{
             enabled: true,
+            handles: ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'],
           }}
           onLayoutChange={handleGridLayoutChange}
         >
@@ -1186,8 +1187,8 @@ export default function DashboardDetailPage() {
                   </CardContent>
                 </Card>
               ) : widget.type === 'chart' ? (
-                <Card className="h-full border-[#d9e6f3] shadow-sm rounded-2xl overflow-hidden">
-                  <CardHeader className="pb-2 flex flex-row items-start justify-between space-y-0">
+                <Card className="h-full border-[#d9e6f3] shadow-sm rounded-2xl overflow-hidden flex flex-col">
+                  <CardHeader className="pb-2 flex flex-row items-start justify-between space-y-0 shrink-0">
                     <CardTitle className="text-sm font-medium">{widget.title}</CardTitle>
                     <div className="flex items-center gap-1">
                       <button
@@ -1209,8 +1210,8 @@ export default function DashboardDetailPage() {
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="h-full min-h-52">
+                  <CardContent className="flex-1 min-h-0">
+                    <div className="h-full min-h-0">
                       {chartPayload.data.length === 0 ? (
                         <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
                           No query results available for this chart.
@@ -1353,13 +1354,60 @@ export default function DashboardDetailPage() {
       <style jsx global>{`
         .react-grid-item > .react-resizable-handle {
           position: absolute;
-          width: 14px;
-          height: 14px;
-          bottom: 4px;
-          right: 4px;
+          z-index: 20;
+          background: transparent;
+          opacity: 0.95;
+        }
+        .react-grid-item > .react-resizable-handle::after {
+          content: '';
+          position: absolute;
           background: linear-gradient(135deg, #5b7cfa, #16a34a);
-          border-radius: 3px;
-          opacity: 0.75;
+          border-radius: 999px;
+          opacity: 0.9;
+        }
+        .react-grid-item > .react-resizable-handle-se,
+        .react-grid-item > .react-resizable-handle-ne,
+        .react-grid-item > .react-resizable-handle-sw,
+        .react-grid-item > .react-resizable-handle-nw {
+          width: 16px;
+          height: 16px;
+        }
+        .react-grid-item > .react-resizable-handle-se::after,
+        .react-grid-item > .react-resizable-handle-ne::after,
+        .react-grid-item > .react-resizable-handle-sw::after,
+        .react-grid-item > .react-resizable-handle-nw::after {
+          width: 10px;
+          height: 10px;
+          top: 3px;
+          left: 3px;
+        }
+        .react-grid-item > .react-resizable-handle-n,
+        .react-grid-item > .react-resizable-handle-s {
+          left: 14px;
+          right: 14px;
+          height: 8px;
+          cursor: ns-resize;
+        }
+        .react-grid-item > .react-resizable-handle-n::after,
+        .react-grid-item > .react-resizable-handle-s::after {
+          left: 0;
+          right: 0;
+          height: 3px;
+          top: 2px;
+        }
+        .react-grid-item > .react-resizable-handle-e,
+        .react-grid-item > .react-resizable-handle-w {
+          top: 14px;
+          bottom: 14px;
+          width: 8px;
+          cursor: ew-resize;
+        }
+        .react-grid-item > .react-resizable-handle-e::after,
+        .react-grid-item > .react-resizable-handle-w::after {
+          top: 0;
+          bottom: 0;
+          width: 3px;
+          left: 2px;
         }
         .react-grid-item.react-grid-placeholder {
           background: rgba(91, 124, 250, 0.16);
