@@ -249,3 +249,90 @@ Completed environment separation on Railway, switched deployment source to the n
 
 ### Commit
 - `b543441` - `Fix Next 16 build blockers for datasources and dashboard pages`
+
+## 2026-02-17 - Canvas UX Simplification + Overview Language Pass
+
+### Session Summary
+Focused UX simplification for non-technical users, with heavy iteration on canvas mode, header/navigation consistency, and overview-first wording.
+
+---
+
+### Features and UX Updates
+
+#### 1. Embedded Layout Stability
+- Fixed iframe navigation regressions where internal pages could briefly render full app shell inside the embedded pane.
+- Embedded detection now uses iframe context and server-provided initial state to prevent layout flash.
+
+#### 2. Header and Navigation Cleanup
+- Removed duplicate/competing header patterns in canvas flows.
+- Kept global header and sidebar outside embedded content consistently.
+- Updated top-level and sidebar wording to emphasize `Home`/`Overview`.
+- Avatar-based user menu retained, with compact header footprint.
+
+#### 3. Canvas Mode Improvements
+- Canvas sections reordered by user priority:
+  1. Dashboards
+  2. Outputs
+  3. Views
+  4. Data Sources
+- Node cards and add-cards made substantially more compact for higher information density.
+- Added section controls:
+  - Per-section `Open` / `Hide`
+  - Global `Show all` / `Collapse all`
+- Sections are collapsed by default.
+- Canvas left rail now auto-narrows when sections are collapsed.
+- Canvas viewport height stabilized so right-side content does not shrink when left pane is compact.
+
+#### 4. Default Right Pane Experience in Canvas
+- Right pane now defaults to embedded Relationship Explorer (`/relationship-explorer?embed=1`) instead of an empty placeholder state.
+- Added top guidance banner for first-load browsing context.
+- Added top-right controls in canvas pane:
+  - `Back to Overview`
+  - `Exit Canvas`
+- Removed tiny left-rail exit icon.
+
+#### 5. Wording Pass for Non-Technical Clarity
+- Replaced many user-facing `Pipeline` labels with `Overview` or `Workstream` where appropriate.
+- Preserved `New Pipeline` button label where explicitly requested.
+- Dashboard creation flow copy updated from optional `pipeline` to optional `workstream`.
+- Workstream detail/chat copy adjusted (`Visual workstream canvas`, `data workflow`).
+
+#### 6. Overview Page Simplification
+- Replaced the larger checklist-style setup block with a compact `Quick Actions` block:
+  - `Connect Data`
+  - `Create View`
+  - `Create Dashboard`
+
+#### 7. Product Docs Updated
+- `README.md` replaced from default Next.js template with a practical product overview:
+  - core journey
+  - current UX direction
+  - main app areas
+  - local dev and branch strategy
+
+---
+
+### Validation
+- Repeated ESLint checks on touched files (warnings only in legacy areas, no blocking errors on new changes).
+- Multiple successful `npm run build` runs after canvas/header updates.
+
+---
+
+### Stop Point / Current State
+- Canvas is now browse-first, compact, and controllable for non-technical users.
+- Default canvas right pane opens the relationship graph context immediately.
+- Navigation language is mostly aligned to `Overview` + `Views` + `Workstreams`.
+- Next iteration likely targets remaining legacy page copy/headers and deeper dashboard widget editing controls.
+
+---
+
+### Key Commits (latest sequence)
+- `f8f69a1` - Keep embedded layout active inside iframe
+- `62c7aa1` - Fix iframe layout flash and rename pipeline labels
+- `57bad7f` - Polish overview/workstream UI wording
+- `cb7d9a0` - Refine canvas hierarchy and compact section cards
+- `6505931` - Auto-narrow canvas rail when sections are collapsed
+- `33e5ef7` - Stabilize canvas viewport height when sections are collapsed
+- `d8c4260` - Simplify overview quick actions block
+- `015e644` - Default canvas pane to relationship explorer with guidance banner
+- `6ce758b` - Add top-right canvas actions and overview heading
