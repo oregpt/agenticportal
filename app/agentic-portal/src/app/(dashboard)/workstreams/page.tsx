@@ -59,11 +59,6 @@ export default function WorkstreamsPage() {
   const { toast } = useToast();
   const [workstreams, setWorkstreams] = useState<Workstream[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [setupState, setSetupState] = useState({
-    dataSources: 0,
-    views: 0,
-    dashboards: 0,
-  });
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -87,31 +82,8 @@ export default function WorkstreamsPage() {
     }
   };
 
-  const fetchSetupState = async () => {
-    try {
-      const [dataSourcesRes, viewsRes, dashboardsRes] = await Promise.all([
-        fetch('/api/datasources'),
-        fetch('/api/views'),
-        fetch('/api/dashboards'),
-      ]);
-      const [dataSourcesData, viewsData, dashboardsData] = await Promise.all([
-        dataSourcesRes.ok ? dataSourcesRes.json() : Promise.resolve({}),
-        viewsRes.ok ? viewsRes.json() : Promise.resolve({}),
-        dashboardsRes.ok ? dashboardsRes.json() : Promise.resolve({}),
-      ]);
-      setSetupState({
-        dataSources: (dataSourcesData?.dataSources || []).length,
-        views: (viewsData?.views || []).length,
-        dashboards: (dashboardsData?.dashboards || []).length,
-      });
-    } catch {
-      // Best effort only.
-    }
-  };
-
   useEffect(() => {
     fetchWorkstreams();
-    fetchSetupState();
   }, []);
 
   const handleCreate = async () => {
@@ -180,32 +152,9 @@ export default function WorkstreamsPage() {
         </Button>
       </div>
 
-      <div className="mb-6 rounded-xl border border-border bg-card p-5">
-        <h2 className="text-base font-semibold mb-2">Quick setup checklist</h2>
-        <p className="text-sm text-muted-foreground mb-4">
-          Complete this once, then keep reusing dashboards with your team.
-        </p>
-        <div className="grid gap-2 text-sm">
-          <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
-            <span>1. Connect a data source</span>
-            <span className={setupState.dataSources > 0 ? 'text-emerald-600 font-medium' : 'text-muted-foreground'}>
-              {setupState.dataSources > 0 ? 'Done' : 'Pending'}
-            </span>
-          </div>
-          <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
-            <span>2. Save your first query</span>
-            <span className={setupState.views > 0 ? 'text-emerald-600 font-medium' : 'text-muted-foreground'}>
-              {setupState.views > 0 ? 'Done' : 'Pending'}
-            </span>
-          </div>
-          <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
-            <span>3. Build your dashboard</span>
-            <span className={setupState.dashboards > 0 ? 'text-emerald-600 font-medium' : 'text-muted-foreground'}>
-              {setupState.dashboards > 0 ? 'Done' : 'Pending'}
-            </span>
-          </div>
-        </div>
-        <div className="mt-4 flex flex-wrap gap-3">
+      <div className="mb-6 rounded-xl border border-border bg-card p-4">
+        <h2 className="text-sm font-semibold mb-3">Quick Actions</h2>
+        <div className="flex flex-wrap gap-3">
           <Link href="/datasources">
             <Button variant="outline">Connect Data</Button>
           </Link>
@@ -213,7 +162,7 @@ export default function WorkstreamsPage() {
             <Button variant="outline">Create View</Button>
           </Link>
           <Link href="/dashboards/new?mode=quick">
-            <Button>Quick Dashboard</Button>
+            <Button>Create Dashboard</Button>
           </Link>
         </div>
       </div>
