@@ -67,6 +67,7 @@ interface DashboardWidget {
     yFields?: { field: string; label: string; color?: string }[];
     metricField?: string;
     metricAggregation?: 'count' | 'sum' | 'avg' | 'min' | 'max';
+    tableColumns?: string[];
   };
 }
 
@@ -239,6 +240,7 @@ export default function DashboardDetailPage() {
   const [newChartYField, setNewChartYField] = useState('');
   const [newMetricAggregation, setNewMetricAggregation] = useState<'count' | 'sum' | 'avg' | 'min' | 'max'>('count');
   const [newMetricField, setNewMetricField] = useState('');
+  const [newTableColumns, setNewTableColumns] = useState<string[]>([]);
   const [isAddingWidget, setIsAddingWidget] = useState(false);
   const [widgetRows, setWidgetRows] = useState<Record<string, Array<Record<string, unknown>>>>({});
   const [views, setViews] = useState<ViewOption[]>([]);
@@ -252,6 +254,7 @@ export default function DashboardDetailPage() {
   const [editChartYField, setEditChartYField] = useState('');
   const [editMetricAggregation, setEditMetricAggregation] = useState<'count' | 'sum' | 'avg' | 'min' | 'max'>('count');
   const [editMetricField, setEditMetricField] = useState('');
+  const [editTableColumns, setEditTableColumns] = useState<string[]>([]);
   const [isSavingWidgetEdit, setIsSavingWidgetEdit] = useState(false);
   const [isSavingLayout, setIsSavingLayout] = useState(false);
   const gridRef = useRef<HTMLDivElement | null>(null);
@@ -457,6 +460,14 @@ export default function DashboardDetailPage() {
     if (!newMetricField && selectedNewNumericColumns.length > 0) {
       setNewMetricField(selectedNewNumericColumns[0].name);
     }
+    if (newWidgetType === 'table') {
+      const available = selectedNewViewColumns.map((column) => column.name);
+      if (newTableColumns.length === 0) {
+        setNewTableColumns(available);
+      } else {
+        setNewTableColumns((prev) => prev.filter((name) => available.includes(name)));
+      }
+    }
   }, [
     selectedNewView,
     selectedNewViewColumns,
@@ -464,6 +475,8 @@ export default function DashboardDetailPage() {
     newChartXField,
     newChartYField,
     newMetricField,
+    newWidgetType,
+    newTableColumns.length,
   ]);
 
   useEffect(() => {
@@ -477,6 +490,14 @@ export default function DashboardDetailPage() {
     if (editWidgetType === 'metric' && !editMetricField && selectedEditNumericColumns.length > 0) {
       setEditMetricField(selectedEditNumericColumns[0].name);
     }
+    if (editWidgetType === 'table') {
+      const available = selectedEditViewColumns.map((column) => column.name);
+      if (editTableColumns.length === 0) {
+        setEditTableColumns(available);
+      } else {
+        setEditTableColumns((prev) => prev.filter((name) => available.includes(name)));
+      }
+    }
   }, [
     showEditWidget,
     editWidgetType,
@@ -485,6 +506,7 @@ export default function DashboardDetailPage() {
     editMetricField,
     selectedEditViewColumns,
     selectedEditNumericColumns,
+    editTableColumns.length,
   ]);
 
   const gridLayout = useMemo<Layout>(
@@ -594,7 +616,12 @@ export default function DashboardDetailPage() {
               metricAggregation: newMetricAggregation,
               metricField: newMetricField || undefined,
             }
-          : {};
+          : {
+              tableColumns:
+                newTableColumns.length > 0
+                  ? newTableColumns
+                  : selectedNewViewColumns.map((column) => column.name),
+            };
 
       const create = await fetch('/api/widgets', {
         method: 'POST',
@@ -658,6 +685,7 @@ export default function DashboardDetailPage() {
     setNewChartYField('');
     setNewMetricAggregation('count');
     setNewMetricField('');
+    setNewTableColumns([]);
     setIsAddingWidget(false);
   };
 
@@ -698,6 +726,13 @@ export default function DashboardDetailPage() {
     setEditChartYField(widget.config.yFields?.[0]?.field || '');
     setEditMetricAggregation(widget.config.metricAggregation || 'count');
     setEditMetricField(widget.config.metricField || '');
+    const viewColumns = views.find((view) => view.id === (widget.viewId || ''))?.columns || [];
+    const allColumns = viewColumns.map((column) => column.name);
+    setEditTableColumns(
+      widget.config.tableColumns && widget.config.tableColumns.length > 0
+        ? widget.config.tableColumns
+        : allColumns
+    );
     setShowEditWidget(true);
   };
 
@@ -731,7 +766,12 @@ export default function DashboardDetailPage() {
             metricAggregation: editMetricAggregation,
             metricField: editMetricField || undefined,
           }
-        : {};
+        : {
+            tableColumns:
+              editTableColumns.length > 0
+                ? editTableColumns
+                : selectedEditViewColumns.map((column) => column.name),
+          };
 
     setIsSavingWidgetEdit(true);
     try {
@@ -967,6 +1007,50 @@ export default function DashboardDetailPage() {
                 </div>
               </>
             )}
+            {newWidgetType === 'table' && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Table Fields</Label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="text-xs text-primary hover:underline"
+                      onClick={() => setNewTableColumns(selectedNewViewColumns.map((column) => column.name))}
+                    >
+                      Select all
+                    </button>
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground hover:underline"
+                      onClick={() => setNewTableColumns([])}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">Defaults to all fields. Deselect any you do not want shown.</p>
+                <div className="max-h-48 overflow-auto rounded-md border border-slate-200 p-2 space-y-1">
+                  {selectedNewViewColumns.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No columns found for this view.</p>
+                  ) : (
+                    selectedNewViewColumns.map((column) => (
+                      <label key={`new-table-col-${column.name}`} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={newTableColumns.includes(column.name)}
+                          onChange={(e) => {
+                            setNewTableColumns((prev) =>
+                              e.target.checked ? [...prev, column.name] : prev.filter((name) => name !== column.name)
+                            );
+                          }}
+                        />
+                        <span>{column.name}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddWidget(false)}>
@@ -1089,6 +1173,50 @@ export default function DashboardDetailPage() {
                   </select>
                 </div>
               </>
+            )}
+            {editWidgetType === 'table' && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label>Table Fields</Label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="text-xs text-primary hover:underline"
+                      onClick={() => setEditTableColumns(selectedEditViewColumns.map((column) => column.name))}
+                    >
+                      Select all
+                    </button>
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground hover:underline"
+                      onClick={() => setEditTableColumns([])}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">Defaults to all fields. Deselect any you do not want shown.</p>
+                <div className="max-h-48 overflow-auto rounded-md border border-slate-200 p-2 space-y-1">
+                  {selectedEditViewColumns.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No columns found for this view.</p>
+                  ) : (
+                    selectedEditViewColumns.map((column) => (
+                      <label key={`edit-table-col-${column.name}`} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={editTableColumns.includes(column.name)}
+                          onChange={(e) => {
+                            setEditTableColumns((prev) =>
+                              e.target.checked ? [...prev, column.name] : prev.filter((name) => name !== column.name)
+                            );
+                          }}
+                        />
+                        <span>{column.name}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </div>
             )}
           </div>
           <DialogFooter>
@@ -1305,37 +1433,52 @@ export default function DashboardDetailPage() {
                   </CardHeader>
                   <CardContent className="h-full">
                     <div className="border rounded-lg overflow-auto h-full">
-                      {data.length === 0 ? (
-                        <div className="p-6 text-sm text-muted-foreground">No data available for this widget yet.</div>
-                      ) : null}
-                      <table className="w-full text-sm">
-                        <thead className="bg-zinc-50">
-                          <tr>
-                            {data.length > 0 && Object.keys(data[0]).map((key) => (
-                              <th key={key} className="px-4 py-3 text-left font-medium text-zinc-600 border-b">
-                                {key.charAt(0).toUpperCase() + key.slice(1)}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {data.map((row, i: number) => (
-                            <tr key={i} className="border-b last:border-0 hover:bg-zinc-50">
-                              {Object.values(row).map((value, j: number) => (
-                                <td key={j} className="px-4 py-3">
-                                  {typeof value === 'string' && value.startsWith('+') ? (
-                                    <span className="text-green-600 font-medium">{value}</span>
-                                  ) : typeof value === 'string' && value.startsWith('-') ? (
-                                    <span className="text-red-600 font-medium">{value}</span>
-                                  ) : (
-                                    formatCellValue(value)
-                                  )}
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                      {(() => {
+                        const selectedColumns =
+                          widget.config.tableColumns && widget.config.tableColumns.length > 0
+                            ? widget.config.tableColumns
+                            : data.length > 0
+                            ? Object.keys(data[0])
+                            : [];
+                        return (
+                          <>
+                            {data.length === 0 ? (
+                              <div className="p-6 text-sm text-muted-foreground">No data available for this widget yet.</div>
+                            ) : null}
+                            <table className="w-full text-sm">
+                              <thead className="bg-zinc-50">
+                                <tr>
+                                  {selectedColumns.map((key) => (
+                                    <th key={key} className="px-4 py-3 text-left font-medium text-zinc-600 border-b">
+                                      {key.charAt(0).toUpperCase() + key.slice(1)}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {data.map((row, i: number) => (
+                                  <tr key={i} className="border-b last:border-0 hover:bg-zinc-50">
+                                    {selectedColumns.map((key) => {
+                                      const value = row[key];
+                                      return (
+                                        <td key={`${i}-${key}`} className="px-4 py-3">
+                                          {typeof value === 'string' && value.startsWith('+') ? (
+                                            <span className="text-green-600 font-medium">{value}</span>
+                                          ) : typeof value === 'string' && value.startsWith('-') ? (
+                                            <span className="text-red-600 font-medium">{value}</span>
+                                          ) : (
+                                            formatCellValue(value)
+                                          )}
+                                        </td>
+                                      );
+                                    })}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </>
+                        );
+                      })()}
                     </div>
                   </CardContent>
                 </Card>
