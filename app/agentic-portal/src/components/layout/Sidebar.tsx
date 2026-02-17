@@ -33,7 +33,7 @@ const pipelineNavigation = [
   { name: 'Data Sources', href: '/datasources', icon: Database },
   { name: 'Views', href: '/views', icon: Table2 },
   { name: 'Dashboards', href: '/dashboards', icon: LayoutDashboard },
-  { name: 'Exports', href: '/outputs', icon: FileOutput },
+  { name: 'Outputs', href: '/outputs', icon: FileOutput },
   { name: 'Data Relationships', href: '/relationship-explorer', icon: Network },
 ];
 

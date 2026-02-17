@@ -161,8 +161,11 @@ export default function WorkstreamsPage() {
           <Link href="/views/new?mode=chat">
             <Button variant="outline">Create View</Button>
           </Link>
-          <Link href="/dashboards/new?mode=quick">
+          <Link href="/dashboards/new">
             <Button>Create Dashboard</Button>
+          </Link>
+          <Link href="/outputs">
+            <Button variant="outline">Create Output</Button>
           </Link>
         </div>
       </div>

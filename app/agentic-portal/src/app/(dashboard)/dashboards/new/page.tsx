@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, LayoutDashboard, Loader2, Sparkles, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -29,7 +29,6 @@ interface WorkstreamOption {
 
 function NewDashboardPageContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { toast } = useToast();
 
   const [name, setName] = useState('');
@@ -43,8 +42,6 @@ function NewDashboardPageContent() {
   const [workstreams, setWorkstreams] = useState<WorkstreamOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
-
-  const isQuickMode = searchParams.get('mode') !== 'manual';
 
   useEffect(() => {
     async function fetchBaseData() {
@@ -118,7 +115,7 @@ function NewDashboardPageContent() {
           name: name.trim(),
           description: description.trim() || null,
           workstreamId: workstreamId || null,
-          viewIds: isQuickMode ? selectedViewIds : [],
+          viewIds: selectedViewIds,
         }),
       });
 
@@ -128,11 +125,9 @@ function NewDashboardPageContent() {
       }
 
       toast({ title: 'Dashboard created', description: 'Your dashboard is ready to use.' });
-      if (isQuickMode) {
-        const contextIds = selectedViewIds.length > 0 ? selectedViewIds : availableViews.map((view) => view.id);
-        if (typeof window !== 'undefined' && contextIds.length > 0) {
-          window.localStorage.setItem(`dashboard-source-views:${payload.dashboard.id}`, JSON.stringify(contextIds));
-        }
+      const contextIds = selectedViewIds.length > 0 ? selectedViewIds : availableViews.map((view) => view.id);
+      if (typeof window !== 'undefined' && contextIds.length > 0) {
+        window.localStorage.setItem(`dashboard-source-views:${payload.dashboard.id}`, JSON.stringify(contextIds));
       }
       router.push(`/dashboards/${payload.dashboard.id}`);
     } catch (error) {
@@ -164,21 +159,8 @@ function NewDashboardPageContent() {
         </Link>
         <div>
           <h1 className="text-2xl font-bold">Create Dashboard</h1>
-          <p className="text-muted-foreground">
-            {isQuickMode
-              ? 'Quick mode: choose available sources, then add widgets manually'
-              : 'Manual mode: create an empty dashboard'}
-          </p>
+          <p className="text-muted-foreground">Choose available sources, then add widgets manually.</p>
         </div>
-      </div>
-
-      <div className="mb-4 flex gap-2">
-        <Button variant={isQuickMode ? 'default' : 'outline'} asChild>
-          <Link href="/dashboards/new?mode=quick">Quick Mode</Link>
-        </Button>
-        <Button variant={!isQuickMode ? 'default' : 'outline'} asChild>
-          <Link href="/dashboards/new?mode=manual">Manual Mode</Link>
-        </Button>
       </div>
 
       <Card className="mb-6">
@@ -228,77 +210,75 @@ function NewDashboardPageContent() {
         </CardContent>
       </Card>
 
-      {isQuickMode && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-primary" />
-              Quick Setup
-            </CardTitle>
-            <CardDescription>Select the data context this dashboard should pull from.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {dataSources.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-                No data sources found. Connect one first in{' '}
-                <Link href="/datasources" className="text-primary underline underline-offset-4">
-                  Data Sources
-                </Link>
-                .
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-primary" />
+            Quick Setup
+          </CardTitle>
+          <CardDescription>Select the data context this dashboard should pull from.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {dataSources.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
+              No data sources found. Connect one first in{' '}
+              <Link href="/datasources" className="text-primary underline underline-offset-4">
+                Data Sources
+              </Link>
+              .
+            </div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="data-source">Data Source</Label>
+                <select
+                  id="data-source"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={selectedDataSourceId}
+                  onChange={(e) => setSelectedDataSourceId(e.target.value)}
+                >
+                  {dataSources.map((ds) => (
+                    <option key={ds.id} value={ds.id}>
+                      {ds.name}
+                    </option>
+                  ))}
+                </select>
               </div>
-            ) : (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="data-source">Data Source</Label>
-                  <select
-                    id="data-source"
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    value={selectedDataSourceId}
-                    onChange={(e) => setSelectedDataSourceId(e.target.value)}
-                  >
-                    {dataSources.map((ds) => (
-                      <option key={ds.id} value={ds.id}>
-                        {ds.name}
-                      </option>
+              <div className="space-y-2">
+                <Label>Views (optional source context)</Label>
+                {availableViews.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
+                    No views for this data source yet. Create one in{' '}
+                    <Link href="/views/new?mode=chat" className="text-primary underline underline-offset-4">
+                      Views
+                    </Link>
+                    .
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      Selecting these does not create widgets automatically. You will choose widgets on the dashboard screen.
+                    </p>
+                    {availableViews.map((view) => (
+                      <label
+                        key={view.id}
+                        className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm hover:bg-muted/40"
+                      >
+                        <span>{view.name}</span>
+                        <input
+                          type="checkbox"
+                          checked={selectedViewIds.includes(view.id)}
+                          onChange={() => handleToggleView(view.id)}
+                        />
+                      </label>
                     ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Views (optional source context)</Label>
-                  {availableViews.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-                      No views for this data source yet. Create one in{' '}
-                      <Link href="/views/new?mode=chat" className="text-primary underline underline-offset-4">
-                        Views
-                      </Link>
-                      .
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <p className="text-xs text-muted-foreground">
-                        Selecting these does not create widgets automatically. You will choose widgets on the dashboard screen.
-                      </p>
-                      {availableViews.map((view) => (
-                        <label
-                          key={view.id}
-                          className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm hover:bg-muted/40"
-                        >
-                          <span>{view.name}</span>
-                          <input
-                            type="checkbox"
-                            checked={selectedViewIds.includes(view.id)}
-                            onChange={() => handleToggleView(view.id)}
-                          />
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      )}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="pt-6">
@@ -307,17 +287,8 @@ function NewDashboardPageContent() {
             What happens next
           </h3>
           <ul className="text-sm text-muted-foreground space-y-1 mb-4">
-            {isQuickMode ? (
-              <>
-                <li>- A dashboard shell will be created with your selected context.</li>
-                <li>- Add and remove widgets manually from available sources.</li>
-              </>
-            ) : (
-              <>
-                <li>- An empty dashboard will be created.</li>
-                <li>- Add widgets later from any View.</li>
-              </>
-            )}
+            <li>- A dashboard shell will be created with your selected context.</li>
+            <li>- Add and remove widgets manually from available sources.</li>
           </ul>
           <div className="flex justify-end gap-3">
             <Link href="/dashboards">

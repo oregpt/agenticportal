@@ -174,12 +174,6 @@ function DashboardsPageContent() {
           <p className="text-muted-foreground mt-1">Create and reuse dashboards for your team</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button asChild>
-            <Link href="/dashboards/new?mode=quick">
-              <Plus className="w-4 h-4 mr-2" />
-              Quick Dashboard
-            </Link>
-          </Button>
           <Button variant="outline" asChild>
             <Link href="/relationship-explorer">
               <Network className="w-4 h-4 mr-2" />
@@ -287,18 +281,18 @@ function DashboardsPageContent() {
               </p>
             ) : setupCounts.views === 0 ? (
               <p className="text-muted-foreground mb-6 max-w-sm">
-                Create one view first, then use Quick Dashboard to build and reuse dashboards fast.
+                Create one view first, then create a dashboard to build and reuse insights fast.
               </p>
             ) : (
               <p className="text-muted-foreground mb-6 max-w-sm">
-                Use Quick Dashboard to create a dashboard from your existing views.
+                Create a dashboard from your existing views.
               </p>
             )}
             <div className="flex flex-wrap items-center justify-center gap-3">
               <Button className="bg-primary hover:bg-primary/90" asChild>
-                <Link href="/dashboards/new?mode=quick">
+                <Link href="/dashboards/new">
                   <Plus className="w-4 h-4 mr-2" />
-                  Quick Dashboard
+                  Create Dashboard
                 </Link>
               </Button>
               <Button variant="outline" asChild>
