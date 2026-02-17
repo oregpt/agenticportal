@@ -1259,12 +1259,13 @@ export default function WorkstreamCanvasPage() {
   const params = useParams();
   const router = useRouter();
   const workstreamId = params.id as string;
+  const defaultEntityUrl = '/relationship-explorer?embed=1';
 
   const [workstream, setWorkstream] = useState<Workstream | null>(null);
   const [nodes, setNodes] = useState<PipelineNode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedNode, setSelectedNode] = useState<PipelineNode | null>(null);
-  const [activeEntityUrl, setActiveEntityUrl] = useState<string | null>(null);
+  const [activeEntityUrl, setActiveEntityUrl] = useState<string | null>(defaultEntityUrl);
   const [canvasCollapsed, setCanvasCollapsed] = useState(false);
   const [canvasWidth, setCanvasWidth] = useState(260);
   const [sectionOpen, setSectionOpen] = useState<Record<NodeType, boolean>>({
@@ -1322,7 +1323,7 @@ export default function WorkstreamCanvasPage() {
 
   const hasNodes = nodes.length > 0;
   const areAllSectionsOpen = sectionOrder.every((type) => sectionOpen[type]);
-  const effectiveCanvasWidth = areAllSectionsOpen ? canvasWidth : Math.min(canvasWidth, 210);
+  const effectiveCanvasWidth = areAllSectionsOpen ? canvasWidth : Math.min(canvasWidth, 260);
 
   const openNodeInPane = (node: PipelineNode) => {
     setSelectedNode(node);
@@ -1458,24 +1459,23 @@ export default function WorkstreamCanvasPage() {
         )}
 
         <div className="flex-1 bg-white/70">
-          <div className="h-full bg-gray-50">
+          <div className="h-full bg-gray-50 flex flex-col">
+            {selectedNode === null ? (
+              <div className="border-b border-border bg-white px-4 py-3">
+                <h3 className="text-sm font-medium text-gray-900">Browse from relationships</h3>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  Click any data source, view, dashboard, or output in the canvas. It will open here so users can browse without leaving this page.
+                </p>
+              </div>
+            ) : null}
             {activeEntityUrl ? (
               <iframe
                 key={activeEntityUrl}
                 src={activeEntityUrl}
                 title="Canvas content"
-                className="w-full h-full border-0 bg-white"
+                className="w-full flex-1 border-0 bg-white"
               />
-            ) : (
-              <div className="h-full flex items-center justify-center p-8">
-                <div className="max-w-lg text-center">
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Browse from relationships</h3>
-                  <p className="text-sm text-gray-600">
-                    Click any data source, view, dashboard, or output in the canvas. It will open here so users can browse without leaving this page.
-                  </p>
-                </div>
-              </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
