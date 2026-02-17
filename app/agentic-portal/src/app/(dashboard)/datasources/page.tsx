@@ -121,7 +121,8 @@ function DataSourcesPageContent() {
   const [syncingState, setSyncingState] = useState<SyncingState>({});
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string; dependentViewCount: number } | null>(null);
+  const [isLoadingDeleteImpact, setIsLoadingDeleteImpact] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [workstreams, setWorkstreams] = useState<WorkstreamOption[]>([]);
   const selectedWorkstreamId = searchParams.get('workstreamId') || undefined;
@@ -504,7 +505,15 @@ function DataSourcesPageContent() {
     try {
       const res = await fetch(`/api/datasources/${deleteConfirm.id}`, { method: 'DELETE' });
       if (res.ok) {
-        toast({ title: 'Deleted', description: `"${deleteConfirm.name}" has been deleted.` });
+        const payload = await res.json();
+        const deletedViews = Number(payload?.deletedViews || deleteConfirm.dependentViewCount || 0);
+        toast({
+          title: 'Deleted',
+          description:
+            deletedViews > 0
+              ? `"${deleteConfirm.name}" and ${deletedViews} associated view${deletedViews === 1 ? '' : 's'} were deleted.`
+              : `"${deleteConfirm.name}" has been deleted.`,
+        });
         setDeleteConfirm(null);
         fetchDataSources();
       } else {
@@ -515,6 +524,27 @@ function DataSourcesPageContent() {
       toast({ title: 'Error', description: 'Failed to delete data source', variant: 'destructive' });
     } finally {
       setIsDeleting(false);
+    }
+  }
+
+  async function openDeleteConfirmDialog(dataSource: { id: string; name: string }) {
+    setIsLoadingDeleteImpact(true);
+    try {
+      const res = await fetch(`/api/datasources/${dataSource.id}`);
+      if (!res.ok) {
+        setDeleteConfirm({ id: dataSource.id, name: dataSource.name, dependentViewCount: 0 });
+        return;
+      }
+      const payload = await res.json();
+      setDeleteConfirm({
+        id: dataSource.id,
+        name: dataSource.name,
+        dependentViewCount: Number(payload?.dependentViewCount || 0),
+      });
+    } catch {
+      setDeleteConfirm({ id: dataSource.id, name: dataSource.name, dependentViewCount: 0 });
+    } finally {
+      setIsLoadingDeleteImpact(false);
     }
   }
 
@@ -954,8 +984,9 @@ function DataSourcesPageContent() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setDeleteConfirm({ id: ds.id, name: ds.name })}
+                        onClick={() => openDeleteConfirmDialog({ id: ds.id, name: ds.name })}
                         className="hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                        disabled={isLoadingDeleteImpact}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
@@ -984,7 +1015,10 @@ function DataSourcesPageContent() {
             <Alert variant="destructive">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                <strong>This action cannot be undone.</strong> All associated views, dashboards, and cached data will be permanently removed.
+                <strong>This action cannot be undone.</strong>{' '}
+                {deleteConfirm?.dependentViewCount
+                  ? `${deleteConfirm.dependentViewCount} associated view${deleteConfirm.dependentViewCount === 1 ? '' : 's'} will be deleted automatically.`
+                  : 'No dependent views were found.'}
               </AlertDescription>
             </Alert>
           </div>

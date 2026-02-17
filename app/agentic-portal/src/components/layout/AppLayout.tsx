@@ -112,8 +112,8 @@ export function AppLayout({ children, initialEmbedded = false }: AppLayoutProps)
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
       <header className="h-14 border-b border-border/80 bg-white/70 backdrop-blur-md">
-        <div className="mx-auto flex h-full max-w-[1600px] items-center justify-between gap-2 px-4">
-          <div className="flex items-center gap-2">
+        <div className="flex h-full w-full items-center justify-between gap-2 px-4">
+          <div className="ml-auto flex items-center gap-2">
             <Link href="/" className="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-muted transition-colors">
               <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-teal flex items-center justify-center shadow-sm">
                 <Hexagon className="w-4 h-4 text-primary-foreground" strokeWidth={2.5} />
