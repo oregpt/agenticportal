@@ -849,7 +849,7 @@ export default function DashboardDetailPage() {
 
       {/* Add Widget Dialog */}
       <Dialog open={showAddWidget} onOpenChange={setShowAddWidget}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[96vw] max-w-3xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add Widget</DialogTitle>
             <DialogDescription>
@@ -980,7 +980,7 @@ export default function DashboardDetailPage() {
       </Dialog>
 
       <Dialog open={showEditWidget} onOpenChange={setShowEditWidget}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[96vw] max-w-3xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Widget</DialogTitle>
             <DialogDescription>Update this widget&apos;s source and display settings.</DialogDescription>
