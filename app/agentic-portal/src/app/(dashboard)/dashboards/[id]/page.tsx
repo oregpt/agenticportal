@@ -345,7 +345,7 @@ export default function DashboardDetailPage() {
         const res = await fetch(url);
         if (!res.ok) return;
         const data = await res.json();
-        const options = (data.views || []).map(
+        const options: ViewOption[] = (data.views || []).map(
           (v: { id: string; name: string; columns?: { name: string; type?: string }[] }) => ({
             id: v.id,
             name: v.name,
@@ -368,7 +368,7 @@ export default function DashboardDetailPage() {
           }
         }
         setAvailableSourceViews(
-          contextViewIds.length > 0 ? options.filter((view) => contextViewIds.includes(view.id)) : options
+          contextViewIds.length > 0 ? options.filter((view: ViewOption) => contextViewIds.includes(view.id)) : options
         );
         if (options.length > 0) {
           setNewWidgetViewId(options[0].id);

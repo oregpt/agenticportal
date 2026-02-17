@@ -169,7 +169,7 @@ function NewDashboardPageContent() {
             <LayoutDashboard className="w-5 h-5" />
             Dashboard Details
           </CardTitle>
-          <CardDescription>Name your dashboard and choose an optional workstream.</CardDescription>
+          <CardDescription>Name your dashboard and choose an optional project.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -192,14 +192,14 @@ function NewDashboardPageContent() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="workstream">Workstream (optional)</Label>
+            <Label htmlFor="workstream">Project (optional)</Label>
             <select
               id="workstream"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               value={workstreamId}
               onChange={(e) => setWorkstreamId(e.target.value)}
             >
-              <option value="">No workstream</option>
+              <option value="">No project</option>
               {workstreams.map((ws) => (
                 <option key={ws.id} value={ws.id}>
                   {ws.name}

@@ -30,10 +30,10 @@ export function WorkstreamFilterBar({
           onValueChange={(value) => onWorkstreamChange(value === 'all' ? undefined : value)}
         >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="All workstreams" />
+            <SelectValue placeholder="All projects" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All workstreams</SelectItem>
+            <SelectItem value="all">All projects</SelectItem>
             {workstreams.map((ws) => (
               <SelectItem key={ws.id} value={ws.id}>
                 {ws.name}

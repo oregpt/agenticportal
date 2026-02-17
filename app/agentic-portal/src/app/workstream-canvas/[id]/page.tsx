@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { 
   ArrowLeft,
@@ -1282,7 +1282,7 @@ export default function WorkstreamCanvasPage() {
   const [showCreateDashboard, setShowCreateDashboard] = useState(false);
   const [showAddOutput, setShowAddOutput] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const response = await fetch(`/api/workstreams/${workstreamId}`, { cache: 'no-store' });
       if (response.ok) {
@@ -1297,11 +1297,31 @@ export default function WorkstreamCanvasPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [router, workstreamId]);
 
   useEffect(() => {
     fetchData();
-  }, [workstreamId]);
+  }, [fetchData]);
+
+  useEffect(() => {
+    const handleEntityDeleted = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      const data = event.data as { type?: string; entityType?: NodeType; id?: string } | null;
+      if (!data || data.type !== 'agenticportal:entity-deleted' || !data.entityType || !data.id) {
+        return;
+      }
+
+      fetchData();
+
+      if (selectedNode && selectedNode.id === data.id && selectedNode.type === data.entityType) {
+        setSelectedNode(null);
+        setActiveEntityUrl(defaultEntityUrl);
+      }
+    };
+
+    window.addEventListener('message', handleEntityDeleted);
+    return () => window.removeEventListener('message', handleEntityDeleted);
+  }, [defaultEntityUrl, fetchData, selectedNode]);
 
   const nodesByType = {
     datasource: nodes.filter(n => n.type === 'datasource'),

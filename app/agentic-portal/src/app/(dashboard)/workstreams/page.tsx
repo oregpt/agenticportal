@@ -101,12 +101,12 @@ export default function WorkstreamsPage() {
         setWorkstreams(prev => [data.workstream, ...prev]);
         setShowCreateModal(false);
         setNewWorkstream({ name: '', description: '', color: '#8b5cf6' });
-        toast({ title: 'Workstream created', description: 'You can now add data sources, views, and dashboards.' });
+        toast({ title: 'Project created', description: 'You can now add data sources, views, and dashboards.' });
       } else {
-        toast({ title: 'Could not create workstream', variant: 'destructive' });
+        toast({ title: 'Could not create project', variant: 'destructive' });
       }
     } catch {
-      toast({ title: 'Could not create workstream', variant: 'destructive' });
+      toast({ title: 'Could not create project', variant: 'destructive' });
     } finally {
       setIsCreating(false);
     }
@@ -147,13 +147,14 @@ export default function WorkstreamsPage() {
         </div>
         <Button className="gap-2" onClick={() => setShowCreateModal(true)}>
           <Plus className="w-4 h-4" />
-          New Pipeline
+          New Project
         </Button>
       </div>
 
       <div className="mb-6 rounded-xl border border-border bg-card p-4">
         <h2 className="text-sm font-semibold mb-3">Quick Actions</h2>
         <div className="flex flex-wrap gap-3">
+          <Button onClick={() => setShowCreateModal(true)}>Create Project</Button>
           <Link href="/datasources">
             <Button variant="outline">Connect Data</Button>
           </Link>
@@ -161,7 +162,7 @@ export default function WorkstreamsPage() {
             <Button variant="outline">Create View</Button>
           </Link>
           <Link href="/dashboards/new">
-            <Button>Create Dashboard</Button>
+            <Button variant="outline">Create Dashboard</Button>
           </Link>
           <Link href="/outputs">
             <Button variant="outline">Create Output</Button>
@@ -200,7 +201,7 @@ export default function WorkstreamsPage() {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search workstreams..."
+          placeholder="Search projects..."
           className="w-full bg-background border border-input rounded-lg pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
@@ -295,18 +296,18 @@ export default function WorkstreamsPage() {
             <Layers className="w-8 h-8 text-muted-foreground" />
           </div>
           <h3 className="text-lg font-medium mb-2">
-            {searchQuery ? 'No workstreams found' : 'No workstreams yet'}
+            {searchQuery ? 'No projects found' : 'No projects yet'}
           </h3>
           <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
             {searchQuery 
               ? "Try adjusting your search"
-              : "Workstreams help you organize your data flow from sources to dashboards."
+              : "Projects help you organize your data flow from sources to dashboards."
             }
           </p>
           {!searchQuery && (
             <Button className="gap-2" onClick={() => setShowCreateModal(true)}>
               <Plus className="w-4 h-4" />
-              Create Workstream
+              Create Project
             </Button>
           )}
         </div>
@@ -318,10 +319,10 @@ export default function WorkstreamsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Workflow className="w-5 h-5 text-primary" />
-              Create Workstream
+              Create Project
             </DialogTitle>
             <DialogDescription>
-              A workstream groups your data from source to dashboard
+              A project groups your data from source to dashboard
             </DialogDescription>
           </DialogHeader>
 
@@ -342,7 +343,7 @@ export default function WorkstreamsPage() {
               <textarea
                 value={newWorkstream.description}
                 onChange={(e) => setNewWorkstream(ws => ({ ...ws, description: e.target.value }))}
-                placeholder="What is this workstream for?"
+                placeholder="What is this project for?"
                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent min-h-[80px] resize-none"
               />
             </div>
@@ -373,7 +374,7 @@ export default function WorkstreamsPage() {
                 disabled={!newWorkstream.name || isCreating}
               >
                 {isCreating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Create Workstream
+                Create Project
               </Button>
             </div>
           </div>

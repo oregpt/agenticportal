@@ -154,6 +154,16 @@ function DashboardsPageContent() {
         throw new Error('Failed to delete dashboard');
       }
       setDashboards((prev) => prev.filter((item) => item.id !== dashboard.id));
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage(
+          {
+            type: 'agenticportal:entity-deleted',
+            entityType: 'dashboard',
+            id: dashboard.id,
+          },
+          window.location.origin
+        );
+      }
       toast({ title: 'Dashboard deleted' });
     } catch (error) {
       toast({

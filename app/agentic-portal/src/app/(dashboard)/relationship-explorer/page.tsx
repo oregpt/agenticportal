@@ -248,7 +248,7 @@ function RelationshipExplorerPageContent() {
         </div>
       ) : nodes.length === 0 ? (
         <div className="ui-empty">
-          <p className="text-muted-foreground">No entities found for this workstream yet.</p>
+          <p className="text-muted-foreground">No entities found for this project yet.</p>
         </div>
       ) : viewMode === 'columns' ? (
         <div className="grid min-w-[980px] grid-cols-4 gap-8 rounded-2xl border border-border bg-white/60 p-5">
