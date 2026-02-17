@@ -68,6 +68,7 @@ function OutputsPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const selectedWorkstreamId = searchParams.get('workstreamId') || undefined;
   const selectedDashboardIds = (searchParams.get('dashboardIds') || '')
@@ -115,6 +116,7 @@ function OutputsPageContent() {
   useEffect(() => {
     const fetchOutputs = async () => {
       setIsLoading(true);
+      setLoadError(null);
       try {
         const params = new URLSearchParams();
         if (selectedWorkstreamId) {
@@ -125,9 +127,13 @@ function OutputsPageContent() {
         if (res.ok) {
           const data = await res.json();
           setOutputs(data.outputs || []);
+        } else {
+          setOutputs([]);
+          setLoadError('Could not load outputs. Please refresh and try again.');
         }
       } catch (error) {
         console.error('Failed to fetch outputs:', error);
+        setLoadError('Could not load outputs. Please refresh and try again.');
       } finally {
         setIsLoading(false);
       }
@@ -173,6 +179,15 @@ function OutputsPageContent() {
     router.replace(`/outputs${query ? `?${query}` : ''}`, { scroll: false });
   };
 
+  useEffect(() => {
+    if (selectedDashboardIds.length === 0 || dashboards.length === 0) return;
+    const availableIds = new Set(dashboards.map((dashboard) => dashboard.id));
+    const nextIds = selectedDashboardIds.filter((id) => availableIds.has(id));
+    if (nextIds.length !== selectedDashboardIds.length) {
+      updateMultiFilterParam('dashboardIds', nextIds);
+    }
+  }, [dashboards, selectedDashboardIds]);
+
   const formatLastRun = (value?: string) => {
     if (!value) return 'Never';
     const date = new Date(value);
@@ -211,6 +226,11 @@ function OutputsPageContent() {
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const clearAllFilters = () => {
+    setSearchQuery('');
+    router.replace('/outputs', { scroll: false });
   };
 
   return (
@@ -265,6 +285,18 @@ function OutputsPageContent() {
           className="pl-10"
         />
       </div>
+
+      {outputs.length > 0 ? (
+        <div className="mb-4 text-sm text-muted-foreground">
+          Showing {filteredOutputs.length} of {outputs.length} outputs
+        </div>
+      ) : null}
+
+      {loadError ? (
+        <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+          {loadError}
+        </div>
+      ) : null}
 
       {isLoading ? (
         <div className="text-muted-foreground">Loading outputs...</div>
@@ -345,12 +377,19 @@ function OutputsPageContent() {
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-muted flex items-center justify-center">
             <FileOutput className="w-8 h-8 text-muted-foreground" />
           </div>
-          <h3 className="text-lg font-medium mb-2">No outputs found</h3>
+          <h3 className="text-lg font-medium mb-2">{outputs.length > 0 ? 'No outputs match current filters' : 'No outputs found'}</h3>
           <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
             {searchQuery
               ? 'Try adjusting your search'
-              : 'Outputs let you export dashboards as reports, CSVs, or automated emails.'}
+              : outputs.length > 0
+                ? 'Clear filters to see available outputs.'
+                : 'Outputs let you export dashboards as reports, CSVs, or automated emails.'}
           </p>
+          {outputs.length > 0 ? (
+            <Button variant="outline" onClick={clearAllFilters}>
+              Clear filters
+            </Button>
+          ) : null}
         </div>
       ) : null}
     </div>
