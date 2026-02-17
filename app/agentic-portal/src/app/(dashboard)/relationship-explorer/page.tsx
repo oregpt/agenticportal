@@ -76,6 +76,7 @@ function buildDefaultPositions(nodes: PipelineNode[]): Record<string, NodePositi
 function RelationshipExplorerPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const isEmbedded = searchParams.get('embed') === '1';
 
   const [workstreams, setWorkstreams] = useState<WorkstreamOption[]>([]);
   const [nodes, setNodes] = useState<PipelineNode[]>([]);
@@ -220,7 +221,7 @@ function RelationshipExplorerPageContent() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground flex items-center gap-2">
             <Network className="w-6 h-6 text-primary" />
-            Relationship Explorer
+            {isEmbedded ? 'Overview' : 'Relationship Explorer'}
           </h1>
           <p className="text-muted-foreground mt-1">Explore how sources, views, dashboards, and outputs connect</p>
         </div>

@@ -19,7 +19,8 @@ import {
   Webhook,
   Check,
   Loader2,
-  Search
+  Search,
+  Home
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1372,13 +1373,6 @@ export default function WorkstreamCanvasPage() {
                   <ArrowLeft className="w-3.5 h-3.5 text-gray-500" />
                 </button>
                 <button
-                  onClick={() => router.push('/workstreams')}
-                  className="p-1.5 rounded-md hover:bg-gray-100"
-                  aria-label="Exit canvas mode"
-                >
-                  <X className="w-3.5 h-3.5 text-gray-500" />
-                </button>
-                <button
                   onClick={() =>
                     setSectionOpen({
                       datasource: !areAllSectionsOpen,
@@ -1458,11 +1452,30 @@ export default function WorkstreamCanvasPage() {
           </div>
         )}
 
-        <div className="flex-1 bg-white/70">
+        <div className="flex-1 bg-white/70 relative">
+          <div className="absolute right-4 top-4 z-20 flex items-center gap-2">
+            <button
+              onClick={() => {
+                setSelectedNode(null);
+                setActiveEntityUrl(defaultEntityUrl);
+              }}
+              className="inline-flex items-center gap-2 rounded-md border border-border bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+            >
+              <Home className="h-3.5 w-3.5" />
+              Back to Overview
+            </button>
+            <button
+              onClick={() => router.push('/workstreams')}
+              className="inline-flex items-center gap-2 rounded-md border border-border bg-white px-3 py-1.5 text-xs font-semibold text-gray-800 shadow-sm hover:bg-gray-50"
+            >
+              <X className="h-4 w-4" />
+              Exit Canvas
+            </button>
+          </div>
           <div className="h-full bg-gray-50 flex flex-col">
             {selectedNode === null ? (
               <div className="border-b border-border bg-white px-4 py-3">
-                <h3 className="text-sm font-medium text-gray-900">Browse from relationships</h3>
+                <h3 className="text-sm font-medium text-gray-900">Overview</h3>
                 <p className="text-xs text-gray-600 mt-0.5">
                   Click any data source, view, dashboard, or output in the canvas. It will open here so users can browse without leaving this page.
                 </p>
