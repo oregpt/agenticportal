@@ -1333,7 +1333,7 @@ export default function WorkstreamCanvasPage() {
   };
 
   return (
-    <div className="h-full bg-background fade-in-up">
+    <div className="h-[calc(100dvh-3.5rem)] min-h-[calc(100dvh-3.5rem)] bg-background fade-in-up">
       {/* Subtle grid background */}
       <div 
         className="fixed inset-0 pointer-events-none opacity-35"
@@ -1343,7 +1343,7 @@ export default function WorkstreamCanvasPage() {
         }}
       />
 
-      <div className="flex h-full">
+      <div className="flex h-full min-h-0">
         {!canvasCollapsed ? (
           <div className="border-r border-border bg-white/60 backdrop-blur-sm" style={{ width: effectiveCanvasWidth }}>
             <div className="flex items-center justify-between px-3 py-2 border-b border-border">
