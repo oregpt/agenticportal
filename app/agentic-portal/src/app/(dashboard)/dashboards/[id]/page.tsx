@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import GridLayout, { type Layout } from 'react-grid-layout';
+import { useToast } from '@/hooks/use-toast';
 import {
   BarChart,
   Bar,
@@ -228,6 +229,7 @@ function formatCellValue(value: unknown): string | number {
 export default function DashboardDetailPage() {
   const params = useParams();
   const dashboardId = params.id as string;
+  const { toast } = useToast();
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -351,7 +353,23 @@ export default function DashboardDetailPage() {
           })
         );
         setViews(options);
-        setAvailableSourceViews(options);
+        let contextViewIds: string[] = [];
+        if (typeof window !== 'undefined') {
+          try {
+            const stored = window.localStorage.getItem(`dashboard-source-views:${dashboardId}`);
+            if (stored) {
+              const parsed = JSON.parse(stored);
+              if (Array.isArray(parsed)) {
+                contextViewIds = parsed.filter((id): id is string => typeof id === 'string');
+              }
+            }
+          } catch {
+            // Ignore malformed local context payloads.
+          }
+        }
+        setAvailableSourceViews(
+          contextViewIds.length > 0 ? options.filter((view) => contextViewIds.includes(view.id)) : options
+        );
         if (options.length > 0) {
           setNewWidgetViewId(options[0].id);
         }
@@ -360,7 +378,7 @@ export default function DashboardDetailPage() {
       }
     }
     fetchViews();
-  }, [dashboard?.workstreamId]);
+  }, [dashboard?.workstreamId, dashboardId]);
 
   useEffect(() => {
     const updateWidth = () => {
@@ -872,11 +890,17 @@ export default function DashboardDetailPage() {
               Saving layout...
             </div>
           ) : null}
-          <Button variant="outline">
+          <Button
+            variant="outline"
+            onClick={() => toast({ title: 'Feature coming soon', description: 'Sharing is not available yet.' })}
+          >
             <Share className="w-4 h-4 mr-2" />
             Share
           </Button>
-          <Button variant="outline">
+          <Button
+            variant="outline"
+            onClick={() => toast({ title: 'Feature coming soon', description: 'Dashboard settings are coming soon.' })}
+          >
             <Settings className="w-4 h-4 mr-2" />
             Settings
           </Button>

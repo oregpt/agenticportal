@@ -128,6 +128,12 @@ function NewDashboardPageContent() {
       }
 
       toast({ title: 'Dashboard created', description: 'Your dashboard is ready to use.' });
+      if (isQuickMode) {
+        const contextIds = selectedViewIds.length > 0 ? selectedViewIds : availableViews.map((view) => view.id);
+        if (typeof window !== 'undefined' && contextIds.length > 0) {
+          window.localStorage.setItem(`dashboard-source-views:${payload.dashboard.id}`, JSON.stringify(contextIds));
+        }
+      }
       router.push(`/dashboards/${payload.dashboard.id}`);
     } catch (error) {
       toast({
