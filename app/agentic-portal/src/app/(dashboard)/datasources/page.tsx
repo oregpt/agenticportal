@@ -550,7 +550,7 @@ function DataSourcesPageContent() {
 
   function getTypeIcon(type: string) {
     const typeConfig = DATA_SOURCE_TYPES.find((t) => t.id === type);
-    return typeConfig?.icon || 'ðŸ“';
+    return typeConfig?.icon || Database;
   }
 
   const filteredDataSources =
@@ -941,7 +941,10 @@ function DataSourcesPageContent() {
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <span className="text-lg">{getTypeIcon(ds.type)}</span>
+                        {(() => {
+                          const TypeIcon = getTypeIcon(ds.type);
+                          return <TypeIcon className="h-5 w-5 text-primary" />;
+                        })()}
                       </div>
                       <span className="font-medium">{ds.name}</span>
                     </div>
