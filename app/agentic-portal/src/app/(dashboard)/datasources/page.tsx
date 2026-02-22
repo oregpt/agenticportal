@@ -19,7 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { WorkstreamFilterBar } from '@/components/filters/WorkstreamFilterBar';
 import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
 import { FilterPresetManager } from '@/components/filters/FilterPresetManager';
-import { Plus, CheckCircle2, XCircle, RefreshCw, Loader2, Database, Table2, Zap, Trash2, AlertTriangle } from 'lucide-react';
+import { Plus, CheckCircle2, XCircle, RefreshCw, Loader2, Database, Table2, Zap, Trash2, AlertTriangle, BarChart3 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -31,9 +31,9 @@ interface TestResult {
 }
 
 const DATA_SOURCE_TYPES = [
-  { id: 'postgres', name: 'PostgreSQL', icon: 'ðŸ˜', description: 'Connect to PostgreSQL databases' },
-  { id: 'bigquery', name: 'BigQuery', icon: 'ðŸ“Š', description: 'Connect to Google BigQuery' },
-  { id: 'google_sheets_live', name: 'Google Sheets', icon: 'ðŸ“—', description: 'Query Google Sheets with SQL (via BigQuery)' },
+  { id: 'postgres', name: 'PostgreSQL', icon: Database, description: 'Connect to PostgreSQL databases' },
+  { id: 'bigquery', name: 'BigQuery', icon: BarChart3, description: 'Connect to Google BigQuery' },
+  { id: 'google_sheets_live', name: 'Google Sheets', icon: Table2, description: 'Query Google Sheets with SQL (via BigQuery)' },
 ];
 
 interface DataSource {
@@ -585,19 +585,24 @@ function DataSourcesPageContent() {
                   New here? Start with PostgreSQL for the quickest setup.
                 </p>
                 <div className="grid gap-3 py-4">
-                  {DATA_SOURCE_TYPES.map((type) => (
-                    <button
-                      key={type.id}
-                      onClick={() => { setSelectedType(type.id); setTestResult(null); }}
-                      className="flex items-center gap-4 p-4 rounded-xl border border-border hover:border-primary/30 hover:bg-primary/5 transition-all text-left"
-                    >
-                      <span className="text-2xl">{type.icon}</span>
-                      <div>
-                        <div className="font-medium">{type.name}</div>
-                        <div className="text-sm text-muted-foreground">{type.description}</div>
-                      </div>
-                    </button>
-                  ))}
+                  {DATA_SOURCE_TYPES.map((type) => {
+                    const Icon = type.icon;
+                    return (
+                      <button
+                        key={type.id}
+                        onClick={() => { setSelectedType(type.id); setTestResult(null); }}
+                        className="flex items-center gap-4 p-4 rounded-xl border border-border hover:border-primary/30 hover:bg-primary/5 transition-all text-left"
+                      >
+                        <div className="rounded-lg bg-primary/10 p-2">
+                          <Icon className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <div className="font-medium">{type.name}</div>
+                          <div className="text-sm text-muted-foreground">{type.description}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </>
             ) : selectedType === 'postgres' ? (

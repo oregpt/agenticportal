@@ -20,7 +20,8 @@ import {
   Check,
   Loader2,
   Search,
-  Home
+  Home,
+  BarChart3
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -217,9 +218,9 @@ function ConnectSourceModal({
   const [tableSearch, setTableSearch] = useState('');
 
   const sourceTypes = [
-    { id: 'postgres', name: 'PostgreSQL', icon: 'ðŸ˜', desc: 'Connect to PostgreSQL databases' },
-    { id: 'bigquery', name: 'BigQuery', icon: 'ðŸ“Š', desc: 'Connect to Google BigQuery' },
-    { id: 'google_sheets', name: 'Google Sheets', icon: 'ðŸ“—', desc: 'Query Google Sheets with SQL' },
+    { id: 'postgres', name: 'PostgreSQL', icon: Database, desc: 'Connect to PostgreSQL databases' },
+    { id: 'bigquery', name: 'BigQuery', icon: BarChart3, desc: 'Connect to Google BigQuery' },
+    { id: 'google_sheets', name: 'Google Sheets', icon: Table2, desc: 'Query Google Sheets with SQL' },
   ];
 
   // Reset when modal closes
@@ -341,7 +342,9 @@ function ConnectSourceModal({
 
         {step === 'type' && (
           <div className="grid gap-3 py-4">
-            {sourceTypes.map((type) => (
+            {sourceTypes.map((type) => {
+              const Icon = type.icon;
+              return (
               <button
                 key={type.id}
                 onClick={() => {
@@ -350,13 +353,16 @@ function ConnectSourceModal({
                 }}
                 className="flex items-center gap-4 p-4 rounded-xl border-2 border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition-all text-left"
               >
-                <span className="text-2xl">{type.icon}</span>
+                <div className="p-2 rounded-lg bg-blue-100">
+                  <Icon className="w-5 h-5 text-blue-700" />
+                </div>
                 <div>
                   <p className="font-medium">{type.name}</p>
                   <p className="text-sm text-gray-500">{type.desc}</p>
                 </div>
               </button>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -1509,6 +1515,13 @@ export default function WorkstreamCanvasPage() {
           <div className="h-full bg-gray-50 flex flex-col">
             <div className="border-b border-border bg-white px-4 py-2 flex items-center justify-end gap-2">
               <button
+                onClick={() => router.push('/workstreams')}
+                className="inline-flex items-center gap-2 rounded-md border border-border bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+              >
+                <Home className="h-3.5 w-3.5" />
+                Back to Overview
+              </button>
+              <button
                 onClick={() => {
                   setSelectedNode(null);
                   setActiveEntityUrl(defaultEntityUrl);
@@ -1516,7 +1529,7 @@ export default function WorkstreamCanvasPage() {
                 className="inline-flex items-center gap-2 rounded-md border border-border bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50"
               >
                 <Home className="h-3.5 w-3.5" />
-                Back to Overview
+                Reset Pane
               </button>
               <button
                 onClick={() => router.push('/workstreams')}
