@@ -22,26 +22,39 @@ import {
 
 export type NavSection = 'pipeline' | 'organization' | 'platform';
 
+interface NavItem {
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  children?: NavItem[];
+}
+
 export function getSectionFromPath(pathname: string): NavSection {
   if (pathname.startsWith('/admin')) return 'platform';
   if (pathname.startsWith('/org')) return 'organization';
   return 'pipeline';
 }
 
-const pipelineNavigation = [
-  { name: 'Overview', href: '/workstreams', icon: Workflow },
-  { name: 'Data Sources', href: '/datasources', icon: Database },
-  { name: 'Views', href: '/views', icon: Table2 },
-  { name: 'Dashboards', href: '/dashboards', icon: LayoutDashboard },
-  { name: 'Outputs', href: '/outputs', icon: FileOutput },
-  { name: 'Data Relationships', href: '/relationship-explorer', icon: Network },
+const pipelineNavigation: NavItem[] = [
+  {
+    name: 'Projects',
+    href: '/workstreams',
+    icon: Workflow,
+    children: [
+      { name: 'Data Sources', href: '/datasources', icon: Database },
+      { name: 'Views', href: '/views', icon: Table2 },
+      { name: 'Dashboards', href: '/dashboards', icon: LayoutDashboard },
+      { name: 'Outputs', href: '/outputs', icon: FileOutput },
+      { name: 'Data Relationships', href: '/relationship-explorer', icon: Network },
+    ],
+  },
 ];
 
-const aiNavigation = [
+const aiNavigation: NavItem[] = [
   { name: 'Ask Data Assistant', href: '/chat', icon: Sparkles },
 ];
 
-const orgNavigation = [
+const orgNavigation: NavItem[] = [
   { name: 'Overview', href: '/org', icon: LayoutDashboard },
   { name: 'Team', href: '/org/members', icon: Users },
   { name: 'AI Assistants', href: '/org/agents', icon: Bot },
@@ -49,7 +62,7 @@ const orgNavigation = [
   { name: 'Settings', href: '/org/settings', icon: Settings },
 ];
 
-const platformNavigation = [
+const platformNavigation: NavItem[] = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   { name: 'Organizations', href: '/admin/organizations', icon: Building2 },
   { name: 'All Users', href: '/admin/users', icon: Users },
@@ -59,8 +72,8 @@ const platformNavigation = [
 
 const sectionMeta: Record<NavSection, { label: string; description: string }> = {
   pipeline: {
-    label: 'Overview',
-    description: 'Connect data, save queries, and build dashboards',
+    label: 'Projects',
+    description: 'Manage projects and build your data pipeline',
   },
   organization: {
     label: 'Organization',
@@ -106,7 +119,7 @@ export function Sidebar({ section }: SidebarProps) {
   const navGroups =
     section === 'pipeline'
       ? [
-          { title: 'Overview', items: pipelineNavigation },
+          { title: 'Projects', items: pipelineNavigation },
           { title: 'AI Tools', items: aiNavigation },
         ]
       : section === 'organization'
@@ -125,7 +138,7 @@ export function Sidebar({ section }: SidebarProps) {
 
   const effectiveGroups = canViewSection
     ? navGroups
-    : [{ title: 'Overview', items: pipelineNavigation }];
+    : [{ title: 'Projects', items: pipelineNavigation }];
   const meta = sectionMeta[section];
 
   return (
@@ -167,6 +180,32 @@ export function Sidebar({ section }: SidebarProps) {
                   <item.icon className="h-4 w-4" />
                   {item.name}
                 </Link>
+              );
+            })}
+            {group.items.map((item) => {
+              if (!item.children?.length) return null;
+              return (
+                <div key={`${item.name}-children`} className="ml-6 mt-1 space-y-1">
+                  {item.children.map((child) => {
+                    const isChildActive =
+                      pathname === child.href || pathname.startsWith(child.href + '/');
+                    return (
+                      <Link
+                        key={child.name}
+                        href={child.href}
+                        className={cn(
+                          'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all',
+                          isChildActive
+                            ? 'bg-primary/10 text-primary font-medium'
+                            : 'text-sidebar-foreground/85 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                        )}
+                      >
+                        <child.icon className="h-3.5 w-3.5" />
+                        {child.name}
+                      </Link>
+                    );
+                  })}
+                </div>
               );
             })}
           </div>

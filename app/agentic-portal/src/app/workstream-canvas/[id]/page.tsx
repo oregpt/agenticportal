@@ -1519,7 +1519,7 @@ export default function WorkstreamCanvasPage() {
                 className="inline-flex items-center gap-2 rounded-md border border-border bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50"
               >
                 <Home className="h-3.5 w-3.5" />
-                Back to Overview
+                Back to Projects
               </button>
               <button
                 onClick={() => {
@@ -1541,7 +1541,7 @@ export default function WorkstreamCanvasPage() {
             </div>
             {selectedNode === null ? (
               <div className="border-b border-border bg-white px-4 py-3">
-                <h3 className="text-sm font-medium text-gray-900">Overview</h3>
+                <h3 className="text-sm font-medium text-gray-900">Project</h3>
                 <p className="text-xs text-gray-600 mt-0.5">
                   Click any data source, view, dashboard, or output in the canvas. It will open here so users can browse without leaving this page.
                 </p>
