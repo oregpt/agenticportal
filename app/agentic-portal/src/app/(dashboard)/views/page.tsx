@@ -181,6 +181,7 @@ function ViewsPageContent() {
         workstreams={workstreams}
         selectedWorkstreamId={selectedWorkstreamId}
         onWorkstreamChange={handleWorkstreamChange}
+        pageLabel="Views"
         rightSlot={
           <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-end">
             <div className="w-full md:w-72">

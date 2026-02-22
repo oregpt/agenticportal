@@ -239,6 +239,7 @@ function RelationshipExplorerPageContent() {
         workstreams={workstreams}
         selectedWorkstreamId={selectedWorkstreamId}
         onWorkstreamChange={updateWorkstream}
+        pageLabel="Data Relationships"
         rightSlot={<FilterPresetManager pageKey="relationship-explorer" currentQuery={searchParams.toString()} onApply={applyPreset} />}
       />
 

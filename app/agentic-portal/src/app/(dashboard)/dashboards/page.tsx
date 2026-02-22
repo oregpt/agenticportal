@@ -203,6 +203,7 @@ function DashboardsPageContent() {
         workstreams={workstreams}
         selectedWorkstreamId={selectedWorkstreamId}
         onWorkstreamChange={(value) => updateFilterParam('workstreamId', value)}
+        pageLabel="Dashboards"
         rightSlot={
           <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-end">
             <div className="w-full md:w-64">
