@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { 
   Plus, 
   Workflow, 
@@ -13,7 +14,8 @@ import {
   Calendar,
   Layers,
   Search,
-  Loader2
+  Loader2,
+  Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -55,12 +57,14 @@ const colorOptions = [
 ];
 
 export default function WorkstreamsPage() {
+  const router = useRouter();
   const { toast } = useToast();
   const [workstreams, setWorkstreams] = useState<Workstream[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [deletingWorkstreamId, setDeletingWorkstreamId] = useState<string | null>(null);
   const [newWorkstream, setNewWorkstream] = useState({
     name: '',
     description: '',
@@ -109,6 +113,44 @@ export default function WorkstreamsPage() {
       toast({ title: 'Could not create project', variant: 'destructive' });
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleDelete = async (workstream: Workstream) => {
+    const confirmed = window.confirm(
+      `Delete project "${workstream.name}"?\n\nThis removes the project container. Related data sources, views, dashboards, and outputs will remain and become unassigned.`
+    );
+    if (!confirmed) return;
+
+    setDeletingWorkstreamId(workstream.id);
+    try {
+      const response = await fetch(`/api/workstreams/${workstream.id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setWorkstreams((prev) => prev.filter((ws) => ws.id !== workstream.id));
+        toast({
+          title: 'Project deleted',
+          description: 'Related items were kept and unassigned from this project.',
+        });
+        return;
+      }
+
+      const data = await response.json().catch(() => ({}));
+      toast({
+        title: 'Could not delete project',
+        description: data?.error || 'Please try again.',
+        variant: 'destructive',
+      });
+    } catch {
+      toast({
+        title: 'Could not delete project',
+        description: 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeletingWorkstreamId(null);
     }
   };
 
@@ -217,11 +259,7 @@ export default function WorkstreamsPage() {
       {!isLoading && (
         <div className="grid gap-4">
           {filteredWorkstreams.map((ws) => (
-            <Link
-              key={ws.id}
-              href={`/workstream-canvas/${ws.id}`}
-              className="group block"
-            >
+            <div key={ws.id} className="group block">
               <div className="bg-card border border-border rounded-xl p-6 hover:border-primary/50 hover:shadow-lg transition-all">
                 <div className="flex items-start justify-between mb-5">
                   <div className="flex items-center gap-4">
@@ -240,9 +278,25 @@ export default function WorkstreamsPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Calendar className="w-4 h-4" />
-                    {formatDate(ws.updatedAt)}
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Calendar className="w-4 h-4" />
+                      {formatDate(ws.updatedAt)}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={deletingWorkstreamId === ws.id}
+                      onClick={() => void handleDelete(ws)}
+                      className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                    >
+                      {deletingWorkstreamId === ws.id ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4 mr-2" />
+                      )}
+                      Delete
+                    </Button>
                   </div>
                 </div>
 
@@ -278,13 +332,17 @@ export default function WorkstreamsPage() {
                     <span className="text-amber-500/60">outputs</span>
                   </div>
 
-                  <div className="ml-auto flex items-center gap-2 text-muted-foreground group-hover:text-primary transition-colors">
+                  <Button
+                    variant="ghost"
+                    onClick={() => router.push(`/workstream-canvas/${ws.id}`)}
+                    className="ml-auto flex items-center gap-2 text-muted-foreground group-hover:text-primary transition-colors"
+                  >
                     <span className="text-sm">Open canvas</span>
                     <ChevronRight className="w-4 h-4" />
-                  </div>
+                  </Button>
                 </div>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       )}

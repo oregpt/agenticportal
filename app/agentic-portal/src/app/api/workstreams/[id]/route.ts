@@ -245,17 +245,79 @@ export async function DELETE(
     const user = await getCurrentUser();
     const orgId = user?.organizationId || request.headers.get('x-org-id') || 'default-org';
 
-    await db
-      .delete(schema.workstreams)
-      .where(
-        and(
-          eq(schema.workstreams.id, workstreamId),
-          eq(schema.workstreams.organizationId, orgId)
+    await db.transaction(async (tx) => {
+      const [workstream] = await tx
+        .select({ id: schema.workstreams.id })
+        .from(schema.workstreams)
+        .where(
+          and(
+            eq(schema.workstreams.id, workstreamId),
+            eq(schema.workstreams.organizationId, orgId)
+          )
         )
-      );
+        .limit(1);
+
+      if (!workstream) {
+        throw new Error('WORKSTREAM_NOT_FOUND');
+      }
+
+      // Deleting a project should not automatically delete child entities.
+      // Unassign them so they remain accessible elsewhere in the app.
+      await tx
+        .update(schema.dataSources)
+        .set({ workstreamId: null, updatedAt: new Date() })
+        .where(
+          and(
+            eq(schema.dataSources.organizationId, orgId),
+            eq(schema.dataSources.workstreamId, workstreamId)
+          )
+        );
+
+      await tx
+        .update(schema.views)
+        .set({ workstreamId: null, updatedAt: new Date() })
+        .where(
+          and(
+            eq(schema.views.organizationId, orgId),
+            eq(schema.views.workstreamId, workstreamId)
+          )
+        );
+
+      await tx
+        .update(schema.dashboards)
+        .set({ workstreamId: null, updatedAt: new Date() })
+        .where(
+          and(
+            eq(schema.dashboards.organizationId, orgId),
+            eq(schema.dashboards.workstreamId, workstreamId)
+          )
+        );
+
+      await tx
+        .update(schema.outputs)
+        .set({ workstreamId: null, updatedAt: new Date() })
+        .where(
+          and(
+            eq(schema.outputs.organizationId, orgId),
+            eq(schema.outputs.workstreamId, workstreamId)
+          )
+        );
+
+      await tx
+        .delete(schema.workstreams)
+        .where(
+          and(
+            eq(schema.workstreams.id, workstreamId),
+            eq(schema.workstreams.organizationId, orgId)
+          )
+        );
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof Error && error.message === 'WORKSTREAM_NOT_FOUND') {
+      return NextResponse.json({ error: 'Workstream not found' }, { status: 404 });
+    }
     console.error('Error deleting workstream:', error);
     return NextResponse.json({ error: 'Failed to delete workstream' }, { status: 500 });
   }
