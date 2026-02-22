@@ -156,27 +156,6 @@ function ViewsPageContent() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto fade-in-up">
-      <div className="page-header">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Views</h1>
-          <p className="text-muted-foreground mt-1">Views ready to reuse in dashboards</p>
-        </div>
-        <div className="flex gap-3">
-          <Button variant="outline" asChild className="hover:bg-primary/5 hover:text-primary hover:border-primary/30">
-            <Link href="/views/new?mode=sql">
-              <Code className="w-4 h-4 mr-2" />
-              Write SQL
-            </Link>
-          </Button>
-          <Button className="bg-primary hover:bg-primary/90" asChild>
-            <Link href="/chat">
-              <MessageSquare className="w-4 h-4 mr-2" />
-              Ask Assistant
-            </Link>
-          </Button>
-        </div>
-      </div>
-
       <WorkstreamFilterBar
         workstreams={workstreams}
         selectedWorkstreamId={selectedWorkstreamId}

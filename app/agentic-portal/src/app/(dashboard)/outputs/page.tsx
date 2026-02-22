@@ -235,19 +235,6 @@ function OutputsPageContent() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto fade-in-up">
-      <div className="page-header">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight mb-1">Outputs</h1>
-          <p className="text-muted-foreground">
-            Scheduled reports, exports, and automated notifications
-          </p>
-        </div>
-        <Button className="gap-2" disabled>
-          <Plus className="w-4 h-4" />
-          New Output
-        </Button>
-      </div>
-
       <WorkstreamFilterBar
         workstreams={workstreams}
         selectedWorkstreamId={selectedWorkstreamId}

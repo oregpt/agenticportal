@@ -11,7 +11,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -561,19 +560,7 @@ function DataSourcesPageContent() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto fade-in-up">
-      {/* Header */}
-      <div className="page-header">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Data Sources</h1>
-          <p className="text-muted-foreground mt-1">Connect your data once, then build dashboards from Views</p>
-        </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-primary hover:bg-primary/90">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Data Source
-            </Button>
-          </DialogTrigger>
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogContent className="max-w-md rounded-2xl border-border">
             {!selectedType ? (
               <>
@@ -869,8 +856,7 @@ function DataSourcesPageContent() {
               </>
             )}
           </DialogContent>
-        </Dialog>
-      </div>
+      </Dialog>
 
       <WorkstreamFilterBar
         workstreams={workstreams}

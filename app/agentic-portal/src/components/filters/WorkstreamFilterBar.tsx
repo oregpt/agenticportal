@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { ChevronRight, FolderKanban } from 'lucide-react';
+import { FolderKanban } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface WorkstreamOption {
@@ -30,24 +30,28 @@ export function WorkstreamFilterBar({
 
   return (
     <div className="ui-shell mb-6 space-y-4 p-4 md:p-5">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div className="space-y-2">
+        <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">
+          Projects &gt; {selectedLabel} &gt; {pageLabel}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          You are working inside project scope for this page.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="space-y-2">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Link href="/workstreams" className="font-medium text-foreground hover:text-primary transition-colors">
-              Projects
-            </Link>
-            <ChevronRight className="h-3.5 w-3.5" />
-            <span>{selectedLabel}</span>
-            <ChevronRight className="h-3.5 w-3.5" />
-            <span className="font-medium text-foreground">{pageLabel}</span>
-          </div>
           <div className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
               <FolderKanban className="h-4 w-4 text-primary" />
             </div>
             <div>
               <p className="text-sm font-semibold text-foreground">{selectedLabel}</p>
-              <p className="text-xs text-muted-foreground">Project scope for {pageLabel}</p>
+              <p className="text-xs text-muted-foreground">
+                <Link href="/workstreams" className="hover:text-primary transition-colors">
+                  Back to Projects
+                </Link>
+              </p>
             </div>
           </div>
         </div>

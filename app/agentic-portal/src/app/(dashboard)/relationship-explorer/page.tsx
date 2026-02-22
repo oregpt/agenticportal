@@ -217,30 +217,24 @@ function RelationshipExplorerPageContent() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto fade-in-up">
-      <div className="page-header">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground flex items-center gap-2">
-            <Network className="w-6 h-6 text-primary" />
-            {isEmbedded ? 'Overview' : 'Relationship Explorer'}
-          </h1>
-          <p className="text-muted-foreground mt-1">Explore how sources, views, dashboards, and outputs connect</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant={viewMode === 'columns' ? 'default' : 'outline'} onClick={() => setViewMode('columns')}>
-            Column View
-          </Button>
-          <Button variant={viewMode === 'mindmap' ? 'default' : 'outline'} onClick={() => setViewMode('mindmap')}>
-            Mind Map
-          </Button>
-        </div>
-      </div>
-
       <WorkstreamFilterBar
         workstreams={workstreams}
         selectedWorkstreamId={selectedWorkstreamId}
         onWorkstreamChange={updateWorkstream}
         pageLabel="Data Relationships"
-        rightSlot={<FilterPresetManager pageKey="relationship-explorer" currentQuery={searchParams.toString()} onApply={applyPreset} />}
+        rightSlot={
+          <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-end">
+            <div className="flex gap-2">
+              <Button variant={viewMode === 'columns' ? 'default' : 'outline'} onClick={() => setViewMode('columns')}>
+                Column View
+              </Button>
+              <Button variant={viewMode === 'mindmap' ? 'default' : 'outline'} onClick={() => setViewMode('mindmap')}>
+                Mind Map
+              </Button>
+            </div>
+            <FilterPresetManager pageKey="relationship-explorer" currentQuery={searchParams.toString()} onApply={applyPreset} />
+          </div>
+        }
       />
 
       {isLoading ? (

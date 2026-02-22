@@ -178,27 +178,6 @@ function DashboardsPageContent() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Dashboards</h1>
-          <p className="text-muted-foreground mt-1">Create and reuse dashboards for your team</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" asChild>
-            <Link href="/relationship-explorer">
-              <Network className="w-4 h-4 mr-2" />
-              Relationship Explorer
-            </Link>
-          </Button>
-          <Button className="bg-primary hover:bg-primary/90" asChild>
-            <Link href="/dashboards/new">
-              <Plus className="w-4 h-4 mr-2" />
-              New Dashboard
-            </Link>
-          </Button>
-        </div>
-      </div>
-
       <WorkstreamFilterBar
         workstreams={workstreams}
         selectedWorkstreamId={selectedWorkstreamId}
