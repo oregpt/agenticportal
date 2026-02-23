@@ -15,6 +15,7 @@ import type {
   ConnectionTestResult,
 } from '../types';
 import { registerAdapter } from '../registry';
+import { loadPlatformGcpCredentials } from '@/lib/gcpCredentials';
 
 // Map BigQuery types to our normalized types
 const TYPE_MAP: Record<string, string> = {
@@ -56,26 +57,11 @@ interface GoogleSheetsLiveConfig {
 }
 
 function getPlatformCredentials() {
-  const keyJson = process.env.EDS_GCP_SERVICE_ACCOUNT_KEY;
-  if (!keyJson) {
+  const { credentials } = loadPlatformGcpCredentials();
+  if (!credentials) {
     throw new Error('Platform GCP credentials not configured');
   }
-  
-  // Try to parse as-is first
-  try {
-    return JSON.parse(keyJson);
-  } catch (e) {
-    // Railway sometimes strips quotes from JSON keys, try to fix it
-    console.log('[google-sheets-live] Attempting to fix malformed JSON credentials');
-    try {
-      // Add quotes around unquoted keys (e.g., {type: -> {"type":)
-      const fixed = keyJson.replace(/([{,])\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
-      return JSON.parse(fixed);
-    } catch (e2) {
-      console.error('[google-sheets-live] Failed to parse credentials:', e2);
-      throw new Error('Platform GCP credentials are malformed');
-    }
-  }
+  return credentials;
 }
 
 export class GoogleSheetsLiveAdapter implements DataSourceAdapter {

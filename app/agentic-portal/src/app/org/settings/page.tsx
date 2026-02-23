@@ -28,6 +28,18 @@ interface OrgSettings {
   defaultUserRole: string;
 }
 
+interface GcpDiagnosticsResponse {
+  configured: boolean;
+  error?: string;
+  serviceAccountEmail?: string;
+  projectId?: string;
+  diagnostics?: {
+    envVarPresent: boolean;
+    jsonParseOk: boolean;
+    missingFields: string[];
+  };
+}
+
 export default function OrgSettingsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -50,6 +62,8 @@ export default function OrgSettingsPage() {
   });
   const [editingLlmKey, setEditingLlmKey] = useState<string | null>(null);
   const [llmKeyValue, setLlmKeyValue] = useState('');
+  const [gcpDiagnostics, setGcpDiagnostics] = useState<GcpDiagnosticsResponse | null>(null);
+  const [isLoadingGcpDiagnostics, setIsLoadingGcpDiagnostics] = useState(true);
 
   useEffect(() => {
     async function fetchSettings() {
@@ -61,14 +75,33 @@ export default function OrgSettingsPage() {
           const data = await res.json();
           setSettings(data);
         }
-      } catch (error) {
-        console.error('Failed to fetch settings:', error);
+      } catch {
+        console.error('Failed to fetch settings');
       } finally {
         setIsLoading(false);
       }
     }
     fetchSettings();
   }, [user?.organizationId]);
+
+  useEffect(() => {
+    async function fetchGcpDiagnostics() {
+      setIsLoadingGcpDiagnostics(true);
+      try {
+        const res = await fetch('/api/google-sheets-live/service-account');
+        const payload = (await res.json()) as GcpDiagnosticsResponse;
+        setGcpDiagnostics(payload);
+      } catch {
+        setGcpDiagnostics({
+          configured: false,
+          error: 'Could not check platform GCP credentials.',
+        });
+      } finally {
+        setIsLoadingGcpDiagnostics(false);
+      }
+    }
+    fetchGcpDiagnostics();
+  }, []);
 
   async function saveSettings() {
     setIsSaving(true);
@@ -111,7 +144,7 @@ export default function OrgSettingsPage() {
     <div className="p-8">
       <div className="mb-8">
         <h1 className="text-2xl font-bold tracking-tight">Organization Settings</h1>
-        <p className="text-muted-foreground">Manage your organization's configuration</p>
+        <p className="text-muted-foreground">Manage your organization&apos;s configuration</p>
       </div>
 
       <div className="space-y-6">
@@ -301,6 +334,62 @@ export default function OrgSettingsPage() {
                 </div>
               </div>
             ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              <CardTitle>Google Sheets Connector Diagnostics</CardTitle>
+            </div>
+            <CardDescription>
+              Validates platform GCP credentials required for Google Sheets data sources.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {isLoadingGcpDiagnostics ? (
+              <p className="text-sm text-muted-foreground">Checking platform credentials...</p>
+            ) : gcpDiagnostics?.configured ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-green-700">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Platform GCP credentials are configured.
+                </div>
+                <div className="rounded-lg border p-3 text-sm">
+                  <p><span className="font-medium">Project ID:</span> {gcpDiagnostics.projectId}</p>
+                  <p><span className="font-medium">Service account:</span> {gcpDiagnostics.serviceAccountEmail}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-red-700">
+                  <XCircle className="w-4 h-4" />
+                  {gcpDiagnostics?.error || 'Platform GCP credentials are not configured.'}
+                </div>
+                {gcpDiagnostics?.diagnostics ? (
+                  <div className="rounded-lg border p-3 text-sm space-y-1">
+                    <p>
+                      <span className="font-medium">Env var present:</span>{' '}
+                      {gcpDiagnostics.diagnostics.envVarPresent ? 'Yes' : 'No'}
+                    </p>
+                    <p>
+                      <span className="font-medium">JSON parse valid:</span>{' '}
+                      {gcpDiagnostics.diagnostics.jsonParseOk ? 'Yes' : 'No'}
+                    </p>
+                    <p>
+                      <span className="font-medium">Missing fields:</span>{' '}
+                      {gcpDiagnostics.diagnostics.missingFields.length > 0
+                        ? gcpDiagnostics.diagnostics.missingFields.join(', ')
+                        : 'None'}
+                    </p>
+                  </div>
+                ) : null}
+                <p className="text-xs text-muted-foreground">
+                  Supported platform env vars: <code>EDS_GCP_SERVICE_ACCOUNT_KEY_B64</code> (preferred) or <code>EDS_GCP_SERVICE_ACCOUNT_KEY</code>
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 

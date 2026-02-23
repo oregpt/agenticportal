@@ -5,6 +5,7 @@ import { createDataSourceAdapter } from '@/lib/datasources';
 import { randomUUID } from 'crypto';
 import { getCurrentUser } from '@/lib/auth';
 import type { DataSourceConfig } from '@/lib/datasources';
+import { loadPlatformGcpCredentials } from '@/lib/gcpCredentials';
 
 // GET /api/datasources - List all data sources for org
 export async function GET(request: NextRequest) {
@@ -196,29 +197,13 @@ async function handleGoogleSheetsLive(
   userId: string
 ) {
   const { BigQuery } = await import('@google-cloud/bigquery');
-  
-  const keyJson = process.env.EDS_GCP_SERVICE_ACCOUNT_KEY;
-  if (!keyJson) {
+
+  const { credentials } = loadPlatformGcpCredentials();
+  if (!credentials) {
     return NextResponse.json(
       { error: 'Platform GCP credentials not configured. Contact admin.' },
       { status: 500 }
     );
-  }
-
-  let credentials;
-  try {
-    credentials = JSON.parse(keyJson);
-  } catch {
-    // Railway sometimes strips quotes from JSON keys, try to fix it
-    try {
-      const fixed = keyJson.replace(/([{,])\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
-      credentials = JSON.parse(fixed);
-    } catch {
-      return NextResponse.json(
-        { error: 'Invalid platform GCP credentials.' },
-        { status: 500 }
-      );
-    }
   }
 
   const { spreadsheetId, sheetName, hasHeader = true } = config;
@@ -230,7 +215,7 @@ async function handleGoogleSheetsLive(
     );
   }
 
-  const projectId = credentials.project_id;
+  const projectId = String(credentials.project_id || '');
   const datasetName = `agentic_portal_default`;
   const safeSheet = sheetName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase().substring(0, 30);
   const tableName = `sheets_${spreadsheetId.substring(0, 8)}_${safeSheet}`;

@@ -7,31 +7,18 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { BigQuery } from '@google-cloud/bigquery';
+import { loadPlatformGcpCredentials } from '@/lib/gcpCredentials';
 
 function getPlatformCredentials() {
-  const keyJson = process.env.EDS_GCP_SERVICE_ACCOUNT_KEY;
-  if (!keyJson) {
+  const { credentials } = loadPlatformGcpCredentials();
+  if (!credentials) {
     return null;
   }
-  
-  let credentials;
-  try {
-    credentials = JSON.parse(keyJson);
-  } catch {
-    // Railway sometimes strips quotes from JSON keys, try to fix it
-    try {
-      const fixed = keyJson.replace(/([{,])\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
-      credentials = JSON.parse(fixed);
-    } catch {
-      console.error('[sheets-live] Failed to parse GCP credentials');
-      return null;
-    }
-  }
-  
+
   return {
     credentials,
-    projectId: credentials.project_id,
-    serviceAccountEmail: credentials.client_email,
+    projectId: String(credentials.project_id || ''),
+    serviceAccountEmail: String(credentials.client_email || ''),
   };
 }
 
