@@ -11,6 +11,29 @@ import type { ProjectAgentDataSource } from './types';
 
 const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
 
+class ProjectAgentChatExecutionError extends Error {
+  sql?: string;
+  source?: { id: string; name: string; type: ProjectAgentDataSource['type'] };
+  reasoning?: string;
+  confidence?: number | null;
+  constructor(
+    message: string,
+    context?: {
+      sql?: string;
+      source?: { id: string; name: string; type: ProjectAgentDataSource['type'] };
+      reasoning?: string;
+      confidence?: number | null;
+    }
+  ) {
+    super(message);
+    this.name = 'ProjectAgentChatExecutionError';
+    this.sql = context?.sql;
+    this.source = context?.source;
+    this.reasoning = context?.reasoning;
+    this.confidence = context?.confidence ?? null;
+  }
+}
+
 function sanitizeSql(sql: string): string {
   let cleaned = sql.trim().replace(/```sql|```/gi, '').trim();
   cleaned = cleaned.replace(/;+$/g, '').trim();
@@ -312,7 +335,17 @@ export async function runProjectAgentChat(input: {
     if (phase3.correctedSQL && phase3.correctedSQL.trim()) sql = phase3.correctedSQL.trim();
 
     const finalSql = sanitizeSql(sql);
-    const result = await runWithAdapter(source, finalSql);
+    let result: { rows: any[]; rowCount: number };
+    try {
+      result = await runWithAdapter(source, finalSql);
+    } catch (err: any) {
+      throw new ProjectAgentChatExecutionError(err?.message || 'Query execution failed', {
+        sql: finalSql,
+        source: { id: source.id, name: source.name, type: source.type },
+        reasoning: `Execution failed after SQL generation for table ${tablePick.tableName}`,
+        confidence: phase3.confidence ?? tablePick.confidence ?? null,
+      });
+    }
     const confidence = phase3.confidence ?? tablePick.confidence ?? null;
     const reasoning = [
       `Table selection: ${tablePick.tableName}`,
@@ -343,11 +376,31 @@ export async function runProjectAgentChat(input: {
       'Previous SQL failed to execute. Repair the plan and regenerate SQL with strict schema adherence.',
       `Execution error: ${firstErr?.message || 'unknown'}`,
     ].join('\n');
-    planned = await planAndExecute(repairHint);
-    queryResult = planned.result;
-    sqlForTrust = planned.sql;
-    reasoningForTrust = planned.reasoning;
-    confidenceForTrust = planned.confidence;
+    try {
+      planned = await planAndExecute(repairHint);
+      queryResult = planned.result;
+      sqlForTrust = planned.sql;
+      reasoningForTrust = planned.reasoning;
+      confidenceForTrust = planned.confidence;
+    } catch (secondErr: any) {
+      const sqlFromError = String(secondErr?.sql || firstErr?.sql || '').trim();
+      const sourceFromError = secondErr?.source || firstErr?.source || {
+        id: source.id,
+        name: source.name,
+        type: source.type,
+      };
+      throw new ProjectAgentChatExecutionError(secondErr?.message || firstErr?.message || 'Query execution failed', {
+        sql: sqlFromError || undefined,
+        source: sourceFromError,
+        reasoning: secondErr?.reasoning || firstErr?.reasoning || 'Execution failed after retries',
+        confidence:
+          Number.isFinite(Number(secondErr?.confidence))
+            ? Number(secondErr?.confidence)
+            : Number.isFinite(Number(firstErr?.confidence))
+              ? Number(firstErr?.confidence)
+              : null,
+      });
+    }
   }
 
   const sampleRows = queryResult.rows.slice(0, 50);

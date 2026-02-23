@@ -359,13 +359,64 @@ export async function POST(request: NextRequest, context: { params: Promise<{ pa
     if (seg1 === 'chat') {
       const { projectId, sourceId, message } = body as { projectId: string; sourceId?: string; message: string };
       if (!projectId || !message) return badRequest('projectId and message are required');
-      const result = await runProjectAgentChat({
-        projectId,
-        organizationId: user.organizationId!,
-        sourceId,
-        message,
-      });
-      return NextResponse.json(result);
+      try {
+        const result = await runProjectAgentChat({
+          projectId,
+          organizationId: user.organizationId!,
+          sourceId,
+          message,
+        });
+        return NextResponse.json(result);
+      } catch (chatErr: any) {
+        const sourceObj = chatErr?.source && typeof chatErr.source === 'object'
+          ? {
+              id: String(chatErr.source.id || sourceId || ''),
+              name: String(chatErr.source.name || 'Unknown Source'),
+              type: String(chatErr.source.type || 'postgres'),
+            }
+          : {
+              id: String(sourceId || ''),
+              name: 'Unknown Source',
+              type: 'postgres',
+            };
+        const sqlText = String(chatErr?.sql || '').trim();
+        const response: Record<string, unknown> = {
+          error: chatErr?.message || 'Project agent chat failed',
+          source: sourceObj,
+          artifactActions: {
+            canSaveTable: false,
+            canCreateChart: false,
+            canCreateKpi: false,
+            canAddToDashboard: false,
+            canSaveSql: !!sqlText,
+          },
+        };
+        if (sqlText) {
+          response.trust = {
+            sql: sqlText,
+            rowCount: 0,
+            model: 'claude-sonnet-4-20250514',
+            confidence:
+              Number.isFinite(Number(chatErr?.confidence)) ? Number(chatErr.confidence) : null,
+            reasoning: String(chatErr?.reasoning || 'Query failed during execution'),
+            sampleRows: [],
+          };
+          response.querySpecDraft = {
+            name: String(message || '').slice(0, 80),
+            projectId,
+            sourceId: sourceObj.id,
+            sqlText,
+            metadataJson: {
+              rowCount: 0,
+              confidence:
+                Number.isFinite(Number(chatErr?.confidence)) ? Number(chatErr.confidence) : null,
+              reasoning: String(chatErr?.reasoning || 'Query failed during execution'),
+              sampleRows: [],
+            },
+          };
+        }
+        return NextResponse.json(response, { status: 400 });
+      }
     }
 
     if (seg1 === 'create') {

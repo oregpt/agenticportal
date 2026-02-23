@@ -53,7 +53,11 @@ async function api(path: string, options?: RequestInit) {
     headers: { 'Content-Type': 'application/json', ...options?.headers },
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data?.error || `API error (${res.status})`);
+  if (!res.ok) {
+    const err: any = new Error(data?.error || `API error (${res.status})`);
+    err.payload = data;
+    throw err;
+  }
   return data;
 }
 
@@ -183,8 +187,43 @@ export default function ProjectAgentChatPage() {
       await streamAssistantMessage(data.answer || 'No response.', data);
     } catch (e: any) {
       const msg = e?.message || 'Failed to send message';
+      const payload = e?.payload || {};
       setError(msg);
-      pushMessage({ role: 'assistant', content: `Error: ${msg}` });
+      if (payload?.trust?.sql) {
+        pushMessage({
+          role: 'assistant',
+          content: `Error: ${msg}`,
+          dataRun: {
+            source: {
+              id: String(payload?.source?.id || chatSourceId || ''),
+              name: String(payload?.source?.name || 'Unknown Source'),
+              type: (payload?.source?.type || 'postgres') as SourceType,
+            },
+            trust: {
+              sql: String(payload.trust.sql || ''),
+              rowCount: Number(payload.trust.rowCount || 0),
+              model: String(payload.trust.model || 'unknown'),
+              confidence:
+                Number.isFinite(Number(payload.trust.confidence))
+                  ? Number(payload.trust.confidence)
+                  : null,
+              reasoning: String(payload.trust.reasoning || ''),
+              sampleRows: Array.isArray(payload.trust.sampleRows) ? payload.trust.sampleRows : [],
+            },
+            runId: null,
+            artifactActions: payload?.artifactActions || {
+              canSaveSql: true,
+              canSaveTable: false,
+              canCreateChart: false,
+              canCreateKpi: false,
+              canAddToDashboard: false,
+            },
+            querySpecDraft: payload?.querySpecDraft || undefined,
+          },
+        });
+      } else {
+        pushMessage({ role: 'assistant', content: `Error: ${msg}` });
+      }
     } finally {
       setActiveTools([]);
       setIsSending(false);
