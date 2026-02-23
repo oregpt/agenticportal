@@ -13,7 +13,6 @@ import {
   Users,
   Building2,
   Bot,
-  Plug,
   Workflow,
   FileOutput,
   Sparkles,
@@ -58,8 +57,6 @@ const aiNavigation: NavItem[] = [
 const orgNavigation: NavItem[] = [
   { name: 'Overview', href: '/org', icon: LayoutDashboard },
   { name: 'Team', href: '/org/members', icon: Users },
-  { name: 'AI Assistants', href: '/org/agents', icon: Bot },
-  { name: 'Tool Integrations', href: '/org/mcp', icon: Plug },
   { name: 'Settings', href: '/org/settings', icon: Settings },
 ];
 
@@ -78,7 +75,7 @@ const sectionMeta: Record<NavSection, { label: string; description: string }> = 
   },
   organization: {
     label: 'Organization',
-    description: 'Manage team, assistants, and organization settings',
+    description: 'Manage team and organization settings',
   },
   platform: {
     label: 'Platform Admin',
@@ -93,29 +90,6 @@ interface SidebarProps {
 export function Sidebar({ section }: SidebarProps) {
   const pathname = usePathname();
   const { canAccessPlatformAdmin, canAccessOrgAdmin } = useAuth();
-  const [hasDataSources, setHasDataSources] = React.useState(true);
-
-  React.useEffect(() => {
-    let active = true;
-    async function loadSetupState() {
-      try {
-        const res = await fetch('/api/datasources');
-        if (!res.ok || !active) return;
-        const payload = await res.json();
-        if (!active) return;
-        setHasDataSources((payload?.dataSources || []).length > 0);
-      } catch {
-        // Keep defaults when setup state is unavailable.
-      }
-    }
-    loadSetupState();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const orgBaseItems = orgNavigation.filter((item) => item.href === '/org' || item.href === '/org/members' || item.href === '/org/settings');
-  const orgAdvancedItems = orgNavigation.filter((item) => item.href === '/org/agents' || item.href === '/org/mcp');
 
   const navGroups =
     section === 'pipeline'
@@ -124,10 +98,7 @@ export function Sidebar({ section }: SidebarProps) {
           { title: 'AI Tools', items: aiNavigation },
         ]
       : section === 'organization'
-        ? [
-            { title: 'Organization', items: orgBaseItems },
-            ...(hasDataSources ? [{ title: 'Advanced', items: orgAdvancedItems }] : []),
-          ]
+        ? [{ title: 'Organization', items: orgNavigation }]
         : [{ title: 'Platform Admin', items: platformNavigation }];
 
   const canViewSection =

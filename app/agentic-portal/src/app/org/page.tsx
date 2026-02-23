@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Users, Database, MessageSquare, TrendingUp, ArrowRight, Bot, Settings } from 'lucide-react';
+import { Users, Database, MessageSquare, TrendingUp, ArrowRight, Settings } from 'lucide-react';
 import Link from 'next/link';
 
 interface OrgStats {
@@ -75,10 +75,10 @@ export default function OrgAdminDashboard() {
       href: '/org/members',
     },
     {
-      title: 'Configure Agents',
-      description: 'Set up AI agents with custom instructions',
-      icon: Bot,
-      href: '/org/agents',
+      title: 'Manage Data Sources',
+      description: 'Connect and maintain organization data sources',
+      icon: Database,
+      href: '/datasources',
     },
     {
       title: 'Organization Settings',

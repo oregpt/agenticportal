@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
-import { Loader2, Users, Database, Settings, MessageSquare, LayoutDashboard, Building2, Bot } from 'lucide-react';
+import { Loader2, Users, Database, Settings, LayoutDashboard } from 'lucide-react';
 
 interface OrgAdminLayoutProps {
   children: React.ReactNode;
@@ -20,7 +20,6 @@ export function OrgAdminLayout({ children, title, description }: OrgAdminLayoutP
   const navItems = [
     { label: 'Overview', href: '/org', icon: LayoutDashboard },
     { label: 'Team Members', href: '/org/members', icon: Users },
-    { label: 'AI Agents', href: '/org/agents', icon: Bot },
     { label: 'Data Sources', href: '/datasources', icon: Database },
     { label: 'Settings', href: '/org/settings', icon: Settings },
   ];

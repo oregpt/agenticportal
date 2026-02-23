@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
   ArrowLeft,
@@ -10,16 +10,12 @@ import {
   Table2, 
   LayoutDashboard,
   FileOutput,
-  Sparkles,
   Play,
   Settings,
   Trash2,
   ChevronRight,
-  Zap,
   MoreHorizontal,
-  MessageSquare,
   Eye,
-  Download,
   RefreshCw
 } from 'lucide-react';
 
@@ -222,18 +218,10 @@ function AddNodeButton({ type, onClick }: { type: NodeType; onClick: () => void 
   );
 }
 
-function ConnectionLine({ from, to }: { from: string; to: string }) {
-  // In a real implementation, this would calculate actual positions
-  // For now, it's just a visual indicator
-  return null; // Connections shown via column layout + visual flow
-}
-
 export default function WorkstreamCanvasPage() {
-  const params = useParams();
   const router = useRouter();
-  const [nodes, setNodes] = useState<PipelineNode[]>(mockNodes);
+  const [nodes] = useState<PipelineNode[]>(mockNodes);
   const [selectedNode, setSelectedNode] = useState<PipelineNode | null>(null);
-  const [showAIChat, setShowAIChat] = useState(false);
 
   // Group nodes by type for column layout
   const nodesByType = {
@@ -274,19 +262,6 @@ export default function WorkstreamCanvasPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <button 
-                onClick={() => setShowAIChat(!showAIChat)}
-                className={`
-                  flex items-center gap-2 px-4 py-2 rounded-full transition-all
-                  ${showAIChat 
-                    ? 'bg-gradient-to-r from-violet-500 to-emerald-500 text-white' 
-                    : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'
-                  }
-                `}
-              >
-                <Sparkles className="w-4 h-4" />
-                AI Assistant
-              </button>
               <button className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700">
                 <Settings className="w-5 h-5" />
               </button>
@@ -366,7 +341,7 @@ export default function WorkstreamCanvasPage() {
                       if (type === 'datasource') {
                         router.push('/datasources');
                       } else if (type === 'view') {
-                        setShowAIChat(true);
+                        router.push('/views');
                       } else if (type === 'dashboard') {
                         router.push('/dashboards');
                       }
@@ -378,111 +353,8 @@ export default function WorkstreamCanvasPage() {
           </div>
         </div>
 
-        {/* AI Chat Sidebar */}
-        {showAIChat && (
-          <div className="w-96 border-l border-zinc-800 bg-zinc-900/50 flex flex-col">
-            <div className="p-4 border-b border-zinc-800">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-emerald-500 flex items-center justify-center">
-                    <Sparkles className="w-4 h-4 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="font-medium">AI Assistant</h3>
-                    <p className="text-xs text-zinc-500">
-                      {selectedNode ? `Working on: ${selectedNode.name}` : 'Select a node or ask anything'}
-                    </p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => setShowAIChat(false)}
-                  className="p-1 rounded hover:bg-zinc-800"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Context-aware suggestions */}
-            <div className="p-4 border-b border-zinc-800">
-              <p className="text-xs text-zinc-500 mb-3">Suggested actions</p>
-              <div className="space-y-2">
-                {selectedNode?.type === 'datasource' && (
-                  <>
-                    <button className="w-full text-left px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm">
-                      ✨ Create a view from this source
-                    </button>
-                    <button className="w-full text-left px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm">
-                      📊 Explore table schemas
-                    </button>
-                  </>
-                )}
-                {selectedNode?.type === 'view' && (
-                  <>
-                    <button className="w-full text-left px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm">
-                      📈 Add to a dashboard
-                    </button>
-                    <button className="w-full text-left px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm">
-                      🔍 Explain this data
-                    </button>
-                  </>
-                )}
-                {selectedNode?.type === 'dashboard' && (
-                  <>
-                    <button className="w-full text-left px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm">
-                      ➕ Add a widget
-                    </button>
-                    <button className="w-full text-left px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm">
-                      📄 Generate report
-                    </button>
-                  </>
-                )}
-                {!selectedNode && (
-                  <>
-                    <button className="w-full text-left px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm">
-                      🔌 Connect a data source
-                    </button>
-                    <button className="w-full text-left px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm">
-                      ✨ Create a view with AI
-                    </button>
-                    <button className="w-full text-left px-3 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm">
-                      📊 Build a dashboard
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Chat area */}
-            <div className="flex-1 p-4 overflow-auto">
-              <div className="space-y-4">
-                <div className="flex gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-emerald-500 flex-shrink-0" />
-                  <div className="bg-zinc-800 rounded-2xl rounded-tl-none px-4 py-3 text-sm">
-                    Hi! I can help you build your data workflow. Select a node to work with it, or ask me to create something new.
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Chat input */}
-            <div className="p-4 border-t border-zinc-800">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Ask AI to create views, dashboards..."
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-transparent"
-                />
-                <button className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-violet-500 hover:bg-violet-600 transition-colors">
-                  <Zap className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Node Detail Sidebar */}
-        {selectedNode && !showAIChat && (
+        {selectedNode && (
           <div className="w-80 border-l border-zinc-800 bg-zinc-900/50 p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="font-medium">{nodeConfig[selectedNode.type].label} Details</h3>
@@ -538,3 +410,4 @@ export default function WorkstreamCanvasPage() {
     </div>
   );
 }
+
