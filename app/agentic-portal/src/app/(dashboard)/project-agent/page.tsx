@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { WorkstreamFilterBar } from '@/components/filters/WorkstreamFilterBar';
 
 type SourceType = 'bigquery' | 'postgres' | 'google_sheets' | 'google_sheets_live';
@@ -25,7 +26,7 @@ type DataQueryRun = { id: string; status: string; message: string; rowCount: num
 type MemoryRule = { id: string; name: string; ruleText: string; enabled: number; priority: number; sourceId?: string | null };
 type Workflow = { id: string; name: string; enabled: number; definition: { steps: Array<{ sourceId?: string; message: string }> } };
 type WorkflowRun = { id: string; workflowId: string; status: string; startedAt: string; error?: string | null };
-type AgentViewMode = 'none' | 'configure' | 'chat';
+type AgentViewMode = 'none' | 'configure';
 type ProjectChatResponse = {
   runId?: string | null;
   answer: string;
@@ -88,6 +89,7 @@ async function api(path: string, options?: RequestInit) {
 }
 
 export default function ProjectAgentPage() {
+  const router = useRouter();
   const [error, setError] = useState('');
   const [flash, setFlash] = useState('');
   const [projects, setProjects] = useState<Project[]>([]);
@@ -678,9 +680,7 @@ export default function ProjectAgentPage() {
                     style={btn(hasAgent ? '#0f766e' : '#94a3b8')}
                     disabled={!hasAgent}
                     onClick={() => {
-                      setSelectedProjectId(project.id);
-                      setActiveView('chat');
-                      setTimeout(() => jumpToSection('project-agent-chat'), 120);
+                      router.push(`/project-agent/chat?projectId=${encodeURIComponent(project.id)}`);
                     }}
                   >
                     Chat
@@ -796,8 +796,8 @@ export default function ProjectAgentPage() {
         </div>
       )}
 
-      {activeView === 'chat' && <div id="project-agent-chat" style={section}>
-        <h3 style={{ marginTop: 0 }}>Data Chat</h3>
+      {activeView === 'configure' && <div id="project-agent-chat" style={section}>
+        <h3 style={{ marginTop: 0 }}>Test Chat</h3>
         {!enabledSources.length ? (
           <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: 10, backgroundColor: '#f8fafc' }}>
             <div style={{ fontSize: 13, color: '#334155', marginBottom: 8 }}>
