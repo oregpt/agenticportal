@@ -1,7 +1,8 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/lib/db';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { cookies } from 'next/headers';
+import { ensureDataSourceAssignmentTable, getDataSourceIdsForWorkstream } from '@/server/datasource-assignments';
 
 interface CachedColumn {
   name: string;
@@ -50,6 +51,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await ensureDataSourceAssignmentTable();
     const { id: workstreamId } = await params;
     const user = await getCurrentUser();
     const orgId = user?.organizationId || request.headers.get('x-org-id') || 'default-org';
@@ -68,16 +70,24 @@ export async function GET(
       return NextResponse.json({ error: 'Workstream not found' }, { status: 404 });
     }
 
-    const dataSources = await db
-      .select({
-        id: schema.dataSources.id,
-        name: schema.dataSources.name,
-        type: schema.dataSources.type,
-        schemaCache: schema.dataSources.schemaCache,
-        lastSyncedAt: schema.dataSources.lastSyncedAt,
-      })
-      .from(schema.dataSources)
-      .where(eq(schema.dataSources.workstreamId, workstreamId));
+    const dataSourceIds = await getDataSourceIdsForWorkstream(orgId, workstreamId);
+    const dataSources = dataSourceIds.length
+      ? await db
+          .select({
+            id: schema.dataSources.id,
+            name: schema.dataSources.name,
+            type: schema.dataSources.type,
+            schemaCache: schema.dataSources.schemaCache,
+            lastSyncedAt: schema.dataSources.lastSyncedAt,
+          })
+          .from(schema.dataSources)
+          .where(
+            and(
+              eq(schema.dataSources.organizationId, orgId),
+              inArray(schema.dataSources.id, dataSourceIds)
+            )
+          )
+      : [];
 
     const views = await db
       .select({
@@ -201,6 +211,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await ensureDataSourceAssignmentTable();
     const { id: workstreamId } = await params;
     const user = await getCurrentUser();
     const orgId = user?.organizationId || request.headers.get('x-org-id') || 'default-org';
@@ -270,6 +281,14 @@ export async function DELETE(
           and(
             eq(schema.dataSources.organizationId, orgId),
             eq(schema.dataSources.workstreamId, workstreamId)
+          )
+        );
+      await tx
+        .delete(schema.dataSourceWorkstreams)
+        .where(
+          and(
+            eq(schema.dataSourceWorkstreams.organizationId, orgId),
+            eq(schema.dataSourceWorkstreams.workstreamId, workstreamId)
           )
         );
 

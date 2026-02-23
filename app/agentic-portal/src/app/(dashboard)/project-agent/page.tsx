@@ -94,6 +94,9 @@ export default function ProjectAgentPage() {
   const [agentInstructions, setAgentInstructions] = useState('');
   const [creatingAgent, setCreatingAgent] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [showNewAgentModal, setShowNewAgentModal] = useState(false);
+  const [newAgentProjectId, setNewAgentProjectId] = useState('');
+  const [newAgentInstructions, setNewAgentInstructions] = useState('');
 
   const [sources, setSources] = useState<DataSource[]>([]);
   const [chatSourceId, setChatSourceId] = useState('');
@@ -126,6 +129,11 @@ export default function ProjectAgentPage() {
 
   const selectedProject = useMemo(() => projects.find((p) => p.id === selectedProjectId), [projects, selectedProjectId]);
   const enabledSources = sources.filter((s) => s.status !== 'disabled');
+
+  function jumpToSection(id: string) {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 
   async function refreshAll(projectId: string) {
     if (!projectId) return;
@@ -302,6 +310,36 @@ export default function ProjectAgentPage() {
       setFlash('Project Agent created.');
       await refreshAll(selectedProjectId);
       await refreshDataExtras(selectedProjectId, features);
+    } catch (e: any) {
+      setError(e?.message || 'Failed to create Project Agent');
+    } finally {
+      setCreatingAgent(false);
+    }
+  }
+
+  async function createAgentFromModal() {
+    if (!newAgentProjectId) return;
+    try {
+      setCreatingAgent(true);
+      await api('/api/project-agent/create', {
+        method: 'POST',
+        body: JSON.stringify({
+          projectId: newAgentProjectId,
+          instructions: newAgentInstructions,
+          defaultModel: 'claude-sonnet-4-20250514',
+        }),
+      });
+      const p = await api('/api/project-agent/projects');
+      const list: Project[] = p.projects || [];
+      setProjects(list);
+      setSelectedProjectId(newAgentProjectId);
+      setAgentInstructions(newAgentInstructions);
+      setShowNewAgentModal(false);
+      setNewAgentInstructions('');
+      setFlash('Project Agent created.');
+      await refreshAll(newAgentProjectId);
+      await refreshDataExtras(newAgentProjectId, features);
+      setTimeout(() => jumpToSection('project-agent-settings'), 120);
     } catch (e: any) {
       setError(e?.message || 'Failed to create Project Agent');
     } finally {
@@ -509,6 +547,17 @@ export default function ProjectAgentPage() {
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            style={btn('#0f766e')}
+            onClick={() => {
+              const candidate = projects.find((p) => !p.hasAgent) || projects[0];
+              setNewAgentProjectId(candidate?.id || '');
+              setNewAgentInstructions('');
+              setShowNewAgentModal(true);
+            }}
+          >
+            New Agent
+          </button>
           <select
             style={{ ...field, width: 280 }}
             value={selectedProjectId}
@@ -535,6 +584,55 @@ export default function ProjectAgentPage() {
       {!!flash && <div style={{ ...section, borderColor: '#99f6e4', backgroundColor: '#f0fdfa', color: '#134e4a' }}>{flash}</div>}
       {!!error && <div style={{ ...section, borderColor: '#fecaca', backgroundColor: '#fef2f2', color: '#991b1b' }}>{error}</div>}
 
+      <div style={section}>
+        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Project Agents</div>
+        <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
+          {projects.map((project) => {
+            const hasAgent = !!project.hasAgent;
+            return (
+              <div key={project.id} style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: 12, backgroundColor: '#fff' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>{project.name}</div>
+                    <div style={{ marginTop: 4, fontSize: 12, color: '#64748b' }}>{hasAgent ? 'Agent configured' : 'No agent yet'}</div>
+                  </div>
+                  <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 999, backgroundColor: hasAgent ? '#dcfce7' : '#f1f5f9', color: hasAgent ? '#166534' : '#475569' }}>
+                    {hasAgent ? 'Active' : 'Not Created'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                  <button
+                    style={btn('#334155')}
+                    onClick={() => {
+                      setSelectedProjectId(project.id);
+                      if (!hasAgent) {
+                        setNewAgentProjectId(project.id);
+                        setNewAgentInstructions(project.instructions || '');
+                        setShowNewAgentModal(true);
+                        return;
+                      }
+                      setTimeout(() => jumpToSection('project-agent-settings'), 120);
+                    }}
+                  >
+                    Configure
+                  </button>
+                  <button
+                    style={btn(hasAgent ? '#0f766e' : '#94a3b8')}
+                    disabled={!hasAgent}
+                    onClick={() => {
+                      setSelectedProjectId(project.id);
+                      setTimeout(() => jumpToSection('project-agent-chat'), 120);
+                    }}
+                  >
+                    Chat
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {!selectedProject?.hasAgent ? (
         <div style={section}>
           <h3 style={{ marginTop: 0 }}>Create Project Agent</h3>
@@ -556,7 +654,7 @@ export default function ProjectAgentPage() {
         </div>
       ) : (
       <>
-      <div style={section}>
+      <div id="project-agent-settings" style={section}>
         <h3 style={{ marginTop: 0 }}>Agent Settings</h3>
         <textarea
           style={{ ...field, minHeight: 100 }}
@@ -633,7 +731,7 @@ export default function ProjectAgentPage() {
         </div>
       )}
 
-      <div style={section}>
+      <div id="project-agent-chat" style={section}>
         <h3 style={{ marginTop: 0 }}>Data Chat</h3>
         {!enabledSources.length ? (
           <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: 10, backgroundColor: '#f8fafc' }}>
@@ -801,6 +899,42 @@ export default function ProjectAgentPage() {
                 Save Workflow
               </button>
               <button style={btn('#64748b')} onClick={() => setShowWorkflowModal(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showNewAgentModal && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowNewAgentModal(false)}>
+          <div style={{ ...section, width: 620, maxWidth: '95vw', marginTop: 0 }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0 }}>Create Project Agent</h3>
+            <div style={{ marginBottom: 8, fontSize: 12, color: '#334155' }}>Project</div>
+            <select
+              style={{ ...field, marginBottom: 8 }}
+              value={newAgentProjectId}
+              onChange={(e) => setNewAgentProjectId(e.target.value)}
+            >
+              <option value="">Select project...</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id} disabled={!!p.hasAgent}>
+                  {p.name}{p.hasAgent ? ' (already has agent)' : ''}
+                </option>
+              ))}
+            </select>
+            <div style={{ marginBottom: 8, fontSize: 12, color: '#334155' }}>Instructions</div>
+            <textarea
+              style={{ ...field, minHeight: 140 }}
+              value={newAgentInstructions}
+              onChange={(e) => setNewAgentInstructions(e.target.value)}
+              placeholder="Optional: add project-specific analysis instructions for the agent."
+            />
+            <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+              <button style={btn('#0f766e')} disabled={creatingAgent || !newAgentProjectId} onClick={createAgentFromModal}>
+                {creatingAgent ? 'Creating...' : 'Create Agent'}
+              </button>
+              <button style={btn('#64748b')} disabled={creatingAgent} onClick={() => setShowNewAgentModal(false)}>
                 Cancel
               </button>
             </div>

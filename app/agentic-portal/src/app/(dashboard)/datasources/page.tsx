@@ -41,6 +41,7 @@ interface DataSource {
   type: string;
   organizationId: string;
   workstreamId?: string | null;
+  assignedWorkstreamIds?: string[];
   createdAt: string;
   lastSyncedAt?: string;
   schemaCache?: { tables: { name: string }[] };
@@ -126,6 +127,9 @@ function DataSourcesPageContent() {
   const [isLoadingDeleteImpact, setIsLoadingDeleteImpact] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [workstreams, setWorkstreams] = useState<WorkstreamOption[]>([]);
+  const [newDataSourceWorkstreamIds, setNewDataSourceWorkstreamIds] = useState<string[]>([]);
+  const [assignmentDialog, setAssignmentDialog] = useState<{ id: string; name: string; workstreamIds: string[] } | null>(null);
+  const [savingAssignments, setSavingAssignments] = useState(false);
   const selectedWorkstreamId = searchParams.get('workstreamId') || undefined;
   const selectedSourceTypes = (searchParams.get('sourceTypes') || '')
     .split(',')
@@ -212,6 +216,56 @@ function DataSourcesPageContent() {
     router.replace(`/datasources${query ? `?${query}` : ''}`, { scroll: false });
   };
 
+  function openAddDialog() {
+    setSelectedType(null);
+    setTestResult(null);
+    setNewDataSourceWorkstreamIds(selectedWorkstreamId ? [selectedWorkstreamId] : []);
+    setIsAddDialogOpen(true);
+  }
+
+  function toggleProjectAssignment(workstreamId: string, scope: 'new' | 'existing') {
+    if (scope === 'new') {
+      setNewDataSourceWorkstreamIds((prev) =>
+        prev.includes(workstreamId) ? prev.filter((id) => id !== workstreamId) : [...prev, workstreamId]
+      );
+      return;
+    }
+    setAssignmentDialog((prev) => {
+      if (!prev) return prev;
+      const next = prev.workstreamIds.includes(workstreamId)
+        ? prev.workstreamIds.filter((id) => id !== workstreamId)
+        : [...prev.workstreamIds, workstreamId];
+      return { ...prev, workstreamIds: next };
+    });
+  }
+
+  async function saveAssignments() {
+    if (!assignmentDialog) return;
+    setSavingAssignments(true);
+    try {
+      const res = await fetch(`/api/datasources/${assignmentDialog.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workstreamIds: assignmentDialog.workstreamIds }),
+      });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(payload.error || 'Failed to save assignments');
+      }
+      toast({ title: 'Saved', description: 'Project assignments updated.' });
+      setAssignmentDialog(null);
+      fetchDataSources();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to save assignments',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingAssignments(false);
+    }
+  }
+
   async function fetchServiceAccountEmail() {
     try {
       const res = await fetch('/api/google-sheets-live/service-account');
@@ -251,6 +305,7 @@ function DataSourcesPageContent() {
         body: JSON.stringify({
           name: postgresForm.name,
           type: 'postgres',
+          workstreamIds: newDataSourceWorkstreamIds,
           config: {
             host: postgresForm.host,
             port: parseInt(postgresForm.port) || 5432,
@@ -380,6 +435,7 @@ function DataSourcesPageContent() {
         body: JSON.stringify({
           name: bigqueryForm.name,
           type: 'bigquery',
+          workstreamIds: newDataSourceWorkstreamIds,
           config: {
             projectId: bigqueryForm.projectId,
             dataset: bigqueryForm.dataset,
@@ -463,6 +519,7 @@ function DataSourcesPageContent() {
         body: JSON.stringify({
           name: sheetsLiveForm.name,
           type: 'google_sheets_live',
+          workstreamIds: newDataSourceWorkstreamIds,
           config: {
             spreadsheetId: sheetsLiveForm.spreadsheetId,
             sheetName: sheetsLiveForm.sheetName,
@@ -559,6 +616,32 @@ function DataSourcesPageContent() {
   function getTypeIcon(type: string) {
     const typeConfig = DATA_SOURCE_TYPES.find((t) => t.id === type);
     return typeConfig?.icon || Database;
+  }
+
+  function renderProjectAssignmentPicker() {
+    return (
+      <div className="space-y-2">
+        <Label>Assign to Projects (optional)</Label>
+        <div className="max-h-36 overflow-auto rounded-lg border border-border p-2">
+          {workstreams.length === 0 ? (
+            <p className="px-2 py-1 text-xs text-muted-foreground">No projects available</p>
+          ) : (
+            workstreams.map((ws) => (
+              <label key={ws.id} className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted/40">
+                <input
+                  type="checkbox"
+                  checked={newDataSourceWorkstreamIds.includes(ws.id)}
+                  onChange={() => toggleProjectAssignment(ws.id, 'new')}
+                  className="rounded border-gray-300"
+                />
+                <span>{ws.name}</span>
+              </label>
+            ))
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">You can assign this data source to multiple projects.</p>
+      </div>
+    );
   }
 
   const filteredDataSources =
@@ -677,6 +760,7 @@ function DataSourcesPageContent() {
                     />
                   </div>
                   </div>
+                  {renderProjectAssignmentPicker()}
                   {testResult && (
                     <Alert variant={testResult.success ? 'default' : 'destructive'} className={testResult.success ? 'border-green-500 bg-green-50' : ''}>
                       <AlertDescription className="flex items-center gap-2">
@@ -762,6 +846,7 @@ function DataSourcesPageContent() {
                       onChange={(e) => setBigqueryForm({ ...bigqueryForm, serviceAccountKey: e.target.value })}
                     />
                   </div>
+                  {renderProjectAssignmentPicker()}
                   {testResult && (
                     <Alert variant={testResult.success ? 'default' : 'destructive'} className={testResult.success ? 'border-green-500 bg-green-50' : ''}>
                       <AlertDescription className="flex items-center gap-2">
@@ -852,6 +937,7 @@ function DataSourcesPageContent() {
                     />
                     <Label htmlFor="hasHeader" className="text-sm font-normal">First row contains headers</Label>
                   </div>
+                  {renderProjectAssignmentPicker()}
                   {testResult && (
                     <Alert variant={testResult.success ? 'default' : 'destructive'} className={testResult.success ? 'border-green-500 bg-green-50' : ''}>
                       <AlertDescription className="flex items-center gap-2">
@@ -929,7 +1015,7 @@ function DataSourcesPageContent() {
           <span className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground">
             {filteredDataSources.length} shown
           </span>
-          <Button onClick={() => setIsAddDialogOpen(true)} className="bg-primary hover:bg-primary/90">
+          <Button onClick={openAddDialog} className="bg-primary hover:bg-primary/90">
             <Plus className="w-4 h-4 mr-2" />
             Add Data Source
           </Button>
@@ -951,7 +1037,7 @@ function DataSourcesPageContent() {
             <h3 className="text-lg font-medium mb-2">No data sources</h3>
             <p className="text-muted-foreground mb-6 max-w-sm">Connect your first data source to start querying your data.</p>
             <div className="flex flex-wrap items-center justify-center gap-3">
-              <Button onClick={() => setIsAddDialogOpen(true)} className="bg-primary hover:bg-primary/90">
+              <Button onClick={openAddDialog} className="bg-primary hover:bg-primary/90">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Data Source
               </Button>
@@ -971,6 +1057,7 @@ function DataSourcesPageContent() {
                 <th className="text-left px-5 py-3 text-sm font-medium text-muted-foreground">Name</th>
                 <th className="text-left px-5 py-3 text-sm font-medium text-muted-foreground">Type</th>
                 <th className="text-left px-5 py-3 text-sm font-medium text-muted-foreground">Tables</th>
+                <th className="text-left px-5 py-3 text-sm font-medium text-muted-foreground">Projects</th>
                 <th className="text-left px-5 py-3 text-sm font-medium text-muted-foreground">Status</th>
                 <th className="text-right px-5 py-3 text-sm font-medium text-muted-foreground">Actions</th>
               </tr>
@@ -999,6 +1086,25 @@ function DataSourcesPageContent() {
                     </span>
                   </td>
                   <td className="px-5 py-4">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {(ds.assignedWorkstreamIds || []).length === 0 ? (
+                        <span className="text-xs text-muted-foreground">Unassigned</span>
+                      ) : (
+                        (ds.assignedWorkstreamIds || []).slice(0, 2).map((workstreamId) => {
+                          const label = workstreams.find((ws) => ws.id === workstreamId)?.name || workstreamId;
+                          return (
+                            <Badge key={workstreamId} variant="outline" className="max-w-[170px] truncate">
+                              {label}
+                            </Badge>
+                          );
+                        })
+                      )}
+                      {(ds.assignedWorkstreamIds || []).length > 2 ? (
+                        <Badge variant="outline">+{(ds.assignedWorkstreamIds || []).length - 2}</Badge>
+                      ) : null}
+                    </div>
+                  </td>
+                  <td className="px-5 py-4">
                     {ds.lastSyncedAt ? (
                       <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">
                         <CheckCircle2 className="w-3 h-3 mr-1" />
@@ -1013,6 +1119,21 @@ function DataSourcesPageContent() {
                   </td>
                   <td className="px-5 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setAssignmentDialog({
+                            id: ds.id,
+                            name: ds.name,
+                            workstreamIds: [...(ds.assignedWorkstreamIds || []), ...(ds.workstreamId ? [ds.workstreamId] : [])]
+                              .filter((value, index, arr) => arr.indexOf(value) === index),
+                          })
+                        }
+                        className="hover:bg-primary/5 hover:text-primary hover:border-primary/30"
+                      >
+                        Assign
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
@@ -1048,6 +1169,42 @@ function DataSourcesPageContent() {
       )}
 
       {/* Delete Confirmation Dialog */}
+      <Dialog open={!!assignmentDialog} onOpenChange={(open) => !open && setAssignmentDialog(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Assign to Projects</DialogTitle>
+            <DialogDescription>
+              {assignmentDialog ? `Choose projects for "${assignmentDialog.name}".` : 'Choose projects.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-72 overflow-auto rounded-lg border border-border p-2">
+            {workstreams.length === 0 ? (
+              <p className="px-2 py-1 text-sm text-muted-foreground">No projects available</p>
+            ) : (
+              workstreams.map((ws) => (
+                <label key={ws.id} className="flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted/40">
+                  <input
+                    type="checkbox"
+                    checked={assignmentDialog?.workstreamIds.includes(ws.id) || false}
+                    onChange={() => toggleProjectAssignment(ws.id, 'existing')}
+                    className="rounded border-gray-300"
+                  />
+                  <span>{ws.name}</span>
+                </label>
+              ))
+            )}
+          </div>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={() => setAssignmentDialog(null)} className="flex-1" disabled={savingAssignments}>
+              Cancel
+            </Button>
+            <Button onClick={saveAssignments} className="flex-1 bg-primary hover:bg-primary/90" disabled={savingAssignments}>
+              {savingAssignments ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>

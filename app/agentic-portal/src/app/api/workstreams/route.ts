@@ -3,6 +3,7 @@ import { db, schema } from '@/lib/db';
 import { eq, desc, sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { cookies } from 'next/headers';
+import { getDataSourceIdsForWorkstream } from '@/server/datasource-assignments';
 
 // Helper to get current user from session
 async function getCurrentUser() {
@@ -46,11 +47,7 @@ export async function GET(request: NextRequest) {
     // Get stats for each workstream
     const workstreamsWithStats = await Promise.all(
       workstreams.map(async (ws) => {
-        // Count data sources
-        const [dsCount] = await db
-          .select({ count: sql<number>`count(*)` })
-          .from(schema.dataSources)
-          .where(eq(schema.dataSources.workstreamId, ws.id));
+        const dataSourceIds = await getDataSourceIdsForWorkstream(orgId, ws.id);
 
         // Count views
         const [viewCount] = await db
@@ -73,7 +70,7 @@ export async function GET(request: NextRequest) {
         return {
           ...ws,
           stats: {
-            dataSources: Number(dsCount?.count || 0),
+            dataSources: dataSourceIds.length,
             views: Number(viewCount?.count || 0),
             dashboards: Number(dashCount?.count || 0),
             outputs: Number(outCount?.count || 0),

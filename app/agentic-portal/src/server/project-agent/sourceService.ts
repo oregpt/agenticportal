@@ -10,6 +10,7 @@ import type {
 } from './types';
 import { assertProjectAgent } from './projectAgentService';
 import { ensureProjectAgentTables } from './bootstrap';
+import { getDataSourceIdsForWorkstream } from '@/server/datasource-assignments';
 
 function isProjectSourceType(type: string): type is ProjectAgentSourceType {
   return type === 'postgres' || type === 'bigquery' || type === 'google_sheets' || type === 'google_sheets_live';
@@ -83,12 +84,13 @@ async function ensureSourceMeta(row: typeof schema.dataSources.$inferSelect) {
 
 function mapWithMeta(
   row: typeof schema.dataSources.$inferSelect,
-  meta: typeof schema.projectAgentSourceMeta.$inferSelect | null
+  meta: typeof schema.projectAgentSourceMeta.$inferSelect | null,
+  projectId: string
 ): ProjectAgentDataSource {
   return {
     id: row.id,
     organizationId: row.organizationId,
-    projectId: row.workstreamId || '',
+    projectId,
     name: row.name,
     type: row.type as ProjectAgentSourceType,
     config: (row.config || {}) as Record<string, unknown>,
@@ -105,30 +107,32 @@ export async function listProjectDataSources(projectId: string, organizationId: 
   await ensureProjectAgentTables();
   await assertProjectAgent(projectId, organizationId);
 
+  const sourceIds = await getDataSourceIdsForWorkstream(organizationId, projectId);
+  if (sourceIds.length === 0) return [];
   const rows = await db
     .select()
     .from(schema.dataSources)
     .where(
       and(
         eq(schema.dataSources.organizationId, organizationId),
-        eq(schema.dataSources.workstreamId, projectId)
+        inArray(schema.dataSources.id, sourceIds)
       )
     );
 
   const eligible = rows.filter((row) => isProjectSourceType(row.type));
-  const sourceIds = eligible.map((row) => row.id);
-  const metas = sourceIds.length
+  const eligibleSourceIds = eligible.map((row) => row.id);
+  const metas = eligibleSourceIds.length
     ? await db
         .select()
         .from(schema.projectAgentSourceMeta)
-        .where(inArray(schema.projectAgentSourceMeta.sourceId, sourceIds))
+        .where(inArray(schema.projectAgentSourceMeta.sourceId, eligibleSourceIds))
     : [];
   const metaMap = new Map(metas.map((meta) => [meta.sourceId, meta]));
 
   const output: ProjectAgentDataSource[] = [];
   for (const row of eligible) {
     const existingMeta = metaMap.get(row.id) || (await ensureSourceMeta(row));
-    output.push(mapWithMeta(row, existingMeta));
+    output.push(mapWithMeta(row, existingMeta, projectId));
   }
   return output;
 }
@@ -141,21 +145,23 @@ export async function getProjectDataSourceById(
   await ensureProjectAgentTables();
   await assertProjectAgent(projectId, organizationId);
 
+  const allowedIds = await getDataSourceIdsForWorkstream(organizationId, projectId);
+  if (!allowedIds.includes(sourceId)) return null;
+
   const [row] = await db
     .select()
     .from(schema.dataSources)
     .where(
       and(
         eq(schema.dataSources.id, sourceId),
-        eq(schema.dataSources.organizationId, organizationId),
-        eq(schema.dataSources.workstreamId, projectId)
+        eq(schema.dataSources.organizationId, organizationId)
       )
     )
     .limit(1);
 
   if (!row || !isProjectSourceType(row.type)) return null;
   const [meta] = await db.select().from(schema.projectAgentSourceMeta).where(eq(schema.projectAgentSourceMeta.sourceId, row.id)).limit(1);
-  return mapWithMeta(row, meta || (await ensureSourceMeta(row)));
+  return mapWithMeta(row, meta || (await ensureSourceMeta(row)), projectId);
 }
 
 export async function updateProjectSourceNotes(input: {

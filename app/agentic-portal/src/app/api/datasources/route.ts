@@ -1,17 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/lib/db';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { createDataSourceAdapter } from '@/lib/datasources';
 import { randomUUID } from 'crypto';
 import { getCurrentUser } from '@/lib/auth';
 import type { DataSourceConfig } from '@/lib/datasources';
 import { loadPlatformGcpCredentials } from '@/lib/gcpCredentials';
+import {
+  ensureDataSourceAssignmentTable,
+  getAssignedWorkstreamIdsForSources,
+  getDataSourceIdsForWorkstream,
+  replaceDataSourceAssignments,
+} from '@/server/datasource-assignments';
 
 const GOOGLE_SHEETS_BIGQUERY_SCOPES = [
   'https://www.googleapis.com/auth/cloud-platform',
   'https://www.googleapis.com/auth/bigquery',
   'https://www.googleapis.com/auth/drive.readonly',
 ];
+
+function normalizeWorkstreamIds(input: {
+  workstreamIds?: unknown;
+  workstreamId?: unknown;
+}): string[] {
+  const combined = [
+    ...(Array.isArray(input.workstreamIds) ? input.workstreamIds : []),
+    ...(typeof input.workstreamId === 'string' ? [input.workstreamId] : []),
+  ];
+
+  return Array.from(
+    new Set(
+      combined.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    )
+  );
+}
 
 // GET /api/datasources - List all data sources for org
 export async function GET(request: NextRequest) {
@@ -24,24 +46,38 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const workstreamId = searchParams.get('workstreamId');
+    await ensureDataSourceAssignmentTable();
 
-    const whereClause = workstreamId
-      ? and(
-          eq(schema.dataSources.organizationId, orgId),
-          eq(schema.dataSources.workstreamId, workstreamId)
-        )
-      : eq(schema.dataSources.organizationId, orgId);
+    const dataSources = workstreamId
+      ? await (async () => {
+          const sourceIds = await getDataSourceIdsForWorkstream(orgId, workstreamId);
+          if (sourceIds.length === 0) return [];
+          return db
+            .select()
+            .from(schema.dataSources)
+            .where(
+              and(
+                eq(schema.dataSources.organizationId, orgId),
+                inArray(schema.dataSources.id, sourceIds)
+              )
+            );
+        })()
+      : await db
+          .select()
+          .from(schema.dataSources)
+          .where(eq(schema.dataSources.organizationId, orgId));
 
-    const dataSources = await db
-      .select()
-      .from(schema.dataSources)
-      .where(whereClause);
+    const assignmentMap = await getAssignedWorkstreamIdsForSources(
+      orgId,
+      dataSources.map((ds) => ds.id)
+    );
 
     // Don't send credentials to client
     const sanitized = dataSources.map((ds) => ({
       id: ds.id,
       organizationId: ds.organizationId, // Include for query API
       workstreamId: ds.workstreamId,
+      assignedWorkstreamIds: assignmentMap.get(ds.id) || [],
       name: ds.name,
       type: ds.type,
       createdAt: ds.createdAt,
@@ -65,7 +101,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     console.log('[datasources POST] Received body:', JSON.stringify(body, null, 2));
-    const { name, type, config, workstreamId } = body;
+    const { name, type, config, workstreamId, workstreamIds } = body;
 
     const user = await getCurrentUser();
     if (!user?.organizationId) {
@@ -83,9 +119,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const requestedWorkstreamIds = normalizeWorkstreamIds({ workstreamId, workstreamIds });
+
     // Special handling for Google Sheets Live (BigQuery external tables)
     if (type === 'google_sheets_live') {
-      return handleGoogleSheetsLive(name, config, orgId, userId);
+      return handleGoogleSheetsLive(name, config, orgId, userId, requestedWorkstreamIds);
     }
 
     // Extract selectedTables if provided
@@ -157,13 +195,13 @@ export async function POST(request: NextRequest) {
     // TODO: Encrypt sensitive config fields
     const id = randomUUID();
     const now = new Date();
-    
+
     const [inserted] = await db
       .insert(schema.dataSources)
       .values({
         id,
         organizationId: orgId,
-        workstreamId: workstreamId || null,
+        workstreamId: requestedWorkstreamIds[0] || null,
         name,
         type,
         config: {
@@ -178,11 +216,18 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
+    await replaceDataSourceAssignments({
+      organizationId: orgId,
+      dataSourceId: inserted.id,
+      workstreamIds: requestedWorkstreamIds,
+    });
+
     return NextResponse.json({
       dataSource: {
         id: inserted.id,
         name: inserted.name,
         type: inserted.type,
+        assignedWorkstreamIds: requestedWorkstreamIds,
         createdAt: inserted.createdAt,
       },
     });
@@ -200,7 +245,8 @@ async function handleGoogleSheetsLive(
   name: string,
   config: { spreadsheetId: string; sheetName: string; hasHeader?: boolean; externalTableFQN?: string },
   orgId: string,
-  userId: string
+  userId: string,
+  workstreamIds: string[]
 ) {
   const { BigQuery } = await import('@google-cloud/bigquery');
 
@@ -213,7 +259,7 @@ async function handleGoogleSheetsLive(
   }
 
   const { spreadsheetId, sheetName, hasHeader = true } = config;
-  
+
   if (!spreadsheetId || !sheetName) {
     return NextResponse.json(
       { error: 'spreadsheetId and sheetName are required' },
@@ -222,7 +268,7 @@ async function handleGoogleSheetsLive(
   }
 
   const projectId = String(credentials.project_id || '');
-  const datasetName = `agentic_portal_default`;
+  const datasetName = 'agentic_portal_default';
   const safeSheet = sheetName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase().substring(0, 30);
   const tableName = `sheets_${spreadsheetId.substring(0, 8)}_${safeSheet}`;
   const sheetUri = `https://docs.google.com/spreadsheets/d/${spreadsheetId}`;
@@ -234,7 +280,7 @@ async function handleGoogleSheetsLive(
       scopes: GOOGLE_SHEETS_BIGQUERY_SCOPES,
     });
     const dataset = bigquery.dataset(datasetName);
-    
+
     // Ensure dataset exists
     const [datasetExists] = await dataset.exists();
     if (!datasetExists) {
@@ -304,6 +350,7 @@ async function handleGoogleSheetsLive(
       .values({
         id,
         organizationId: orgId,
+        workstreamId: workstreamIds[0] || null,
         name,
         type: 'google_sheets_live',
         config: {
@@ -323,11 +370,18 @@ async function handleGoogleSheetsLive(
       })
       .returning();
 
+    await replaceDataSourceAssignments({
+      organizationId: orgId,
+      dataSourceId: inserted.id,
+      workstreamIds,
+    });
+
     return NextResponse.json({
       dataSource: {
         id: inserted.id,
         name: inserted.name,
         type: inserted.type,
+        assignedWorkstreamIds: workstreamIds,
         createdAt: inserted.createdAt,
         externalTableFQN,
       },
@@ -338,9 +392,9 @@ async function handleGoogleSheetsLive(
     const errorMessage = error instanceof Error ? error.message : 'Failed to create Google Sheets Live data source';
     let userMessage = errorMessage;
     if (errorMessage.includes('ACCESS_DENIED') || errorMessage.includes('403')) {
-      userMessage = `Access denied. Make sure the spreadsheet is shared with the service account.`;
+      userMessage = 'Access denied. Make sure the spreadsheet is shared with the service account.';
     }
-    
+
     return NextResponse.json(
       { error: userMessage },
       { status: 500 }

@@ -230,6 +230,15 @@ export const dataSources = pgTable('data_sources', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// Datasource to project assignments (many-to-many)
+export const dataSourceWorkstreams = pgTable('data_source_workstreams', {
+  id: serial('id').primaryKey(),
+  dataSourceId: varchar('data_source_id', { length: 64 }).notNull(),
+  workstreamId: varchar('workstream_id', { length: 64 }).notNull(),
+  organizationId: varchar('organization_id', { length: 64 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 // ============================================================================
 // LAYER 2: VIEWS (Queryable Layer)
 // ============================================================================
