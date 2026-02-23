@@ -17,6 +17,12 @@ import type {
 import { registerAdapter } from '../registry';
 import { loadPlatformGcpCredentials } from '@/lib/gcpCredentials';
 
+const GOOGLE_SHEETS_BIGQUERY_SCOPES = [
+  'https://www.googleapis.com/auth/cloud-platform',
+  'https://www.googleapis.com/auth/bigquery',
+  'https://www.googleapis.com/auth/drive.readonly',
+];
+
 // Map BigQuery types to our normalized types
 const TYPE_MAP: Record<string, string> = {
   STRING: 'string',
@@ -76,6 +82,7 @@ export class GoogleSheetsLiveAdapter implements DataSourceAdapter {
     this.client = new BigQuery({
       projectId: config.bqProjectId,
       credentials,
+      scopes: GOOGLE_SHEETS_BIGQUERY_SCOPES,
     });
   }
 

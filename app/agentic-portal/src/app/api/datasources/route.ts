@@ -7,6 +7,12 @@ import { getCurrentUser } from '@/lib/auth';
 import type { DataSourceConfig } from '@/lib/datasources';
 import { loadPlatformGcpCredentials } from '@/lib/gcpCredentials';
 
+const GOOGLE_SHEETS_BIGQUERY_SCOPES = [
+  'https://www.googleapis.com/auth/cloud-platform',
+  'https://www.googleapis.com/auth/bigquery',
+  'https://www.googleapis.com/auth/drive.readonly',
+];
+
 // GET /api/datasources - List all data sources for org
 export async function GET(request: NextRequest) {
   try {
@@ -222,7 +228,11 @@ async function handleGoogleSheetsLive(
   const sheetUri = `https://docs.google.com/spreadsheets/d/${spreadsheetId}`;
 
   try {
-    const bigquery = new BigQuery({ projectId, credentials });
+    const bigquery = new BigQuery({
+      projectId,
+      credentials,
+      scopes: GOOGLE_SHEETS_BIGQUERY_SCOPES,
+    });
     const dataset = bigquery.dataset(datasetName);
     
     // Ensure dataset exists

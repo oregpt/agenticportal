@@ -117,6 +117,8 @@ function DataSourcesPageContent() {
     hasHeader: true,
   });
   const [serviceAccountEmail, setServiceAccountEmail] = useState<string | null>(null);
+  const [platformProjectId, setPlatformProjectId] = useState<string | null>(null);
+  const [platformCredsConfigured, setPlatformCredsConfigured] = useState<boolean>(false);
   const [syncingState, setSyncingState] = useState<SyncingState>({});
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
@@ -217,10 +219,17 @@ function DataSourcesPageContent() {
         const data = await res.json();
         if (data.configured) {
           setServiceAccountEmail(data.serviceAccountEmail);
+          setPlatformProjectId(data.projectId || null);
+          setPlatformCredsConfigured(true);
+        } else {
+          setServiceAccountEmail(null);
+          setPlatformProjectId(null);
+          setPlatformCredsConfigured(false);
         }
       }
     } catch (error) {
       console.error('Failed to fetch service account:', error);
+      setPlatformCredsConfigured(false);
     }
   }
 
@@ -703,6 +712,23 @@ function DataSourcesPageContent() {
                   <DialogDescription>Enter your BigQuery project details</DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
+                  {serviceAccountEmail ? (
+                    <Alert className="border-blue-200 bg-blue-50">
+                      <AlertDescription className="text-sm">
+                        <strong>Platform Service Account:</strong><br />
+                        <code className="bg-blue-100 px-2 py-0.5 rounded text-xs mt-1 inline-block">{serviceAccountEmail}</code>
+                        {platformProjectId ? (
+                          <span className="text-muted-foreground ml-2">Project: {platformProjectId}</span>
+                        ) : null}
+                      </AlertDescription>
+                    </Alert>
+                  ) : platformCredsConfigured === false ? (
+                    <Alert variant="destructive">
+                      <AlertDescription className="text-sm">
+                        Platform GCP credentials are not configured. Google Sheets Live connectors will fail until this is set.
+                      </AlertDescription>
+                    </Alert>
+                  ) : null}
                   <div className="space-y-2">
                     <Label>Display Name</Label>
                     <Input
@@ -777,9 +803,19 @@ function DataSourcesPageContent() {
                         <strong>Step 1:</strong> Share your Google Sheet with:<br />
                         <code className="bg-blue-100 px-2 py-0.5 rounded text-xs mt-1 inline-block">{serviceAccountEmail}</code>
                         <span className="text-muted-foreground ml-2">(Viewer access)</span>
+                        {platformProjectId ? (
+                          <span className="text-muted-foreground ml-2">Project: {platformProjectId}</span>
+                        ) : null}
                       </AlertDescription>
                     </Alert>
                   )}
+                  {!serviceAccountEmail && platformCredsConfigured === false ? (
+                    <Alert variant="destructive">
+                      <AlertDescription className="text-sm">
+                        Platform GCP credentials are not configured. Ask an admin to set <code>EDS_GCP_SERVICE_ACCOUNT_KEY_B64</code>.
+                      </AlertDescription>
+                    </Alert>
+                  ) : null}
                   <div className="space-y-2">
                     <Label>Display Name</Label>
                     <Input

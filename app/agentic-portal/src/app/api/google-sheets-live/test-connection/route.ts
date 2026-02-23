@@ -9,6 +9,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { BigQuery } from '@google-cloud/bigquery';
 import { loadPlatformGcpCredentials } from '@/lib/gcpCredentials';
 
+const GOOGLE_SHEETS_BIGQUERY_SCOPES = [
+  'https://www.googleapis.com/auth/cloud-platform',
+  'https://www.googleapis.com/auth/bigquery',
+  'https://www.googleapis.com/auth/drive.readonly',
+];
+
 function getPlatformCredentials() {
   const { credentials } = loadPlatformGcpCredentials();
   if (!credentials) {
@@ -58,6 +64,7 @@ export async function POST(request: NextRequest) {
     const bigquery = new BigQuery({
       projectId,
       credentials,
+      scopes: GOOGLE_SHEETS_BIGQUERY_SCOPES,
     });
 
     const datasetName = generateDatasetName('default');
