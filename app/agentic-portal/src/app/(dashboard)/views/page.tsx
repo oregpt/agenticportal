@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { WorkstreamFilterBar } from '@/components/filters/WorkstreamFilterBar';
 import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
 import { FilterPresetManager } from '@/components/filters/FilterPresetManager';
-import { Table2, Search, Code, MessageSquare, Database, Clock, Loader2 } from 'lucide-react';
+import { Table2, Search, Code, Sparkles, Database, Clock, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 interface View {
@@ -235,9 +235,9 @@ function ViewsPageContent() {
                 </Link>
               </Button>
               <Button className="bg-primary hover:bg-primary/90" asChild>
-                <Link href="/chat">
-                  <MessageSquare className="w-4 h-4 mr-2" />
-                  Ask Assistant
+                <Link href="/views/new?mode=chat">
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Create with AI
                 </Link>
               </Button>
             </div>

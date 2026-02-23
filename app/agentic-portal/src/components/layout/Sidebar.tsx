@@ -15,7 +15,6 @@ import {
   Bot,
   Workflow,
   FileOutput,
-  Sparkles,
   Network,
 } from 'lucide-react';
 
@@ -50,7 +49,6 @@ const pipelineNavigation: NavItem[] = [
 ];
 
 const aiNavigation: NavItem[] = [
-  { name: 'Ask Data Assistant', href: '/chat', icon: Sparkles },
   { name: 'Project Agent', href: '/project-agent', icon: Bot },
 ];
 

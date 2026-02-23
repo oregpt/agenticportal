@@ -56,7 +56,7 @@ export default function OrgAdminDashboard() {
       value: isLoading ? '...' : stats?.chatSessionCount || 0,
       label: 'This month',
       icon: MessageSquare,
-      href: '/chat',
+      href: '/project-agent',
     },
     {
       title: 'Queries Run',
