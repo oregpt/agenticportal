@@ -142,7 +142,7 @@ function ArtifactsPageContent() {
                     <Badge variant={artifact.status === 'active' ? 'default' : 'secondary'}>{artifact.status}</Badge>
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    v{artifact.latestVersion} · Updated {new Date(artifact.updatedAt).toLocaleString()}
+                    v{artifact.latestVersion} - Updated {new Date(artifact.updatedAt).toLocaleString()}
                   </div>
                   {artifact.description ? <div className="text-sm text-muted-foreground mt-1">{artifact.description}</div> : null}
                 </div>
@@ -172,3 +172,4 @@ export default function ArtifactsPage() {
     </Suspense>
   );
 }
+

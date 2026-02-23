@@ -1,87 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { addDashboardItem, createArtifactWithVersion, createQuerySpec, listArtifacts } from '@/server/artifacts';
-
-async function getOrCreateDashboard(input: { organizationId: string; projectId: string; createdBy: string }) {
-  const dashboards = await listArtifacts({
-    organizationId: input.organizationId,
-    projectId: input.projectId,
-    type: 'dashboard',
-  });
-  if (dashboards.length > 0) return dashboards[0]!;
-
-  const created = await createArtifactWithVersion({
-    organizationId: input.organizationId,
-    projectId: input.projectId,
-    type: 'dashboard',
-    name: 'Default Dashboard',
-    description: 'Auto-created dashboard for project artifacts',
-    configJson: { mode: 'grid' },
-    layoutJson: { columns: 12 },
-    createdBy: input.createdBy,
-  });
-  return created.artifact;
-}
+import { createDashboardBlockFromSql } from '@/server/artifacts';
 
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user?.organizationId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const body = await request.json();
   const projectId = String(body.projectId || '');
   const sourceId = String(body.sourceId || '');
   const sqlText = String(body.sqlText || '').trim();
+  const artifactType = String(body.artifactType || 'chart').toLowerCase();
+  const name = String(body.name || 'Dashboard Block').trim();
+
   if (!projectId || !sourceId || !sqlText) {
     return NextResponse.json({ error: 'projectId, sourceId, and sqlText are required' }, { status: 400 });
   }
 
-  const baseName = String(body.name || 'Chat Result').trim();
-  const chartName = `${baseName} Chart`;
-  const querySpec = await createQuerySpec({
+  if (!['table', 'chart', 'kpi'].includes(artifactType)) {
+    return NextResponse.json({ error: 'artifactType must be table, chart, or kpi' }, { status: 400 });
+  }
+
+  const created = await createDashboardBlockFromSql({
     organizationId: user.organizationId,
     projectId,
     sourceId,
-    name: `${baseName} Query`,
     sqlText,
+    name,
+    artifactType: artifactType as 'table' | 'chart' | 'kpi',
+    description: body.description || 'Dashboard block created from project agent output',
     metadataJson: body.metadataJson || null,
-    createdBy: user.id,
-  });
-
-  const chart = await createArtifactWithVersion({
-    organizationId: user.organizationId,
-    projectId,
-    type: 'chart',
-    name: chartName,
-    description: 'Created from project agent chat',
-    querySpecId: querySpec.id,
-    configJson: body.configJson || { chartType: 'bar' },
-    createdBy: user.id,
-  });
-
-  const dashboardArtifactId = String(body.dashboardArtifactId || '');
-  const dashboard = dashboardArtifactId
-    ? { id: dashboardArtifactId }
-    : await getOrCreateDashboard({
-        organizationId: user.organizationId,
-        projectId,
-        createdBy: user.id,
-      });
-
-  const item = await addDashboardItem({
-    organizationId: user.organizationId,
-    dashboardArtifactId: dashboard.id,
-    childArtifactId: chart.artifact.id,
-    childArtifactVersionId: chart.version.id,
-    positionJson: body.positionJson || null,
+    configJson: body.configJson || null,
     displayJson: body.displayJson || null,
+    positionJson: body.positionJson || null,
+    dashboardArtifactId: body.dashboardArtifactId || undefined,
+    createdBy: user.id,
   });
 
   return NextResponse.json(
     {
-      querySpec,
-      chartArtifact: chart.artifact,
-      chartVersion: chart.version,
-      dashboardArtifactId: dashboard.id,
-      dashboardItem: item,
+      querySpec: created.querySpec,
+      artifact: created.artifact,
+      version: created.version,
+      dashboardArtifactId: created.dashboard.id,
+      dashboardItem: created.dashboardItem,
     },
     { status: 201 }
   );

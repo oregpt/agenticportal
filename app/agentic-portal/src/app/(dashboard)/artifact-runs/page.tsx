@@ -68,8 +68,8 @@ function ArtifactRunsPageContent() {
                     <Badge variant="outline">{run.triggerType}</Badge>
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    artifact {run.artifactId} · started {new Date(run.startedAt).toLocaleString()}
-                    {run.completedAt ? ` · completed ${new Date(run.completedAt).toLocaleString()}` : ''}
+                    artifact {run.artifactId} - started {new Date(run.startedAt).toLocaleString()}
+                    {run.completedAt ? ` - completed ${new Date(run.completedAt).toLocaleString()}` : ''}
                   </div>
                   {run.errorText ? <div className="text-xs text-red-600 mt-1">{run.errorText}</div> : null}
                 </div>
@@ -94,3 +94,4 @@ export default function ArtifactRunsPage() {
     </Suspense>
   );
 }
+

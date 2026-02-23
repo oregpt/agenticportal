@@ -115,7 +115,7 @@ export default function DashboardComposePage() {
                 <div key={item.id} className="rounded-md border border-border p-3 flex items-center justify-between">
                   <div>
                     <div className="text-sm font-medium">{artifact?.name || item.childArtifactId}</div>
-                    <div className="text-xs text-muted-foreground">{artifact?.type || 'artifact'} · item {item.id}</div>
+                    <div className="text-xs text-muted-foreground">{artifact?.type || 'artifact'} - item {item.id}</div>
                   </div>
                   <Button variant="outline" size="sm" onClick={() => removeItem(item.id)}>Remove</Button>
                 </div>
@@ -129,3 +129,4 @@ export default function DashboardComposePage() {
     </div>
   );
 }
+

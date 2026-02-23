@@ -132,8 +132,8 @@ export default function ArtifactDetailPage() {
             <p className="text-sm text-muted-foreground">No runs yet.</p>
           ) : runs.map((r) => (
             <Link key={r.id} href={`/artifact-runs?id=${encodeURIComponent(r.id)}`} className="block rounded-md border border-border p-2 hover:bg-muted/50">
-              <div className="text-sm font-medium">{r.status} · {new Date(r.startedAt).toLocaleString()}</div>
-              <div className="text-xs text-muted-foreground">{r.triggerType} · {r.id}</div>
+              <div className="text-sm font-medium">{r.status} - {new Date(r.startedAt).toLocaleString()}</div>
+              <div className="text-xs text-muted-foreground">{r.triggerType} - {r.id}</div>
             </Link>
           ))}
         </CardContent>
@@ -143,3 +143,4 @@ export default function ArtifactDetailPage() {
     </div>
   );
 }
+

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
-import { createArtifactWithVersion, createQuerySpec } from '@/server/artifacts';
+import { createDashboardBlockFromSql } from '@/server/artifacts';
 
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
@@ -14,31 +14,30 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'projectId, sourceId, and sqlText are required' }, { status: 400 });
   }
 
-  const querySpec = await createQuerySpec({
+  const created = await createDashboardBlockFromSql({
     organizationId: user.organizationId,
     projectId,
     sourceId,
-    name: `${name} Query`,
     sqlText,
-    metadataJson: body.metadataJson || null,
-    createdBy: user.id,
-  });
-
-  const created = await createArtifactWithVersion({
-    organizationId: user.organizationId,
-    projectId,
-    type: 'chart',
     name,
-    description: body.description || null,
-    querySpecId: querySpec.id,
-    configJson: body.configJson || {
-      chartType: 'bar',
-      xField: null,
-      yField: null,
-      seriesField: null,
-    },
+    artifactType: 'chart',
+    description: body.description || 'Chart block created from project agent output',
+    metadataJson: body.metadataJson || null,
+    configJson: body.configJson || null,
+    displayJson: body.displayJson || null,
+    positionJson: body.positionJson || null,
+    dashboardArtifactId: body.dashboardArtifactId || undefined,
     createdBy: user.id,
   });
 
-  return NextResponse.json({ querySpec, ...created }, { status: 201 });
+  return NextResponse.json(
+    {
+      querySpec: created.querySpec,
+      artifact: created.artifact,
+      version: created.version,
+      dashboardArtifactId: created.dashboard.id,
+      dashboardItem: created.dashboardItem,
+    },
+    { status: 201 }
+  );
 }

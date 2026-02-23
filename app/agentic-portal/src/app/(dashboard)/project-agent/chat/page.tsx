@@ -15,9 +15,22 @@ type DataSource = { id: string; name: string; type: SourceType; status: string }
 type Workflow = { id: string; name: string; enabled: number };
 type DataRunInfo = {
   source: { id: string; name: string; type: SourceType };
-  trust: { sql: string; rowCount: number; model: string; confidence?: number | null };
+  trust: {
+    sql: string;
+    rowCount: number;
+    model: string;
+    confidence?: number | null;
+    sampleRows?: Array<Record<string, unknown>>;
+    reasoning?: string;
+  };
   runId?: string | null;
-  artifactActions?: { canSaveTable?: boolean; canCreateChart?: boolean; canAddToDashboard?: boolean; canSaveSql?: boolean };
+  artifactActions?: {
+    canSaveTable?: boolean;
+    canCreateChart?: boolean;
+    canCreateKpi?: boolean;
+    canAddToDashboard?: boolean;
+    canSaveSql?: boolean;
+  };
   querySpecDraft?: { name?: string; projectId?: string; sourceId?: string; sqlText?: string; metadataJson?: Record<string, unknown> };
 };
 type Message = { id: string; role: 'user' | 'assistant'; content: string; dataRun?: DataRunInfo };
@@ -216,18 +229,18 @@ export default function ProjectAgentChatPage() {
     }
   }
 
-  async function saveFromMessage(messageId: string, mode: 'save-sql' | 'save-table' | 'create-chart' | 'add-to-dashboard') {
+  async function saveFromMessage(messageId: string, mode: 'save-sql' | 'add-table' | 'add-chart' | 'add-kpi') {
     const message = messages.find((m) => m.id === messageId);
     const dataRun = message?.dataRun;
     if (!dataRun?.trust?.sql || !selectedProjectId || !chatSourceId) return;
 
     const endpoint =
-      mode === 'save-table'
+      mode === 'add-table'
         ? '/api/project-agent/chat/save-table'
-        : mode === 'create-chart'
+        : mode === 'add-chart'
           ? '/api/project-agent/chat/create-chart'
-          : mode === 'add-to-dashboard'
-            ? '/api/project-agent/chat/add-to-dashboard'
+          : mode === 'add-kpi'
+            ? '/api/project-agent/chat/create-kpi'
             : '/api/project-agent/chat/save-sql';
 
     const nameBase = (dataRun.querySpecDraft?.name || message?.content || 'Chat Result').slice(0, 80);
@@ -241,23 +254,28 @@ export default function ProjectAgentChatPage() {
           sourceId: dataRun.source.id || chatSourceId,
           sqlText: dataRun.trust.sql,
           name:
-            mode === 'save-table'
+            mode === 'add-table'
               ? `${nameBase} Table`
-              : mode === 'create-chart'
+              : mode === 'add-chart'
                 ? `${nameBase} Chart`
-                : mode === 'add-to-dashboard'
-                  ? `${nameBase} Dashboard Block`
+                : mode === 'add-kpi'
+                  ? `${nameBase} KPI`
                   : `${nameBase} Query`,
           metadataJson: dataRun.querySpecDraft?.metadataJson || {
             rowCount: dataRun.trust.rowCount,
             confidence: dataRun.trust.confidence ?? null,
+            sampleRows: dataRun.trust.sampleRows || [],
+            reasoning: dataRun.trust.reasoning || null,
           },
         }),
       });
-      if (mode === 'add-to-dashboard') {
-        pushMessage({ role: 'assistant', content: `Added to dashboard ${res.dashboardArtifactId || ''}.` });
+      if (mode === 'save-sql') {
+        pushMessage({ role: 'assistant', content: 'Saved SQL query spec.' });
       } else {
-        pushMessage({ role: 'assistant', content: `${mode.replace('-', ' ')} completed.` });
+        pushMessage({
+          role: 'assistant',
+          content: `Added ${mode.replace('add-', '')} block to dashboard ${res.dashboardArtifactId || ''}.`,
+        });
       }
     } catch (e: any) {
       setError(e?.message || `Failed to ${mode}`);
@@ -368,33 +386,33 @@ export default function ProjectAgentChatPage() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => saveFromMessage(m.id, 'save-table')}
-                                  disabled={savingActionId === `${m.id}:save-table`}
+                                  onClick={() => saveFromMessage(m.id, 'add-table')}
+                                  disabled={savingActionId === `${m.id}:add-table`}
                                 >
-                                  {savingActionId === `${m.id}:save-table` ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-                                  Save Table
+                                  {savingActionId === `${m.id}:add-table` ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                                  Add Table
                                 </Button>
                               ) : null}
                               {(m.dataRun.artifactActions?.canCreateChart ?? true) ? (
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => saveFromMessage(m.id, 'create-chart')}
-                                  disabled={savingActionId === `${m.id}:create-chart`}
+                                  onClick={() => saveFromMessage(m.id, 'add-chart')}
+                                  disabled={savingActionId === `${m.id}:add-chart`}
                                 >
-                                  {savingActionId === `${m.id}:create-chart` ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-                                  Create Chart
+                                  {savingActionId === `${m.id}:add-chart` ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                                  Add Chart
                                 </Button>
                               ) : null}
-                              {(m.dataRun.artifactActions?.canAddToDashboard ?? true) ? (
+                              {(m.dataRun.artifactActions?.canCreateKpi ?? true) ? (
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => saveFromMessage(m.id, 'add-to-dashboard')}
-                                  disabled={savingActionId === `${m.id}:add-to-dashboard`}
+                                  onClick={() => saveFromMessage(m.id, 'add-kpi')}
+                                  disabled={savingActionId === `${m.id}:add-kpi`}
                                 >
-                                  {savingActionId === `${m.id}:add-to-dashboard` ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-                                  Add to Dashboard
+                                  {savingActionId === `${m.id}:add-kpi` ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                                  Add KPI
                                 </Button>
                               ) : null}
                             </div>

@@ -406,6 +406,7 @@ export async function runProjectAgentChat(input: {
     artifactActions: {
       canSaveTable: true,
       canCreateChart: true,
+      canCreateKpi: true,
       canAddToDashboard: true,
       canSaveSql: true,
     },
@@ -418,6 +419,10 @@ export async function runProjectAgentChat(input: {
         rowCount: queryResult.rowCount,
         confidence: confidenceForTrust,
         reasoning: reasoningForTrust,
+        sampleRows,
+        columns: sampleRows.length
+          ? Object.keys(sampleRows[0] || {}).map((name) => ({ name }))
+          : [],
       },
     },
     trust: {

@@ -26,9 +26,17 @@ export {
   listArtifactRuns,
   getArtifactRunById,
 } from './runService';
+export {
+  ARTIFACT_TYPE_REGISTRY,
+  buildDeterministicArtifactConfig,
+  inferColumnsFromSampleRows,
+  getSampleRows,
+} from './registry';
+export { createDashboardBlockFromSql } from './dashboardOrchestrator';
 export type {
   ArtifactType,
   ArtifactStatus,
   ArtifactRunStatus,
   ArtifactRunTrigger,
 } from './types';
+export type { DeterministicArtifactType } from './registry';

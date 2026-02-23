@@ -5,10 +5,11 @@ import { createDashboardBlockFromSql } from '@/server/artifacts';
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user?.organizationId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const body = await request.json();
   const projectId = String(body.projectId || '');
   const sourceId = String(body.sourceId || '');
-  const name = String(body.name || 'Saved Table').trim();
+  const name = String(body.name || 'KPI Tile').trim();
   const sqlText = String(body.sqlText || '').trim();
   if (!projectId || !sourceId || !sqlText) {
     return NextResponse.json({ error: 'projectId, sourceId, and sqlText are required' }, { status: 400 });
@@ -20,8 +21,8 @@ export async function POST(request: NextRequest) {
     sourceId,
     sqlText,
     name,
-    artifactType: 'table',
-    description: body.description || 'Table block created from project agent output',
+    artifactType: 'kpi',
+    description: body.description || 'KPI tile created from project agent output',
     metadataJson: body.metadataJson || null,
     configJson: body.configJson || null,
     displayJson: body.displayJson || null,
