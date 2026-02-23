@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { WorkstreamFilterBar } from '@/components/filters/WorkstreamFilterBar';
 import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
 import { FilterPresetManager } from '@/components/filters/FilterPresetManager';
-import { Plus, LayoutDashboard, Clock, Network, Trash2 } from 'lucide-react';
+import { Plus, LayoutDashboard, Clock, Trash2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 
@@ -177,7 +177,7 @@ function DashboardsPageContent() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
+    <div className="p-8 max-w-7xl mx-auto space-y-6 fade-in-up">
       <WorkstreamFilterBar
         workstreams={workstreams}
         selectedWorkstreamId={selectedWorkstreamId}
@@ -207,7 +207,10 @@ function DashboardsPageContent() {
       />
 
       {isLoading ? (
-        <div className="text-muted-foreground">Loading dashboards...</div>
+        <div className="ui-empty">
+          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mb-2" />
+          <p className="text-muted-foreground">Loading dashboards...</p>
+        </div>
       ) : filteredDashboards.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredDashboards.map((dashboard) => (

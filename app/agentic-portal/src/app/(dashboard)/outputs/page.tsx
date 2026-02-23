@@ -3,7 +3,6 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  Plus,
   FileOutput,
   FileText,
   Download,
@@ -234,7 +233,7 @@ function OutputsPageContent() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto fade-in-up">
+    <div className="p-8 max-w-7xl mx-auto space-y-6 fade-in-up">
       <WorkstreamFilterBar
         workstreams={workstreams}
         selectedWorkstreamId={selectedWorkstreamId}
@@ -263,22 +262,23 @@ function OutputsPageContent() {
         }
       />
 
-      <div className="relative mb-6 fade-in-up-delay-1">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search outputs..."
-          className="pl-10"
-        />
-      </div>
-
-      {outputs.length > 0 ? (
-        <div className="mb-4 text-sm text-muted-foreground">
-          Showing {filteredOutputs.length} of {outputs.length} outputs
+      <div className="ui-shell fade-in-up-delay-1">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search outputs..."
+            className="pl-10"
+          />
         </div>
-      ) : null}
+        {outputs.length > 0 ? (
+          <div className="mt-3 text-sm text-muted-foreground">
+            Showing {filteredOutputs.length} of {outputs.length} outputs
+          </div>
+        ) : null}
+      </div>
 
       {loadError ? (
         <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
@@ -287,7 +287,10 @@ function OutputsPageContent() {
       ) : null}
 
       {isLoading ? (
-        <div className="text-muted-foreground">Loading outputs...</div>
+        <div className="ui-empty">
+          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mb-2" />
+          <p className="text-muted-foreground">Loading outputs...</p>
+        </div>
       ) : (
         <div className="grid gap-4">
           {filteredOutputs.map((output) => {

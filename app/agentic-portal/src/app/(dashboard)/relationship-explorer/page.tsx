@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Network, Database, Table2, LayoutDashboard, FileOutput, ExternalLink, Plus, Minus, Link2, Move } from 'lucide-react';
+import { Database, Table2, LayoutDashboard, FileOutput, ExternalLink, Plus, Minus, Link2, Move } from 'lucide-react';
 import { WorkstreamFilterBar } from '@/components/filters/WorkstreamFilterBar';
 import { FilterPresetManager } from '@/components/filters/FilterPresetManager';
 import { Button } from '@/components/ui/button';
@@ -76,7 +76,6 @@ function buildDefaultPositions(nodes: PipelineNode[]): Record<string, NodePositi
 function RelationshipExplorerPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const isEmbedded = searchParams.get('embed') === '1';
 
   const [workstreams, setWorkstreams] = useState<WorkstreamOption[]>([]);
   const [nodes, setNodes] = useState<PipelineNode[]>([]);
@@ -216,7 +215,7 @@ function RelationshipExplorerPageContent() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto fade-in-up">
+    <div className="p-8 max-w-7xl mx-auto space-y-6 fade-in-up">
       <WorkstreamFilterBar
         workstreams={workstreams}
         selectedWorkstreamId={selectedWorkstreamId}
