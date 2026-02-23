@@ -72,8 +72,6 @@ const RULE_SAMPLE = 'Always include chain name and wallet address in answers.';
 const WORKFLOW_SAMPLE = 'Summarize balances by chain\nThen list top 10 transactions by amount\nThen provide executive summary';
 const DATA_COMMANDS = [
   { label: 'Source summary', prompt: 'Give me a one-paragraph summary of this source and top tables.' },
-  { label: 'Top transactions', prompt: 'Show top 10 transactions by amount with timestamp and chain context.' },
-  { label: 'Anomaly scan', prompt: 'Identify unusual transaction patterns in the last 24 hours.' },
   { label: 'List workflows', prompt: 'list workflows' },
   { label: 'List memory rules', prompt: 'list memory rules' },
 ];

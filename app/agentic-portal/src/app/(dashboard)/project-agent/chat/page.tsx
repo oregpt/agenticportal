@@ -24,8 +24,6 @@ type DeepToolPlan = {
 
 const DATA_AGENT_COMMANDS = [
   { label: 'Source summary', prompt: 'Give me a one-paragraph summary of this source and top tables.' },
-  { label: 'Top transactions', prompt: 'Show top 10 transactions by amount with timestamp and chain context.' },
-  { label: 'Anomaly scan', prompt: 'Identify unusual transaction patterns in the last 24 hours.' },
   { label: 'List workflows', prompt: 'List all active workflows and what each one does.' },
   { label: 'List memory rules', prompt: 'List all active memory rules for this data source.' },
 ];
@@ -351,4 +349,3 @@ export default function ProjectAgentChatPage() {
     </div>
   );
 }
-

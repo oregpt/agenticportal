@@ -53,16 +53,34 @@ function getPlannerSourceType(type: ProjectAgentDataSource['type']): PlannerSche
   return type;
 }
 
+function getGoogleSheetsTableFqn(source: ProjectAgentDataSource): string | null {
+  if (source.type !== 'google_sheets_live') return null;
+  const config = (source.config || {}) as Record<string, unknown>;
+  const configuredFqn = String(config.externalTableFQN || '').trim();
+  if (configuredFqn) return configuredFqn;
+
+  const projectId = String(config.bqProjectId || '').trim();
+  const dataset = String(config.bqDataset || '').trim();
+  const table = String(config.bqTableName || '').trim();
+  if (projectId && dataset && table) {
+    return `${projectId}.${dataset}.${table}`;
+  }
+  return null;
+}
+
 function schemaFromSource(source: ProjectAgentDataSource) {
   const schemaFieldsByTable: Record<string, PlannerField[]> = {};
   const schemaTables: string[] = [];
   const schemaTextParts: string[] = [];
+  const sheetsTableFqn = getGoogleSheetsTableFqn(source);
 
   const schemaCache = source.schemaCache as any;
   const tables = Array.isArray(schemaCache?.tables) ? schemaCache.tables : [];
 
   for (const table of tables.slice(0, 80)) {
-    const tableName = String(table?.name || '').trim();
+    const tableName = source.type === 'google_sheets_live'
+      ? String(sheetsTableFqn || table?.name || '').trim()
+      : String(table?.name || '').trim();
     if (!tableName) continue;
     const columns = Array.isArray(table?.columns) ? table.columns : [];
     const fields: PlannerField[] = columns

@@ -45,6 +45,32 @@ function normalizeType(bqType: string): string {
   return TYPE_MAP[bqType.toUpperCase()] || 'string';
 }
 
+function stripIdentifierQuotes(identifier: string): string {
+  const trimmed = String(identifier || '').trim();
+  if (!trimmed) return trimmed;
+  if (
+    (trimmed.startsWith('`') && trimmed.endsWith('`')) ||
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
+}
+
+function extractTableNameFromFqn(fqn: string): string {
+  const parts = String(fqn || '').split('.').map((p) => p.trim()).filter(Boolean);
+  return parts[parts.length - 1] || '';
+}
+
+function normalizeTableAlias(value: string): string {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[`"'']/g, '')
+    .replace(/[\s_-]+/g, '');
+}
+
 interface GoogleSheetsLiveConfig {
   id: string;
   organizationId: string;
@@ -146,16 +172,31 @@ export class GoogleSheetsLiveAdapter implements DataSourceAdapter {
   ): Promise<QueryResult> {
     const start = Date.now();
 
-    // Replace table references with the full BigQuery table name
-    // This allows users to write simpler queries
+    // Normalize simple FROM/JOIN table references to the configured external table FQN.
     let processedSql = sql;
-    
-    // If query doesn't include the full table name, assume it's querying this sheet
-    if (!sql.includes(this.config.externalTableFQN) && !sql.includes('`')) {
-      // Match table names including hyphens, underscores, and alphanumeric chars
+    if (!sql.includes(this.config.externalTableFQN)) {
+      const aliases = new Set<string>();
+      const addAlias = (value: string) => {
+        const raw = String(value || '').trim();
+        if (!raw) return;
+        aliases.add(raw.toLowerCase());
+        const normalized = normalizeTableAlias(raw);
+        if (normalized) aliases.add(normalized);
+      };
+      addAlias(this.config.sheetName);
+      addAlias(this.config.bqTableName);
+      addAlias(extractTableNameFromFqn(this.config.externalTableFQN));
+
       processedSql = sql.replace(
-        /FROM\s+["']?([\w\-]+)["']?/gi,
-        `FROM \`${this.config.externalTableFQN}\``
+        /\b(FROM|JOIN)\s+(`[^`]+`|"[^"]+"|'[^']+'|[A-Za-z_][\w-]*)/gi,
+        (full, clause, rawIdentifier) => {
+          const cleaned = stripIdentifierQuotes(String(rawIdentifier || ''));
+          if (!cleaned || cleaned.includes('.')) return full;
+          const cleanedLower = cleaned.toLowerCase();
+          const cleanedNormalized = normalizeTableAlias(cleaned);
+          if (!aliases.has(cleanedLower) && !aliases.has(cleanedNormalized)) return full;
+          return `${clause} \`${this.config.externalTableFQN}\``;
+        }
       );
     }
     

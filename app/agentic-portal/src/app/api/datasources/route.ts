@@ -13,6 +13,8 @@ import {
   replaceDataSourceAssignments,
 } from '@/server/datasource-assignments';
 
+type GoogleSheetsExecutionMode = 'bigquery_external' | 'duckdb_memory';
+
 const GOOGLE_SHEETS_BIGQUERY_SCOPES = [
   'https://www.googleapis.com/auth/cloud-platform',
   'https://www.googleapis.com/auth/bigquery',
@@ -121,9 +123,26 @@ export async function POST(request: NextRequest) {
 
     const requestedWorkstreamIds = normalizeWorkstreamIds({ workstreamId, workstreamIds });
 
+    const [orgRow] = await db
+      .select()
+      .from(schema.organizations)
+      .where(eq(schema.organizations.id, orgId))
+      .limit(1);
+    const orgSettings = (orgRow?.settings || {}) as Record<string, unknown>;
+    const googleSheetsExecutionMode: GoogleSheetsExecutionMode =
+      orgSettings.googleSheetsExecutionMode === 'duckdb_memory' ? 'duckdb_memory' : 'bigquery_external';
+
     // Special handling for Google Sheets Live (BigQuery external tables)
     if (type === 'google_sheets_live') {
-      return handleGoogleSheetsLive(name, config, orgId, userId, requestedWorkstreamIds);
+      if (googleSheetsExecutionMode !== 'bigquery_external') {
+        return NextResponse.json(
+          {
+            error: 'This organization is set to DuckDB mode for Google Sheets. In this app version, only BigQuery External mode is currently available for datasource creation.',
+          },
+          { status: 400 }
+        );
+      }
+      return handleGoogleSheetsLive(name, config, orgId, userId, requestedWorkstreamIds, googleSheetsExecutionMode);
     }
 
     // Extract selectedTables if provided
@@ -246,7 +265,8 @@ async function handleGoogleSheetsLive(
   config: { spreadsheetId: string; sheetName: string; hasHeader?: boolean; externalTableFQN?: string },
   orgId: string,
   userId: string,
-  workstreamIds: string[]
+  workstreamIds: string[],
+  executionMode: GoogleSheetsExecutionMode
 ) {
   const { BigQuery } = await import('@google-cloud/bigquery');
 
@@ -357,6 +377,7 @@ async function handleGoogleSheetsLive(
           spreadsheetId,
           sheetName,
           hasHeader,
+          executionMode,
           externalTableFQN,
           bqProjectId: projectId,
           bqDataset: datasetName,

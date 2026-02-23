@@ -26,6 +26,7 @@ interface OrgSettings {
   allowMemberInvites: boolean;
   requireApproval: boolean;
   defaultUserRole: string;
+  googleSheetsExecutionMode: 'bigquery_external' | 'duckdb_memory';
 }
 
 interface GcpDiagnosticsResponse {
@@ -49,6 +50,7 @@ export default function OrgSettingsPage() {
     allowMemberInvites: true,
     requireApproval: false,
     defaultUserRole: 'member',
+    googleSheetsExecutionMode: 'bigquery_external',
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -235,6 +237,40 @@ export default function OrgSettingsPage() {
           <CardContent>
             <p className="text-sm text-muted-foreground text-center py-4">
               Notification settings coming soon
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              <CardTitle>Data Execution</CardTitle>
+            </div>
+            <CardDescription>
+              Select how Google Sheets sources should execute SQL in this organization.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="google-sheets-execution-mode">Google Sheets Execution Mode</Label>
+              <select
+                id="google-sheets-execution-mode"
+                className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                value={settings.googleSheetsExecutionMode}
+                onChange={(e) =>
+                  setSettings((prev) => ({
+                    ...prev,
+                    googleSheetsExecutionMode: e.target.value === 'duckdb_memory' ? 'duckdb_memory' : 'bigquery_external',
+                  }))
+                }
+              >
+                <option value="bigquery_external">BigQuery External Table (Current)</option>
+                <option value="duckdb_memory">DuckDB In-Memory (Planned)</option>
+              </select>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              BigQuery External is currently active in this app. DuckDB mode can be configured now for future rollout.
             </p>
           </CardContent>
         </Card>

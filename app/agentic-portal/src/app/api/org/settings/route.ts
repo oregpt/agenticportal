@@ -7,6 +7,8 @@ import { getCurrentUser, canAccessOrgAdmin, canManageOrganization } from '@/lib/
 import { db, schema } from '@/lib/db';
 import { eq } from 'drizzle-orm';
 
+type GoogleSheetsExecutionMode = 'bigquery_external' | 'duckdb_memory';
+
 export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
   
@@ -32,6 +34,8 @@ export async function GET(request: NextRequest) {
     }
     
     const settings = org.settings as Record<string, unknown> || {};
+    const googleSheetsExecutionMode: GoogleSheetsExecutionMode =
+      settings.googleSheetsExecutionMode === 'duckdb_memory' ? 'duckdb_memory' : 'bigquery_external';
     
     return NextResponse.json({
       name: org.name,
@@ -39,6 +43,7 @@ export async function GET(request: NextRequest) {
       allowMemberInvites: settings.allowMemberInvites ?? true,
       requireApproval: settings.requireApproval ?? false,
       defaultUserRole: settings.defaultUserRole ?? 'member',
+      googleSheetsExecutionMode,
     });
   } catch (error) {
     console.error('[org/settings] GET error:', error);
@@ -57,7 +62,7 @@ export async function PUT(request: NextRequest) {
   }
   
   try {
-    const { organizationId, name, allowMemberInvites, requireApproval, defaultUserRole } = await request.json();
+    const { organizationId, name, allowMemberInvites, requireApproval, defaultUserRole, googleSheetsExecutionMode } = await request.json();
     
     const targetOrgId = organizationId || user?.organizationId;
     
@@ -65,14 +70,30 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
     
+    const [currentOrg] = await db
+      .select()
+      .from(schema.organizations)
+      .where(eq(schema.organizations.id, targetOrgId))
+      .limit(1);
+
+    if (!currentOrg) {
+      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+    }
+
+    const currentSettings = (currentOrg.settings as Record<string, unknown>) || {};
+    const nextGoogleSheetsExecutionMode: GoogleSheetsExecutionMode =
+      googleSheetsExecutionMode === 'duckdb_memory' ? 'duckdb_memory' : 'bigquery_external';
+
     await db
       .update(schema.organizations)
       .set({
         name: name || undefined,
         settings: {
+          ...currentSettings,
           allowMemberInvites,
           requireApproval,
           defaultUserRole,
+          googleSheetsExecutionMode: nextGoogleSheetsExecutionMode,
         },
         updatedAt: new Date(),
       })
