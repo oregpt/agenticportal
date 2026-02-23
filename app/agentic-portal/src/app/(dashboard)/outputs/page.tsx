@@ -262,8 +262,14 @@ function OutputsPageContent() {
         }
       />
 
-      <div className="ui-shell fade-in-up-delay-1">
-        <div className="relative">
+      <div className="ui-shell fade-in-up-delay-1 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-foreground">Delivery Outputs</p>
+          <p className="text-xs text-muted-foreground">
+            {filteredOutputs.length} shown of {outputs.length} total in this scope.
+          </p>
+        </div>
+        <div className="relative w-full md:w-[340px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             type="text"
@@ -273,11 +279,6 @@ function OutputsPageContent() {
             className="pl-10"
           />
         </div>
-        {outputs.length > 0 ? (
-          <div className="mt-3 text-sm text-muted-foreground">
-            Showing {filteredOutputs.length} of {outputs.length} outputs
-          </div>
-        ) : null}
       </div>
 
       {loadError ? (

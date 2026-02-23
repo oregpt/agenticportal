@@ -883,11 +883,27 @@ function DataSourcesPageContent() {
         }
       />
 
+      <div className="ui-shell flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-foreground">Connected Data Sources</p>
+          <p className="text-xs text-muted-foreground">Manage the source layer for this project scope.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground">
+            {filteredDataSources.length} shown
+          </span>
+          <Button onClick={() => setIsAddDialogOpen(true)} className="bg-primary hover:bg-primary/90">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Data Source
+          </Button>
+        </div>
+      </div>
+
       {/* Data Sources List */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-12 text-muted-foreground">
-          <Loader2 className="w-5 h-5 animate-spin mr-2" />
-          Loading...
+        <div className="ui-empty fade-in-up-delay-1">
+          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mb-2" />
+          <p className="text-muted-foreground">Loading data sources...</p>
         </div>
       ) : filteredDataSources.length === 0 ? (
         <div className="ui-empty fade-in-up-delay-1">

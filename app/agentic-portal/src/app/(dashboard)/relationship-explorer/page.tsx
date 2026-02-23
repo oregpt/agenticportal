@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Database, Table2, LayoutDashboard, FileOutput, ExternalLink, Plus, Minus, Link2, Move } from 'lucide-react';
+import { Database, Table2, LayoutDashboard, FileOutput, ExternalLink, Plus, Minus, Link2, Move, Loader2 } from 'lucide-react';
 import { WorkstreamFilterBar } from '@/components/filters/WorkstreamFilterBar';
 import { FilterPresetManager } from '@/components/filters/FilterPresetManager';
 import { Button } from '@/components/ui/button';
@@ -222,22 +222,28 @@ function RelationshipExplorerPageContent() {
         onWorkstreamChange={updateWorkstream}
         pageLabel="Data Relationships"
         rightSlot={
-          <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-end">
-            <div className="flex gap-2">
-              <Button variant={viewMode === 'columns' ? 'default' : 'outline'} onClick={() => setViewMode('columns')}>
-                Column View
-              </Button>
-              <Button variant={viewMode === 'mindmap' ? 'default' : 'outline'} onClick={() => setViewMode('mindmap')}>
-                Mind Map
-              </Button>
-            </div>
-            <FilterPresetManager pageKey="relationship-explorer" currentQuery={searchParams.toString()} onApply={applyPreset} />
-          </div>
+          <FilterPresetManager pageKey="relationship-explorer" currentQuery={searchParams.toString()} onApply={applyPreset} />
         }
       />
 
+      <div className="ui-shell flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-foreground">Entity Graph</p>
+          <p className="text-xs text-muted-foreground">{nodes.length} entities in scope.</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant={viewMode === 'columns' ? 'default' : 'outline'} onClick={() => setViewMode('columns')}>
+            Column View
+          </Button>
+          <Button variant={viewMode === 'mindmap' ? 'default' : 'outline'} onClick={() => setViewMode('mindmap')}>
+            Mind Map
+          </Button>
+        </div>
+      </div>
+
       {isLoading ? (
         <div className="ui-empty">
+          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mb-2" />
           <p className="text-muted-foreground">Loading graph...</p>
         </div>
       ) : nodes.length === 0 ? (

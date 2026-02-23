@@ -181,14 +181,22 @@ function ViewsPageContent() {
         }
       />
 
-      <div className="relative mb-6 fade-in-up-delay-1">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Search views..."
-          className="pl-10 max-w-md border-border bg-white/80 rounded-xl shadow-sm"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
+      <div className="ui-shell fade-in-up-delay-1 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-foreground">Reusable Views</p>
+          <p className="text-xs text-muted-foreground">
+            {filteredViews.length} shown of {views.length} total in this scope.
+          </p>
+        </div>
+        <div className="relative w-full md:w-[340px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search views..."
+            className="pl-10 border-border bg-white/80 rounded-xl shadow-sm"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
       </div>
 
       {isLoading ? (

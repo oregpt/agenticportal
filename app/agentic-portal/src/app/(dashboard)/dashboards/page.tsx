@@ -206,6 +206,23 @@ function DashboardsPageContent() {
         }
       />
 
+      <div className="ui-shell flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-foreground">Dashboard Library</p>
+          <p className="text-xs text-muted-foreground">
+            {filteredDashboards.length} shown of {dashboards.length} total in this scope.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button className="bg-primary hover:bg-primary/90" asChild>
+            <Link href="/dashboards/new">
+              <Plus className="w-4 h-4 mr-2" />
+              New Dashboard
+            </Link>
+          </Button>
+        </div>
+      </div>
+
       {isLoading ? (
         <div className="ui-empty">
           <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mb-2" />
