@@ -16,11 +16,13 @@ async function bootstrap(): Promise<void> {
       project_id VARCHAR(64) PRIMARY KEY,
       organization_id VARCHAR(64) NOT NULL,
       default_model VARCHAR(128) NOT NULL DEFAULT 'claude-sonnet-4-20250514',
+      instructions TEXT,
       features JSONB,
       created_at TIMESTAMP DEFAULT NOW() NOT NULL,
       updated_at TIMESTAMP DEFAULT NOW() NOT NULL
     )
   `);
+  await db.execute(sql`ALTER TABLE project_agents ADD COLUMN IF NOT EXISTS instructions TEXT`).catch(() => {});
 
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS project_agent_source_meta (

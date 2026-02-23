@@ -11,7 +11,14 @@ type DataFeatures = {
   dataDeepTools: boolean;
   dataAnnotations: boolean;
 };
-type Project = { id: string; name: string; description?: string | null };
+type Project = {
+  id: string;
+  name: string;
+  description?: string | null;
+  hasAgent?: boolean;
+  defaultModel?: string | null;
+  instructions?: string;
+};
 type DataSource = { id: string; name: string; type: SourceType; status: string; userNotes?: string; inferredNotes?: string };
 type DataQueryRun = { id: string; status: string; message: string; rowCount: number; sqlText?: string | null; createdAt: string };
 type MemoryRule = { id: string; name: string; ruleText: string; enabled: number; priority: number; sourceId?: string | null };
@@ -84,6 +91,9 @@ export default function ProjectAgentPage() {
     dataAnnotations: true,
   });
   const [savingFeature, setSavingFeature] = useState('');
+  const [agentInstructions, setAgentInstructions] = useState('');
+  const [creatingAgent, setCreatingAgent] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
 
   const [sources, setSources] = useState<DataSource[]>([]);
   const [chatSourceId, setChatSourceId] = useState('');
@@ -141,6 +151,9 @@ export default function ProjectAgentPage() {
     } else {
       setGlobalNotes('');
     }
+
+    const settingsRes = await api(`/api/project-agent/settings?projectId=${encodeURIComponent(projectId)}`).catch(() => null);
+    setAgentInstructions(settingsRes?.settings?.instructions || '');
   }
 
   async function refreshDataExtras(projectId: string, featureState: DataFeatures) {
@@ -175,7 +188,7 @@ export default function ProjectAgentPage() {
         setProjects(list);
         const initial = list[0]?.id || '';
         setSelectedProjectId(initial);
-        if (initial) await refreshAll(initial);
+        if (initial && list[0]?.hasAgent) await refreshAll(initial);
       } catch (e: any) {
         setError(e?.message || 'Failed to load Project Agent');
       }
@@ -184,11 +197,19 @@ export default function ProjectAgentPage() {
 
   useEffect(() => {
     if (!selectedProjectId) return;
+    if (!selectedProject?.hasAgent) return;
     refreshAll(selectedProjectId).catch(() => {});
+  }, [selectedProjectId, selectedProject?.hasAgent]);
+
+  useEffect(() => {
+    if (!selectedProjectId) return;
+    if (!selectedProject?.hasAgent) return;
+    refreshDataExtras(selectedProjectId, features).catch(() => {});
   }, [selectedProjectId]);
 
   useEffect(() => {
     if (!selectedProjectId) return;
+    if (!selectedProject?.hasAgent) return;
     refreshDataExtras(selectedProjectId, features).catch(() => {});
   }, [selectedProjectId, features]);
 
@@ -260,6 +281,50 @@ export default function ProjectAgentPage() {
       setError(e?.message || 'Failed to run chat');
     } finally {
       setChatting(false);
+    }
+  }
+
+  async function createAgentForProject() {
+    if (!selectedProjectId) return;
+    try {
+      setCreatingAgent(true);
+      await api('/api/project-agent/create', {
+        method: 'POST',
+        body: JSON.stringify({
+          projectId: selectedProjectId,
+          instructions: agentInstructions,
+          defaultModel: 'claude-sonnet-4-20250514',
+        }),
+      });
+      const p = await api('/api/project-agent/projects');
+      const list: Project[] = p.projects || [];
+      setProjects(list);
+      setFlash('Project Agent created.');
+      await refreshAll(selectedProjectId);
+      await refreshDataExtras(selectedProjectId, features);
+    } catch (e: any) {
+      setError(e?.message || 'Failed to create Project Agent');
+    } finally {
+      setCreatingAgent(false);
+    }
+  }
+
+  async function saveAgentSettings() {
+    if (!selectedProjectId) return;
+    try {
+      setSavingSettings(true);
+      await api('/api/project-agent/settings', {
+        method: 'PUT',
+        body: JSON.stringify({
+          projectId: selectedProjectId,
+          instructions: agentInstructions,
+        }),
+      });
+      setFlash('Agent instructions saved.');
+    } catch (e: any) {
+      setError(e?.message || 'Failed to save settings');
+    } finally {
+      setSavingSettings(false);
     }
   }
 
@@ -470,6 +535,41 @@ export default function ProjectAgentPage() {
       {!!flash && <div style={{ ...section, borderColor: '#99f6e4', backgroundColor: '#f0fdfa', color: '#134e4a' }}>{flash}</div>}
       {!!error && <div style={{ ...section, borderColor: '#fecaca', backgroundColor: '#fef2f2', color: '#991b1b' }}>{error}</div>}
 
+      {!selectedProject?.hasAgent ? (
+        <div style={section}>
+          <h3 style={{ marginTop: 0 }}>Create Project Agent</h3>
+          <p style={{ marginTop: 0, color: '#64748b', fontSize: 13 }}>
+            This project does not have a Project Agent yet. Create one to enable data chat, memory rules, workflows, and annotations.
+          </p>
+          <div style={{ marginBottom: 8, fontSize: 12, color: '#334155' }}>Instructions</div>
+          <textarea
+            style={{ ...field, minHeight: 140 }}
+            value={agentInstructions}
+            onChange={(e) => setAgentInstructions(e.target.value)}
+            placeholder="Optional: add project-specific analysis instructions for the agent."
+          />
+          <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+            <button style={btn('#0f766e')} onClick={createAgentForProject} disabled={creatingAgent}>
+              {creatingAgent ? 'Creating...' : 'Create Project Agent'}
+            </button>
+          </div>
+        </div>
+      ) : (
+      <>
+      <div style={section}>
+        <h3 style={{ marginTop: 0 }}>Agent Settings</h3>
+        <textarea
+          style={{ ...field, minHeight: 100 }}
+          value={agentInstructions}
+          onChange={(e) => setAgentInstructions(e.target.value)}
+          placeholder="Project-specific instructions."
+        />
+        <div style={{ marginTop: 8 }}>
+          <button style={btn('#0f766e')} onClick={saveAgentSettings} disabled={savingSettings}>
+            {savingSettings ? 'Saving...' : 'Save Instructions'}
+          </button>
+        </div>
+      </div>
       <div style={section}>
         <h3 style={{ marginTop: 0 }}>Feature Controls</h3>
         <div style={{ display: 'grid', gap: 8 }}>
@@ -535,6 +635,16 @@ export default function ProjectAgentPage() {
 
       <div style={section}>
         <h3 style={{ marginTop: 0 }}>Data Chat</h3>
+        {!enabledSources.length ? (
+          <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: 10, backgroundColor: '#f8fafc' }}>
+            <div style={{ fontSize: 13, color: '#334155', marginBottom: 8 }}>
+              No data sources are assigned to this project yet.
+            </div>
+            <Link href={`/datasources?workstreamId=${encodeURIComponent(selectedProjectId)}`} style={btn('#475569')}>
+              Add Project Data Source
+            </Link>
+          </div>
+        ) : null}
         <div style={{ display: 'flex', gap: 8 }}>
           <select style={{ ...field, width: 320 }} value={chatSourceId} onChange={(e) => setChatSourceId(e.target.value)}>
             {enabledSources.map((s) => (
@@ -696,6 +806,8 @@ export default function ProjectAgentPage() {
             </div>
           </div>
         </div>
+      )}
+      </>
       )}
     </div>
   );

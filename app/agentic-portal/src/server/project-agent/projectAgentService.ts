@@ -43,22 +43,8 @@ export async function assertProjectAgent(projectId: string, organizationId: stri
     .where(and(eq(schema.projectAgents.projectId, projectId), eq(schema.projectAgents.organizationId, organizationId)))
     .limit(1);
 
-  if (agent) return agent;
-
-  const now = new Date();
-  const [created] = await db
-    .insert(schema.projectAgents)
-    .values({
-      projectId,
-      organizationId,
-      defaultModel: 'claude-sonnet-4-20250514',
-      features: DEFAULT_FEATURES,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .returning();
-
-  return created;
+  if (!agent) throw new Error('Project agent not configured. Create one first.');
+  return agent;
 }
 
 export async function listProjectAgents(organizationId: string) {
@@ -73,7 +59,90 @@ export async function listProjectAgents(organizationId: string) {
     .from(schema.workstreams)
     .where(eq(schema.workstreams.organizationId, organizationId));
 
-  return projects;
+  const agents = await db
+    .select()
+    .from(schema.projectAgents)
+    .where(eq(schema.projectAgents.organizationId, organizationId));
+  const agentMap = new Map(agents.map((a) => [a.projectId, a]));
+
+  return projects.map((project) => {
+    const agent = agentMap.get(project.id);
+    return {
+      ...project,
+      hasAgent: !!agent,
+      defaultModel: agent?.defaultModel || null,
+      instructions: agent?.instructions || '',
+      createdAt: agent?.createdAt || null,
+    };
+  });
+}
+
+export async function createProjectAgent(input: {
+  projectId: string;
+  organizationId: string;
+  defaultModel?: string;
+  instructions?: string;
+}) {
+  await ensureProjectAgentTables();
+
+  const [project] = await db
+    .select()
+    .from(schema.workstreams)
+    .where(and(eq(schema.workstreams.id, input.projectId), eq(schema.workstreams.organizationId, input.organizationId)))
+    .limit(1);
+  if (!project) throw new Error('Project not found');
+
+  const [existing] = await db
+    .select()
+    .from(schema.projectAgents)
+    .where(and(eq(schema.projectAgents.projectId, input.projectId), eq(schema.projectAgents.organizationId, input.organizationId)))
+    .limit(1);
+  if (existing) return existing;
+
+  const now = new Date();
+  const [created] = await db
+    .insert(schema.projectAgents)
+    .values({
+      projectId: input.projectId,
+      organizationId: input.organizationId,
+      defaultModel: input.defaultModel || 'claude-sonnet-4-20250514',
+      instructions: (input.instructions || '').trim(),
+      features: DEFAULT_FEATURES,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning();
+  return created;
+}
+
+export async function getProjectAgentSettings(projectId: string, organizationId: string) {
+  const agent = await assertProjectAgent(projectId, organizationId);
+  return {
+    defaultModel: agent.defaultModel || 'claude-sonnet-4-20250514',
+    instructions: agent.instructions || '',
+  };
+}
+
+export async function updateProjectAgentSettings(input: {
+  projectId: string;
+  organizationId: string;
+  defaultModel?: string;
+  instructions?: string;
+}) {
+  const patch: Record<string, unknown> = { updatedAt: new Date() };
+  if (typeof input.defaultModel === 'string' && input.defaultModel.trim()) patch.defaultModel = input.defaultModel.trim();
+  if (typeof input.instructions === 'string') patch.instructions = input.instructions;
+
+  const rows = await db
+    .update(schema.projectAgents)
+    .set(patch)
+    .where(and(eq(schema.projectAgents.projectId, input.projectId), eq(schema.projectAgents.organizationId, input.organizationId)))
+    .returning();
+  if (!rows[0]) throw new Error('Project agent not configured. Create one first.');
+  return {
+    defaultModel: rows[0].defaultModel || 'claude-sonnet-4-20250514',
+    instructions: rows[0].instructions || '',
+  };
 }
 
 export async function getProjectAgentFeatures(projectId: string, organizationId: string): Promise<ProjectAgentFeatureState> {

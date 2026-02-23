@@ -1,11 +1,14 @@
 export {
   isProjectAgentModuleEnabled,
   listProjectAgents,
+  createProjectAgent,
   getProjectAgentFeatures,
   updateProjectAgentFeatures,
   isProjectFeatureEnabled,
   getProjectAgentGlobalNotes,
   updateProjectAgentGlobalNotes,
+  getProjectAgentSettings,
+  updateProjectAgentSettings,
 } from './projectAgentService';
 export {
   listProjectDataSources,

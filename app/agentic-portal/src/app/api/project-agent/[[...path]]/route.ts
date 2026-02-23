@@ -4,12 +4,14 @@ import { eq } from 'drizzle-orm';
 import { getCurrentUser, canAccessPlatformAdmin } from '@/lib/auth';
 import {
   applyTemplate,
+  createProjectAgent,
   createProjectMemoryRule,
   createProjectWorkflow,
   deleteProjectMemoryRule,
   deleteProjectWorkflow,
   executeProjectDeepTool,
   getProjectAgentFeatures,
+  getProjectAgentSettings,
   getProjectAgentGlobalNotes,
   getProjectAgentPromptTemplates,
   getProjectDataQueryRun,
@@ -33,6 +35,7 @@ import {
   testSavedProjectSource,
   updateProjectAgentFeatures,
   updateProjectAgentGlobalNotes,
+  updateProjectAgentSettings,
   updateProjectAgentPromptTemplates,
   updateProjectMemoryRule,
   updateProjectSourceNotes,
@@ -87,6 +90,12 @@ export async function GET(request: NextRequest, context: { params: Promise<{ pat
       if (!projectId) return badRequest('projectId is required');
       const features = await getProjectAgentFeatures(projectId, user.organizationId!);
       return NextResponse.json({ features });
+    }
+
+    if (seg1 === 'settings') {
+      if (!projectId) return badRequest('projectId is required');
+      const settings = await getProjectAgentSettings(projectId, user.organizationId!);
+      return NextResponse.json({ settings });
     }
 
     if (seg1 === 'sources') {
@@ -246,6 +255,18 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ pat
       return NextResponse.json({ prompts });
     }
 
+    if (seg1 === 'settings') {
+      const { projectId, defaultModel, instructions } = await request.json();
+      if (!projectId) return badRequest('projectId is required');
+      const settings = await updateProjectAgentSettings({
+        projectId,
+        organizationId: user.organizationId!,
+        defaultModel,
+        instructions,
+      });
+      return NextResponse.json({ settings });
+    }
+
     return notFound();
   } catch (err: any) {
     return NextResponse.json({ error: err?.message || 'Request failed' }, { status: 400 });
@@ -345,6 +366,22 @@ export async function POST(request: NextRequest, context: { params: Promise<{ pa
         message,
       });
       return NextResponse.json(result);
+    }
+
+    if (seg1 === 'create') {
+      const { projectId, defaultModel, instructions } = body as {
+        projectId: string;
+        defaultModel?: string;
+        instructions?: string;
+      };
+      if (!projectId) return badRequest('projectId is required');
+      const agent = await createProjectAgent({
+        projectId,
+        organizationId: user.organizationId!,
+        defaultModel,
+        instructions,
+      });
+      return NextResponse.json({ agent });
     }
 
     if (seg1 === 'deep-tools' && seg2 === 'plan') {
