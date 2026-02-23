@@ -1,20 +1,20 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { WorkstreamFilterBar } from '@/components/filters/WorkstreamFilterBar';
-import { Loader2, Send, Terminal, Zap } from 'lucide-react';
+import { ChevronDown, Loader2, Send, Terminal, Zap } from 'lucide-react';
 
 type SourceType = 'bigquery' | 'postgres' | 'google_sheets' | 'google_sheets_live';
 type Project = { id: string; name: string; hasAgent?: boolean };
 type DataSource = { id: string; name: string; type: SourceType; status: string };
 type Workflow = { id: string; name: string; enabled: number };
-type DataRunInfo = { source: { id: string; name: string; type: SourceType }; trust: { sql: string; rowCount: number; model: string }; runId?: string | null };
-type Message = { role: 'user' | 'assistant'; content: string; dataRun?: DataRunInfo };
+type DataRunInfo = { source: { id: string; name: string; type: SourceType }; trust: { sql: string; rowCount: number; model: string; confidence?: number | null }; runId?: string | null };
+type Message = { id: string; role: 'user' | 'assistant'; content: string; dataRun?: DataRunInfo };
 type DeepToolPlan = {
   mode: 'none' | 'confirm' | 'read';
   action: 'create_workflow' | 'create_memory_rule' | 'list_workflows' | 'list_memory_rules' | 'list_workflow_runs' | 'none';
@@ -38,6 +38,10 @@ async function api(path: string, options?: RequestInit) {
   return data;
 }
 
+function nextMessageId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
 export default function ProjectAgentChatPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -55,9 +59,38 @@ export default function ProjectAgentChatPage() {
   const [isSending, setIsSending] = useState(false);
   const [runningWorkflowId, setRunningWorkflowId] = useState('');
   const [error, setError] = useState('');
+  const [expandedDataRuns, setExpandedDataRuns] = useState<Record<string, boolean>>({});
+  const [activeTools, setActiveTools] = useState<string[]>([]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const enabledSources = useMemo(() => sources.filter((s) => s.status !== 'disabled'), [sources]);
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isSending, activeTools]);
+
+  function pushMessage(message: Omit<Message, 'id'>) {
+    setMessages((prev) => [...prev, { id: nextMessageId(), ...message }]);
+  }
+
+  function toggleDataRun(messageId: string) {
+    setExpandedDataRuns((prev) => ({ ...prev, [messageId]: !prev[messageId] }));
+  }
+
+  async function streamAssistantMessage(content: string, dataRun?: DataRunInfo) {
+    const id = nextMessageId();
+    setMessages((prev) => [...prev, { id, role: 'assistant', content: '', dataRun }]);
+    const chunks = String(content || '')
+      .split(/(\s+)/)
+      .filter((part) => part.length > 0);
+    for (const chunk of chunks) {
+      await new Promise((resolve) => setTimeout(resolve, 12));
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === id ? { ...msg, content: `${msg.content}${chunk}` } : msg))
+      );
+    }
+  }
 
   async function refreshProjectContext(projectId: string) {
     const [sourceRes, wfRes] = await Promise.all([
@@ -100,7 +133,8 @@ export default function ProjectAgentChatPage() {
     setPendingPlan(null);
     setShowDataCommands(false);
     setShowDataWorkflows(false);
-    setMessages((prev) => [...prev, { role: 'user', content: prompt }]);
+    setActiveTools([]);
+    pushMessage({ role: 'user', content: prompt });
     try {
       const plan = (await api('/api/project-agent/deep-tools/plan', {
         method: 'POST',
@@ -108,28 +142,31 @@ export default function ProjectAgentChatPage() {
       })) as DeepToolPlan;
       if (plan.mode === 'confirm') {
         setPendingPlan(plan);
-        setMessages((prev) => [...prev, { role: 'assistant', content: plan.summary || 'Action requires confirmation.' }]);
+        pushMessage({ role: 'assistant', content: plan.summary || 'Action requires confirmation.' });
         return;
       }
       if (plan.mode === 'read' && plan.action !== 'none') {
+        setActiveTools(['Deep Tools']);
         const readResult = await api('/api/project-agent/deep-tools/execute', {
           method: 'POST',
           body: JSON.stringify({ projectId: selectedProjectId, action: plan.action, payload: plan.payload || {} }),
         });
-        setMessages((prev) => [...prev, { role: 'assistant', content: readResult.message || 'Done.' }]);
+        await streamAssistantMessage(readResult.message || 'Done.');
         return;
       }
 
+      setActiveTools(['Planner', 'Query']);
       const data = await api('/api/project-agent/chat', {
         method: 'POST',
         body: JSON.stringify({ projectId: selectedProjectId, sourceId: chatSourceId, message: prompt }),
       });
-      setMessages((prev) => [...prev, { role: 'assistant', content: data.answer || 'No response.', dataRun: data }]);
+      await streamAssistantMessage(data.answer || 'No response.', data);
     } catch (e: any) {
       const msg = e?.message || 'Failed to send message';
       setError(msg);
-      setMessages((prev) => [...prev, { role: 'assistant', content: `Error: ${msg}` }]);
+      pushMessage({ role: 'assistant', content: `Error: ${msg}` });
     } finally {
+      setActiveTools([]);
       setIsSending(false);
     }
   }
@@ -138,16 +175,16 @@ export default function ProjectAgentChatPage() {
     if (!selectedProjectId || runningWorkflowId) return;
     setRunningWorkflowId(workflow.id);
     setShowDataWorkflows(false);
-    setMessages((prev) => [...prev, { role: 'user', content: `Run workflow: ${workflow.name}` }]);
+    pushMessage({ role: 'user', content: `Run workflow: ${workflow.name}` });
     try {
       await api(`/api/project-agent/workflows/${workflow.id}/run`, {
         method: 'POST',
         body: JSON.stringify({ projectId: selectedProjectId }),
       });
-      setMessages((prev) => [...prev, { role: 'assistant', content: `Workflow "${workflow.name}" started.` }]);
+      pushMessage({ role: 'assistant', content: `Workflow "${workflow.name}" started.` });
     } catch (e: any) {
       const msg = e?.message || 'Failed to run workflow';
-      setMessages((prev) => [...prev, { role: 'assistant', content: `Error: ${msg}` }]);
+      pushMessage({ role: 'assistant', content: `Error: ${msg}` });
     } finally {
       setRunningWorkflowId('');
     }
@@ -165,7 +202,7 @@ export default function ProjectAgentChatPage() {
         }),
       });
       setPendingPlan(null);
-      setMessages((prev) => [...prev, { role: 'assistant', content: res.message || 'Action completed.' }]);
+      pushMessage({ role: 'assistant', content: res.message || 'Action completed.' });
       await refreshProjectContext(selectedProjectId);
     } catch (e: any) {
       setError(e?.message || 'Failed to execute action');
@@ -231,16 +268,58 @@ export default function ProjectAgentChatPage() {
               <p className="text-sm text-muted-foreground">Start chatting with your project data agent.</p>
             ) : (
               messages.map((m, idx) => (
-                <div key={idx} className={m.role === 'user' ? 'ml-auto max-w-[85%]' : 'mr-auto max-w-[85%]'}>
-                  <div className={m.role === 'user' ? 'rounded-xl bg-primary text-primary-foreground px-3 py-2 text-sm' : 'rounded-xl bg-card border border-border px-3 py-2 text-sm'}>
+                <div key={m.id} className={m.role === 'user' ? 'ml-auto max-w-[86%]' : 'mr-auto max-w-[86%]'}>
+                  <div className={m.role === 'user' ? 'rounded-xl bg-primary text-primary-foreground px-3 py-2 text-sm shadow-sm' : 'rounded-xl bg-card border border-border px-3 py-2 text-sm shadow-sm'}>
                     <div className="whitespace-pre-wrap">{m.content}</div>
-                    {m.dataRun?.trust?.sql ? (
-                      <pre className="mt-2 overflow-x-auto rounded-md bg-slate-950 text-slate-100 p-2 text-xs">{m.dataRun.trust.sql}</pre>
+                    {m.role === 'assistant' && m.dataRun ? (
+                      <div className="mt-2">
+                        <button
+                          onClick={() => toggleDataRun(m.id)}
+                          className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted/80"
+                          title="Show data run details"
+                        >
+                          <span>{`1 query · ${m.dataRun.trust.rowCount} rows${m.dataRun.trust.confidence != null ? ` · confidence ${Number(m.dataRun.trust.confidence).toFixed(2)}` : ''}`}</span>
+                          <ChevronDown className={`h-3 w-3 transition-transform ${expandedDataRuns[m.id] ? 'rotate-180' : ''}`} />
+                        </button>
+                        {expandedDataRuns[m.id] ? (
+                          <div className="mt-2 rounded-md border border-border bg-muted/60 p-2 text-xs">
+                            <div className="mb-1">
+                              <strong>Source:</strong> {m.dataRun.source.name} ({m.dataRun.source.type})
+                              {m.dataRun.runId ? ` · run ${m.dataRun.runId}` : ''}
+                            </div>
+                            <div className="mb-1">
+                              <strong>Model:</strong> {m.dataRun.trust.model} · <strong>Rows:</strong> {m.dataRun.trust.rowCount}
+                              {m.dataRun.trust.confidence != null ? ` · Confidence: ${Number(m.dataRun.trust.confidence).toFixed(2)}` : ''}
+                            </div>
+                            <div className="mb-1 font-semibold">Generated Query</div>
+                            <pre className="overflow-x-auto rounded-md bg-slate-950 text-slate-100 p-2 text-[11px]">
+                              {m.dataRun.trust.sql}
+                            </pre>
+                          </div>
+                        ) : null}
+                      </div>
                     ) : null}
                   </div>
                 </div>
               ))
             )}
+            {isSending ? (
+              <div className="mr-auto max-w-[86%]">
+                <div className="rounded-xl bg-card border border-border px-3 py-2 text-sm shadow-sm">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <span className="inline-flex items-center gap-1">
+                      <span className="h-2 w-2 rounded-full bg-slate-400 animate-pulse" style={{ animationDelay: '-0.2s' }} />
+                      <span className="h-2 w-2 rounded-full bg-slate-400 animate-pulse" style={{ animationDelay: '-0.1s' }} />
+                      <span className="h-2 w-2 rounded-full bg-slate-400 animate-pulse" />
+                    </span>
+                    <span className="text-xs">
+                      {activeTools.length > 0 ? `Processing: ${activeTools.join(' · ')}` : 'Thinking...'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            <div ref={messagesEndRef} />
           </div>
 
           <div className="border-t border-border p-4">
