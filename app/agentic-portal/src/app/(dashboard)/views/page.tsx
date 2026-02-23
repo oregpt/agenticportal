@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -161,6 +161,7 @@ function ViewsPageContent() {
         selectedWorkstreamId={selectedWorkstreamId}
         onWorkstreamChange={handleWorkstreamChange}
         pageLabel="Views"
+        pageDescription="Create and maintain reusable query views for dashboards and outputs."
         rightSlot={
           <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-end">
             <div className="w-full md:w-72">

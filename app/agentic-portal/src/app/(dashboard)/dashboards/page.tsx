@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -183,6 +183,7 @@ function DashboardsPageContent() {
         selectedWorkstreamId={selectedWorkstreamId}
         onWorkstreamChange={(value) => updateFilterParam('workstreamId', value)}
         pageLabel="Dashboards"
+        pageDescription="Assemble views into dashboards for monitoring and decision-making."
         rightSlot={
           <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-end">
             <div className="w-full md:w-64">

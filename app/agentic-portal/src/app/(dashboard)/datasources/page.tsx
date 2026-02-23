@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -863,6 +863,7 @@ function DataSourcesPageContent() {
         selectedWorkstreamId={selectedWorkstreamId}
         onWorkstreamChange={(value) => updateFilterParam('workstreamId', value)}
         pageLabel="Data Sources"
+        pageDescription="Connect and manage raw data sources for this project scope."
         rightSlot={
           <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-end">
             <div className="w-full md:w-64">

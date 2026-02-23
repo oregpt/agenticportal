@@ -242,6 +242,7 @@ function OutputsPageContent() {
           updateMultiFilterParam('dashboardIds', []);
         }}
         pageLabel="Outputs"
+        pageDescription="Manage exports, report schedules, and delivery endpoints."
         rightSlot={
           <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-end">
             <div className="w-full md:w-72">

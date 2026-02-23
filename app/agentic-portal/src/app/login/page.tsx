@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Hexagon, ArrowRight } from 'lucide-react';
@@ -38,6 +37,7 @@ function LoginPageContent() {
   // Login form
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const isLoginFormReady = loginEmail.trim().length > 0 && loginPassword.trim().length > 0;
   
   // Register form
   const [registerEmail, setRegisterEmail] = useState('');
@@ -49,10 +49,6 @@ function LoginPageContent() {
     email?: string;
     password?: string;
   }>({});
-  const isRegisterFormReady =
-    registerName.trim().length > 0 &&
-    registerEmail.trim().length > 0 &&
-    registerPassword.trim().length >= 8;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -189,7 +185,7 @@ function LoginPageContent() {
                   <Button 
                     type="submit" 
                     className="w-full h-11 bg-primary hover:bg-primary/90"
-                    disabled={isLoading || !isRegisterFormReady}
+                    disabled={isLoading || !isLoginFormReady}
                   >
                     {isLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />

@@ -221,6 +221,7 @@ function RelationshipExplorerPageContent() {
         selectedWorkstreamId={selectedWorkstreamId}
         onWorkstreamChange={updateWorkstream}
         pageLabel="Data Relationships"
+        pageDescription="Explore how sources, views, dashboards, and outputs connect."
         rightSlot={
           <FilterPresetManager pageKey="relationship-explorer" currentQuery={searchParams.toString()} onApply={applyPreset} />
         }
