@@ -1132,7 +1132,7 @@ function DataSourcesPageContent() {
                         }
                         className="hover:bg-primary/5 hover:text-primary hover:border-primary/30"
                       >
-                        Assign
+                        Manage Source
                       </Button>
                       <Button
                         variant="outline"
@@ -1172,7 +1172,7 @@ function DataSourcesPageContent() {
       <Dialog open={!!assignmentDialog} onOpenChange={(open) => !open && setAssignmentDialog(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Assign to Projects</DialogTitle>
+            <DialogTitle>Manage Source Projects</DialogTitle>
             <DialogDescription>
               {assignmentDialog ? `Choose projects for "${assignmentDialog.name}".` : 'Choose projects.'}
             </DialogDescription>

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
+import { WorkstreamFilterBar } from '@/components/filters/WorkstreamFilterBar';
 
 type SourceType = 'bigquery' | 'postgres' | 'google_sheets' | 'google_sheets_live';
 type DataFeatures = {
@@ -90,6 +91,7 @@ export default function ProjectAgentPage() {
   const [error, setError] = useState('');
   const [flash, setFlash] = useState('');
   const [projects, setProjects] = useState<Project[]>([]);
+  const [projectFilterId, setProjectFilterId] = useState<string | undefined>(undefined);
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [features, setFeatures] = useState<DataFeatures>({
     dataQueryRuns: true,
@@ -139,6 +141,10 @@ export default function ProjectAgentPage() {
   const [generatingSourceDraftId, setGeneratingSourceDraftId] = useState('');
 
   const selectedProject = useMemo(() => projects.find((p) => p.id === selectedProjectId), [projects, selectedProjectId]);
+  const filteredProjects = useMemo(
+    () => (projectFilterId ? projects.filter((p) => p.id === projectFilterId) : projects),
+    [projects, projectFilterId]
+  );
   const enabledSources = sources.filter((s) => s.status !== 'disabled');
 
   function jumpToSection(id: string) {
@@ -605,14 +611,13 @@ export default function ProjectAgentPage() {
 
   return (
     <div style={{ padding: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 24 }}>Project Agent</h1>
-          <p style={{ marginTop: 6, color: '#64748b', fontSize: 13 }}>
-            Full data-agent module scoped to a single project.
-          </p>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <WorkstreamFilterBar
+        workstreams={projects.map((p) => ({ id: p.id, name: p.name }))}
+        selectedWorkstreamId={projectFilterId}
+        onWorkstreamChange={(value) => setProjectFilterId(value)}
+        pageLabel="Project Agent"
+        pageDescription="Create and manage project-scoped data agents."
+        rightSlot={
           <button
             style={btn('#0f766e')}
             onClick={() => {
@@ -624,25 +629,8 @@ export default function ProjectAgentPage() {
           >
             New Agent
           </button>
-          <select
-            style={{ ...field, width: 280 }}
-            value={selectedProjectId}
-            onChange={(e) => {
-              setSelectedProjectId(e.target.value);
-              setActiveView('none');
-            }}
-          >
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-          <Link href={`/datasources${selectedProjectId ? `?workstreamId=${encodeURIComponent(selectedProjectId)}` : ''}`} style={btn('#475569')}>
-            Manage Sources
-          </Link>
-        </div>
-      </div>
+        }
+      />
 
       {selectedProject ? (
         <div style={{ marginTop: 6, color: '#64748b', fontSize: 12 }}>
@@ -656,7 +644,7 @@ export default function ProjectAgentPage() {
       <div style={section}>
         <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Project Agents</div>
         <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
-          {projects.map((project) => {
+          {filteredProjects.map((project) => {
             const hasAgent = !!project.hasAgent;
             return (
               <div key={project.id} style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: 12, backgroundColor: '#fff' }}>
