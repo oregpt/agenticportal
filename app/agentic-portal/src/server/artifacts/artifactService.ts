@@ -176,6 +176,71 @@ export async function updateArtifact(input: {
   return updated;
 }
 
+export async function deleteArtifact(input: {
+  artifactId: string;
+  organizationId: string;
+}) {
+  await ensureProjectAgentTables();
+  const [artifact] = await db
+    .select()
+    .from(schema.artifacts)
+    .where(and(eq(schema.artifacts.id, input.artifactId), eq(schema.artifacts.organizationId, input.organizationId)))
+    .limit(1);
+  if (!artifact) return null;
+
+  const versions = await db
+    .select({
+      id: schema.artifactVersions.id,
+      querySpecId: schema.artifactVersions.querySpecId,
+    })
+    .from(schema.artifactVersions)
+    .where(eq(schema.artifactVersions.artifactId, artifact.id));
+
+  // Remove dashboard composition links where artifact is either the dashboard container or a child block.
+  await db
+    .delete(schema.dashboardItems)
+    .where(eq(schema.dashboardItems.dashboardArtifactId, artifact.id));
+
+  await db
+    .delete(schema.dashboardItems)
+    .where(eq(schema.dashboardItems.childArtifactId, artifact.id));
+
+  await db
+    .delete(schema.artifactRuns)
+    .where(eq(schema.artifactRuns.artifactId, artifact.id));
+
+  await db
+    .delete(schema.artifactVersions)
+    .where(eq(schema.artifactVersions.artifactId, artifact.id));
+
+  await db
+    .delete(schema.artifacts)
+    .where(eq(schema.artifacts.id, artifact.id));
+
+  const querySpecIds = Array.from(
+    new Set(
+      versions
+        .map((v) => String(v.querySpecId || '').trim())
+        .filter(Boolean)
+    )
+  );
+
+  // Cleanup query specs only when no remaining artifact versions reference them.
+  for (const querySpecId of querySpecIds) {
+    const [usage] = await db
+      .select({
+        count: sql<number>`CAST(COUNT(*) AS INTEGER)`,
+      })
+      .from(schema.artifactVersions)
+      .where(eq(schema.artifactVersions.querySpecId, querySpecId));
+    if (Number(usage?.count || 0) === 0) {
+      await db.delete(schema.querySpecs).where(eq(schema.querySpecs.id, querySpecId));
+    }
+  }
+
+  return { id: artifact.id };
+}
+
 export async function listArtifactVersions(artifactId: string, organizationId: string) {
   await ensureProjectAgentTables();
   const [artifact] = await db

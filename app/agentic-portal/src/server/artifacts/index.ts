@@ -11,6 +11,7 @@ export {
   listArtifacts,
   getArtifactById,
   updateArtifact,
+  deleteArtifact,
   listArtifactVersions,
   getLatestArtifactVersion,
   getArtifactStats,

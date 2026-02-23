@@ -7,7 +7,8 @@ import { WorkstreamFilterBar } from '@/components/filters/WorkstreamFilterBar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, Play, PlusCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Loader2, Play, PlusCircle, Search, Trash2 } from 'lucide-react';
 
 type ArtifactType = 'table' | 'chart' | 'dashboard' | 'report' | 'kpi';
 type WorkstreamOption = { id: string; name: string };
@@ -40,6 +41,8 @@ function ArtifactsPageContent() {
   const [selectedType, setSelectedType] = useState<ArtifactType | 'all'>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [runningId, setRunningId] = useState('');
+  const [deletingId, setDeletingId] = useState('');
+  const [searchText, setSearchText] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -80,7 +83,17 @@ function ArtifactsPageContent() {
     })();
   }, [selectedWorkstreamId, selectedType]);
 
-  const filtered = useMemo(() => artifacts, [artifacts]);
+  const filtered = useMemo(() => {
+    const q = searchText.trim().toLowerCase();
+    if (!q) return artifacts;
+    return artifacts.filter((artifact) => {
+      return (
+        artifact.name.toLowerCase().includes(q) ||
+        artifact.type.toLowerCase().includes(q) ||
+        (artifact.description || '').toLowerCase().includes(q)
+      );
+    });
+  }, [artifacts, searchText]);
 
   const handleWorkstreamChange = (value: string | undefined) => {
     setSelectedWorkstreamId(value || '');
@@ -97,6 +110,22 @@ function ArtifactsPageContent() {
       setError(e?.message || 'Failed to run artifact');
     } finally {
       setRunningId('');
+    }
+  }
+
+  async function deleteArtifactRow(artifact: Artifact) {
+    const ok = window.confirm(`Delete artifact "${artifact.name}"? This cannot be undone.`);
+    if (!ok) return;
+    try {
+      setDeletingId(artifact.id);
+      const res = await fetch(`/api/artifacts/${artifact.id}`, { method: 'DELETE' });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload?.error || 'Failed to delete artifact');
+      setArtifacts((prev) => prev.filter((a) => a.id !== artifact.id));
+    } catch (e: any) {
+      setError(e?.message || 'Failed to delete artifact');
+    } finally {
+      setDeletingId('');
     }
   }
 
@@ -124,6 +153,15 @@ function ArtifactsPageContent() {
             {opt.label}
           </Button>
         ))}
+        <div className="relative ml-auto w-full md:w-80">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            placeholder="Search artifacts..."
+            className="pl-9"
+          />
+        </div>
       </div>
 
       {isLoading ? (
@@ -131,33 +169,55 @@ function ArtifactsPageContent() {
       ) : filtered.length === 0 ? (
         <Card><CardContent className="py-10 text-sm text-muted-foreground">No artifacts yet. Use Project Agent Chat and click save buttons to create artifacts.</CardContent></Card>
       ) : (
-        <div className="grid gap-3">
-          {filtered.map((artifact) => (
-            <Card key={artifact.id}>
-              <CardContent className="py-4 flex items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Link href={`/artifacts/${artifact.id}`} className="font-semibold hover:underline">{artifact.name}</Link>
-                    <Badge variant="outline">{artifact.type}</Badge>
-                    <Badge variant={artifact.status === 'active' ? 'default' : 'secondary'}>{artifact.status}</Badge>
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    v{artifact.latestVersion} - Updated {new Date(artifact.updatedAt).toLocaleString()}
-                  </div>
-                  {artifact.description ? <div className="text-sm text-muted-foreground mt-1">{artifact.description}</div> : null}
+        <Card className="overflow-hidden">
+          <div className="grid grid-cols-12 gap-3 border-b bg-muted/40 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <div className="col-span-4">Name</div>
+            <div className="col-span-2">Type</div>
+            <div className="col-span-1">Version</div>
+            <div className="col-span-2">Updated</div>
+            <div className="col-span-1">Status</div>
+            <div className="col-span-2 text-right">Actions</div>
+          </div>
+          <div className="divide-y">
+            {filtered.map((artifact) => (
+              <div key={artifact.id} className="grid grid-cols-12 items-center gap-3 px-4 py-3 text-sm">
+                <div className="col-span-4 min-w-0">
+                  <Link href={`/artifacts/${artifact.id}`} className="truncate font-medium hover:underline">
+                    {artifact.name}
+                  </Link>
+                  {artifact.description ? (
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">{artifact.description}</p>
+                  ) : null}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="col-span-2">
+                  <Badge variant="outline">{artifact.type}</Badge>
+                </div>
+                <div className="col-span-1 text-muted-foreground">v{artifact.latestVersion}</div>
+                <div className="col-span-2 text-xs text-muted-foreground">{new Date(artifact.updatedAt).toLocaleString()}</div>
+                <div className="col-span-1">
+                  <Badge variant={artifact.status === 'active' ? 'default' : 'secondary'}>{artifact.status}</Badge>
+                </div>
+                <div className="col-span-2 flex items-center justify-end gap-2">
                   <Button size="sm" variant="outline" asChild>
                     <Link href={`/artifacts/${artifact.id}`}>Open</Link>
                   </Button>
-                  <Button size="sm" onClick={() => runArtifact(artifact.id)} disabled={runningId === artifact.id}>
+                  <Button size="sm" variant="outline" onClick={() => runArtifact(artifact.id)} disabled={runningId === artifact.id}>
                     {runningId === artifact.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
                   </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => deleteArtifactRow(artifact)}
+                    disabled={deletingId === artifact.id}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    {deletingId === artifact.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              </div>
+            ))}
+          </div>
+        </Card>
       )}
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
