@@ -24,6 +24,7 @@ type DataQueryRun = { id: string; status: string; message: string; rowCount: num
 type MemoryRule = { id: string; name: string; ruleText: string; enabled: number; priority: number; sourceId?: string | null };
 type Workflow = { id: string; name: string; enabled: number; definition: { steps: Array<{ sourceId?: string; message: string }> } };
 type WorkflowRun = { id: string; workflowId: string; status: string; startedAt: string; error?: string | null };
+type AgentViewMode = 'none' | 'configure' | 'chat';
 type ProjectChatResponse = {
   runId?: string | null;
   answer: string;
@@ -67,6 +68,13 @@ const toggleKnob = (on: boolean): CSSProperties => ({
 
 const RULE_SAMPLE = 'Always include chain name and wallet address in answers.';
 const WORKFLOW_SAMPLE = 'Summarize balances by chain\nThen list top 10 transactions by amount\nThen provide executive summary';
+const DATA_COMMANDS = [
+  { label: 'Source summary', prompt: 'Give me a one-paragraph summary of this source and top tables.' },
+  { label: 'Top transactions', prompt: 'Show top 10 transactions by amount with timestamp and chain context.' },
+  { label: 'Anomaly scan', prompt: 'Identify unusual transaction patterns in the last 24 hours.' },
+  { label: 'List workflows', prompt: 'list workflows' },
+  { label: 'List memory rules', prompt: 'list memory rules' },
+];
 
 async function api(path: string, options?: RequestInit) {
   const res = await fetch(path, {
@@ -97,6 +105,7 @@ export default function ProjectAgentPage() {
   const [showNewAgentModal, setShowNewAgentModal] = useState(false);
   const [newAgentProjectId, setNewAgentProjectId] = useState('');
   const [newAgentInstructions, setNewAgentInstructions] = useState('');
+  const [activeView, setActiveView] = useState<AgentViewMode>('none');
 
   const [sources, setSources] = useState<DataSource[]>([]);
   const [chatSourceId, setChatSourceId] = useState('');
@@ -110,6 +119,8 @@ export default function ProjectAgentPage() {
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [workflowRuns, setWorkflowRuns] = useState<WorkflowRun[]>([]);
   const [runningWorkflowId, setRunningWorkflowId] = useState('');
+  const [showWorkflowMenu, setShowWorkflowMenu] = useState(false);
+  const [showCommandsMenu, setShowCommandsMenu] = useState(false);
 
   const [showRuleModal, setShowRuleModal] = useState(false);
   const [ruleName, setRuleName] = useState('');
@@ -227,6 +238,11 @@ export default function ProjectAgentPage() {
     }
   }, [sources, chatSourceId, enabledSources]);
 
+  useEffect(() => {
+    setShowCommandsMenu(false);
+    setShowWorkflowMenu(false);
+  }, [selectedProjectId]);
+
   async function toggleFeature(key: keyof DataFeatures, value: boolean) {
     if (!selectedProjectId) return;
     setSavingFeature(key);
@@ -292,6 +308,54 @@ export default function ProjectAgentPage() {
     }
   }
 
+  async function runPreset(prompt: string) {
+    if (!selectedProjectId || !chatSourceId) return;
+    try {
+      setChatting(true);
+      setPendingPlan(null);
+
+      if (features.dataDeepTools) {
+        const plan = (await api('/api/project-agent/deep-tools/plan', {
+          method: 'POST',
+          body: JSON.stringify({ projectId: selectedProjectId, sourceId: chatSourceId, message: prompt }),
+        })) as DeepToolPlan;
+
+        if (plan.mode === 'confirm') {
+          setPendingPlan(plan);
+          return;
+        }
+
+        if (plan.mode === 'read' && plan.action !== 'none') {
+          const readResult = await api('/api/project-agent/deep-tools/execute', {
+            method: 'POST',
+            body: JSON.stringify({ projectId: selectedProjectId, action: plan.action, payload: plan.payload || {} }),
+          });
+          setChatResult({
+            answer: readResult.message || 'Deep tool read completed.',
+            source: { id: chatSourceId, name: 'deep-tools', type: 'postgres' as SourceType },
+            trust: { sql: 'DEEP_TOOL_READ', rowCount: 0, model: 'deep-tools' },
+          });
+          return;
+        }
+      }
+
+      const data = await api('/api/project-agent/chat', {
+        method: 'POST',
+        body: JSON.stringify({ projectId: selectedProjectId, sourceId: chatSourceId, message: prompt }),
+      });
+      setChatResult(data);
+      if (features.dataQueryRuns) {
+        const r = await api(`/api/project-agent/runs?projectId=${encodeURIComponent(selectedProjectId)}&limit=20`);
+        setRuns(r.runs || []);
+      }
+    } catch (e: any) {
+      setError(e?.message || 'Failed to run chat');
+    } finally {
+      setChatting(false);
+      setShowCommandsMenu(false);
+    }
+  }
+
   async function createAgentForProject() {
     if (!selectedProjectId) return;
     try {
@@ -307,6 +371,7 @@ export default function ProjectAgentPage() {
       const p = await api('/api/project-agent/projects');
       const list: Project[] = p.projects || [];
       setProjects(list);
+      setActiveView('configure');
       setFlash('Project Agent created.');
       await refreshAll(selectedProjectId);
       await refreshDataExtras(selectedProjectId, features);
@@ -336,6 +401,7 @@ export default function ProjectAgentPage() {
       setAgentInstructions(newAgentInstructions);
       setShowNewAgentModal(false);
       setNewAgentInstructions('');
+      setActiveView('configure');
       setFlash('Project Agent created.');
       await refreshAll(newAgentProjectId);
       await refreshDataExtras(newAgentProjectId, features);
@@ -561,7 +627,10 @@ export default function ProjectAgentPage() {
           <select
             style={{ ...field, width: 280 }}
             value={selectedProjectId}
-            onChange={(e) => setSelectedProjectId(e.target.value)}
+            onChange={(e) => {
+              setSelectedProjectId(e.target.value);
+              setActiveView('none');
+            }}
           >
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
@@ -611,6 +680,7 @@ export default function ProjectAgentPage() {
                         setShowNewAgentModal(true);
                         return;
                       }
+                      setActiveView('configure');
                       setTimeout(() => jumpToSection('project-agent-settings'), 120);
                     }}
                   >
@@ -621,6 +691,7 @@ export default function ProjectAgentPage() {
                     disabled={!hasAgent}
                     onClick={() => {
                       setSelectedProjectId(project.id);
+                      setActiveView('chat');
                       setTimeout(() => jumpToSection('project-agent-chat'), 120);
                     }}
                   >
@@ -654,7 +725,13 @@ export default function ProjectAgentPage() {
         </div>
       ) : (
       <>
-      <div id="project-agent-settings" style={section}>
+      {activeView === 'none' && (
+        <div style={{ ...section, color: '#475569', fontSize: 13 }}>
+          Select <strong>Configure</strong> or <strong>Chat</strong> on a project agent card.
+        </div>
+      )}
+
+      {activeView === 'configure' && <div id="project-agent-settings" style={section}>
         <h3 style={{ marginTop: 0 }}>Agent Settings</h3>
         <textarea
           style={{ ...field, minHeight: 100 }}
@@ -667,8 +744,8 @@ export default function ProjectAgentPage() {
             {savingSettings ? 'Saving...' : 'Save Instructions'}
           </button>
         </div>
-      </div>
-      <div style={section}>
+      </div>}
+      {activeView === 'configure' && <div style={section}>
         <h3 style={{ marginTop: 0 }}>Feature Controls</h3>
         <div style={{ display: 'grid', gap: 8 }}>
           {(
@@ -692,9 +769,9 @@ export default function ProjectAgentPage() {
             </div>
           ))}
         </div>
-      </div>
+      </div>}
 
-      {features.dataAnnotations && (
+      {activeView === 'configure' && features.dataAnnotations && (
         <div style={section}>
           <h3 style={{ marginTop: 0 }}>Annotations</h3>
           <textarea style={{ ...field, minHeight: 110 }} value={globalNotes} onChange={(e) => setGlobalNotes(e.target.value)} />
@@ -731,7 +808,7 @@ export default function ProjectAgentPage() {
         </div>
       )}
 
-      <div id="project-agent-chat" style={section}>
+      {activeView === 'chat' && <div id="project-agent-chat" style={section}>
         <h3 style={{ marginTop: 0 }}>Data Chat</h3>
         {!enabledSources.length ? (
           <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: 10, backgroundColor: '#f8fafc' }}>
@@ -751,12 +828,6 @@ export default function ProjectAgentPage() {
               </option>
             ))}
           </select>
-          <button style={btn('#334155')} onClick={() => setShowRuleModal(true)}>
-            + Memory Rule
-          </button>
-          <button style={btn('#334155')} onClick={() => setShowWorkflowModal(true)}>
-            + Workflow
-          </button>
         </div>
         <textarea
           style={{ ...field, minHeight: 90, marginTop: 8 }}
@@ -764,16 +835,72 @@ export default function ProjectAgentPage() {
           onChange={(e) => setChatMessage(e.target.value)}
           placeholder='Ask a question, or try: "create workflow \"Weekly Wallet Report\" then summarize balances by chain"'
         />
-        <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-          <button style={btn('#0f766e')} onClick={runChat} disabled={chatting}>
-            {chatting ? 'Running...' : 'Run'}
+        <div style={{ marginTop: 8, display: 'flex', gap: 8, alignItems: 'center', position: 'relative' }}>
+          <button
+            style={{ ...btn('#fff'), color: showCommandsMenu ? '#0f766e' : '#334155', border: `1px solid ${showCommandsMenu ? '#0f766e' : '#e2e8f0'}`, width: 40, height: 36, padding: 0 } as CSSProperties}
+            onClick={() => { setShowCommandsMenu((v) => !v); setShowWorkflowMenu(false); }}
+            title="Commands"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block', margin: '0 auto' }}>
+              <polyline points="4 17 10 11 4 5" />
+              <line x1="12" y1="19" x2="20" y2="19" />
+            </svg>
           </button>
-          {pendingPlan && (
-            <button style={btn('#7c2d12')} onClick={executePendingPlan}>
-              Confirm: {pendingPlan.summary || pendingPlan.action}
+          {features.dataWorkflows && workflows.length > 0 && (
+            <button
+              style={{ ...btn('#fff'), color: showWorkflowMenu ? '#0f766e' : '#334155', border: `1px solid ${showWorkflowMenu ? '#0f766e' : '#e2e8f0'}`, width: 40, height: 36, padding: 0 } as CSSProperties}
+              onClick={() => { setShowWorkflowMenu((v) => !v); setShowCommandsMenu(false); }}
+              title="Workflows"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block', margin: '0 auto' }}>
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+              </svg>
             </button>
           )}
+          <button style={btn('#0f766e')} onClick={runChat} disabled={chatting || !chatSourceId}>
+            {chatting ? 'Running...' : features.dataDeepTools ? 'Run / Plan Action' : 'Run Query'}
+          </button>
+          {showCommandsMenu && (
+            <div style={{ position: 'absolute', top: 40, left: 0, zIndex: 20, backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, width: 420, maxWidth: '92vw' }}>
+              <div style={{ padding: '8px 10px', fontSize: 12, fontWeight: 600, color: '#64748b', borderBottom: '1px solid #e2e8f0' }}>Commands</div>
+              {DATA_COMMANDS.map((cmd) => (
+                <div key={cmd.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 8, borderBottom: '1px solid #f1f5f9' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>{cmd.label}</div>
+                    <div style={{ fontSize: 11, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cmd.prompt}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, marginLeft: 8 }}>
+                    <button style={btn('#64748b')} onClick={() => { setChatMessage(cmd.prompt); setShowCommandsMenu(false); }}>Edit</button>
+                    <button style={btn('#475569')} onClick={() => runPreset(cmd.prompt)}>Send</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {showWorkflowMenu && features.dataWorkflows && (
+            <div style={{ position: 'absolute', top: 40, left: 48, zIndex: 20, backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, width: 360 }}>
+              {workflows
+                .filter((w) => w.enabled === 1)
+                .map((w) => (
+                  <div key={w.id} style={{ display: 'flex', justifyContent: 'space-between', padding: 8, borderBottom: '1px solid #f1f5f9' }}>
+                    <span style={{ fontSize: 13 }}>{w.name}</span>
+                    <button style={btn('#475569')} onClick={() => runWorkflow(w.id)}>Run</button>
+                  </div>
+                ))}
+            </div>
+          )}
         </div>
+
+        {pendingPlan && pendingPlan.mode === 'confirm' && (
+          <div style={{ marginTop: 10, border: '1px solid #e2e8f0', borderRadius: 8, padding: 10, backgroundColor: '#f8fafc' }}>
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>Deep Tool Confirmation Required</div>
+            <div style={{ fontSize: 13, color: '#334155' }}>{pendingPlan.summary || 'Confirm this action.'}</div>
+            <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+              <button style={btn('#0f766e')} onClick={executePendingPlan}>Confirm and Execute</button>
+              <button style={btn('#64748b')} onClick={() => setPendingPlan(null)}>Cancel</button>
+            </div>
+          </div>
+        )}
         {chatResult && (
           <div style={{ marginTop: 10 }}>
             <div style={{ whiteSpace: 'pre-wrap', fontSize: 14 }}>{chatResult.answer}</div>
@@ -785,9 +912,9 @@ export default function ProjectAgentPage() {
             </pre>
           </div>
         )}
-      </div>
+      </div>}
 
-      {features.dataQueryRuns && (
+      {activeView === 'configure' && features.dataQueryRuns && (
         <div style={section}>
           <h3 style={{ marginTop: 0 }}>Query Runs</h3>
           {!runs.length ? (
@@ -804,7 +931,7 @@ export default function ProjectAgentPage() {
         </div>
       )}
 
-      {features.dataMemoryRules && (
+      {activeView === 'configure' && features.dataMemoryRules && (
         <div style={section}>
           <h3 style={{ marginTop: 0 }}>Memory Rules</h3>
           {!rules.length ? (
@@ -828,7 +955,7 @@ export default function ProjectAgentPage() {
         </div>
       )}
 
-      {features.dataWorkflows && (
+      {activeView === 'configure' && features.dataWorkflows && (
         <div style={section}>
           <h3 style={{ marginTop: 0 }}>Workflows</h3>
           {!workflows.length ? (

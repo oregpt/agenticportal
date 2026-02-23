@@ -24,7 +24,6 @@ interface NavItem {
   name: string;
   href: string;
   icon: React.ComponentType<{ className?: string }>;
-  children?: NavItem[];
 }
 
 export function getSectionFromPath(pathname: string): NavSection {
@@ -34,18 +33,12 @@ export function getSectionFromPath(pathname: string): NavSection {
 }
 
 const pipelineNavigation: NavItem[] = [
-  {
-    name: 'Projects',
-    href: '/workstreams',
-    icon: Workflow,
-    children: [
-      { name: 'Data Sources', href: '/datasources', icon: Database },
-      { name: 'Views', href: '/views', icon: Table2 },
-      { name: 'Dashboards', href: '/dashboards', icon: LayoutDashboard },
-      { name: 'Outputs', href: '/outputs', icon: FileOutput },
-      { name: 'Data Relationships', href: '/relationship-explorer', icon: Network },
-    ],
-  },
+  { name: 'All Projects', href: '/workstreams', icon: Workflow },
+  { name: 'Data Sources', href: '/datasources', icon: Database },
+  { name: 'Views', href: '/views', icon: Table2 },
+  { name: 'Dashboards', href: '/dashboards', icon: LayoutDashboard },
+  { name: 'Outputs', href: '/outputs', icon: FileOutput },
+  { name: 'Data Relationships', href: '/relationship-explorer', icon: Network },
 ];
 
 const aiNavigation: NavItem[] = [
@@ -85,6 +78,16 @@ interface SidebarProps {
   section: NavSection;
 }
 
+function getPipelinePageMeta(pathname: string): { label: string; description: string } {
+  if (pathname.startsWith('/datasources')) return { label: 'Data Sources', description: 'Connect and assign data sources across projects.' };
+  if (pathname.startsWith('/views')) return { label: 'Views', description: 'Model reusable query views for project reporting.' };
+  if (pathname.startsWith('/dashboards')) return { label: 'Dashboards', description: 'Build and manage dashboards for each project.' };
+  if (pathname.startsWith('/outputs')) return { label: 'Outputs', description: 'Deliver project insights through scheduled outputs.' };
+  if (pathname.startsWith('/relationship-explorer')) return { label: 'Data Relationships', description: 'Explore table and entity relationships by project.' };
+  if (pathname.startsWith('/project-agent')) return { label: 'Project Agent', description: 'Configure and use the project-scoped data agent.' };
+  return { label: 'Projects', description: 'Manage projects and build your data pipeline.' };
+}
+
 export function Sidebar({ section }: SidebarProps) {
   const pathname = usePathname();
   const { canAccessPlatformAdmin, canAccessOrgAdmin } = useAuth();
@@ -92,7 +95,7 @@ export function Sidebar({ section }: SidebarProps) {
   const navGroups =
     section === 'pipeline'
       ? [
-          { title: 'Projects', items: pipelineNavigation },
+          { title: '', items: pipelineNavigation },
           { title: 'AI Tools', items: aiNavigation },
         ]
       : section === 'organization'
@@ -109,7 +112,7 @@ export function Sidebar({ section }: SidebarProps) {
   const effectiveGroups = canViewSection
     ? navGroups
     : [{ title: 'Projects', items: pipelineNavigation }];
-  const meta = sectionMeta[section];
+  const meta = section === 'pipeline' ? getPipelinePageMeta(pathname) : sectionMeta[section];
 
   return (
     <div className="flex h-full w-72 flex-col bg-sidebar/90 backdrop-blur-md border-r border-sidebar-border shadow-[0_1px_0_rgba(15,23,42,0.03)]">
@@ -125,9 +128,11 @@ export function Sidebar({ section }: SidebarProps) {
 
         {effectiveGroups.map((group, idx) => (
           <div key={group.title} className={cn('space-y-1', idx > 0 && 'mt-6')}>
-            <p className="px-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.14em] mb-2">
-              {group.title}
-            </p>
+            {group.title ? (
+              <p className="px-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-[0.14em] mb-2">
+                {group.title}
+              </p>
+            ) : null}
             {group.items.map((item) => {
               const isRootSectionItem = item.href === '/org' || item.href === '/admin';
               const isActive =
@@ -150,32 +155,6 @@ export function Sidebar({ section }: SidebarProps) {
                   <item.icon className="h-4 w-4" />
                   {item.name}
                 </Link>
-              );
-            })}
-            {group.items.map((item) => {
-              if (!item.children?.length) return null;
-              return (
-                <div key={`${item.name}-children`} className="ml-6 mt-1 space-y-1">
-                  {item.children.map((child) => {
-                    const isChildActive =
-                      pathname === child.href || pathname.startsWith(child.href + '/');
-                    return (
-                      <Link
-                        key={child.name}
-                        href={child.href}
-                        className={cn(
-                          'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all',
-                          isChildActive
-                            ? 'bg-primary/10 text-primary font-medium'
-                            : 'text-sidebar-foreground/85 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                        )}
-                      >
-                        <child.icon className="h-3.5 w-3.5" />
-                        {child.name}
-                      </Link>
-                    );
-                  })}
-                </div>
               );
             })}
           </div>
