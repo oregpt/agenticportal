@@ -8,14 +8,15 @@ import { useAuth } from '@/hooks/useAuth';
 import {
   LayoutDashboard,
   Database,
-  Table2,
   Settings,
   Users,
   Building2,
   Bot,
   Workflow,
-  FileOutput,
   Network,
+  Boxes,
+  History,
+  SendHorizontal,
 } from 'lucide-react';
 
 export type NavSection = 'pipeline' | 'organization' | 'platform';
@@ -35,9 +36,9 @@ export function getSectionFromPath(pathname: string): NavSection {
 const pipelineNavigation: NavItem[] = [
   { name: 'All Projects', href: '/workstreams', icon: Workflow },
   { name: 'Data Sources', href: '/datasources', icon: Database },
-  { name: 'Views', href: '/views', icon: Table2 },
-  { name: 'Dashboards', href: '/dashboards', icon: LayoutDashboard },
-  { name: 'Outputs', href: '/outputs', icon: FileOutput },
+  { name: 'Artifacts', href: '/artifacts', icon: Boxes },
+  { name: 'Run History', href: '/artifact-runs', icon: History },
+  { name: 'Delivery', href: '/delivery', icon: SendHorizontal },
   { name: 'Data Relationships', href: '/relationship-explorer', icon: Network },
 ];
 
@@ -80,9 +81,12 @@ interface SidebarProps {
 
 function getPipelinePageMeta(pathname: string): { label: string; description: string } {
   if (pathname.startsWith('/datasources')) return { label: 'Data Sources', description: 'Connect and assign data sources across projects.' };
-  if (pathname.startsWith('/views')) return { label: 'Views', description: 'Model reusable query views for project reporting.' };
-  if (pathname.startsWith('/dashboards')) return { label: 'Dashboards', description: 'Build and manage dashboards for each project.' };
-  if (pathname.startsWith('/outputs')) return { label: 'Outputs', description: 'Deliver project insights through scheduled outputs.' };
+  if (pathname.startsWith('/artifacts')) return { label: 'Artifacts', description: 'SQL-backed assets produced by your project agent.' };
+  if (pathname.startsWith('/artifact-runs')) return { label: 'Run History', description: 'Execution history and diagnostics for artifacts.' };
+  if (pathname.startsWith('/delivery')) return { label: 'Delivery', description: 'Configure schedules and distribution for generated artifacts.' };
+  if (pathname.startsWith('/views')) return { label: 'Legacy Views', description: 'Legacy page retained for compatibility while artifacts become primary.' };
+  if (pathname.startsWith('/dashboards')) return { label: 'Legacy Dashboards', description: 'Legacy page retained for compatibility while artifacts become primary.' };
+  if (pathname.startsWith('/outputs')) return { label: 'Legacy Outputs', description: 'Legacy page retained for compatibility while artifacts become primary.' };
   if (pathname.startsWith('/relationship-explorer')) return { label: 'Data Relationships', description: 'Explore table and entity relationships by project.' };
   if (pathname.startsWith('/project-agent')) return { label: 'Project Agent', description: 'Configure and use the project-scoped data agent.' };
   return { label: 'Projects', description: 'Manage projects and build your data pipeline.' };

@@ -13,7 +13,13 @@ type SourceType = 'bigquery' | 'postgres' | 'google_sheets' | 'google_sheets_liv
 type Project = { id: string; name: string; hasAgent?: boolean };
 type DataSource = { id: string; name: string; type: SourceType; status: string };
 type Workflow = { id: string; name: string; enabled: number };
-type DataRunInfo = { source: { id: string; name: string; type: SourceType }; trust: { sql: string; rowCount: number; model: string; confidence?: number | null }; runId?: string | null };
+type DataRunInfo = {
+  source: { id: string; name: string; type: SourceType };
+  trust: { sql: string; rowCount: number; model: string; confidence?: number | null };
+  runId?: string | null;
+  artifactActions?: { canSaveTable?: boolean; canCreateChart?: boolean; canAddToDashboard?: boolean; canSaveSql?: boolean };
+  querySpecDraft?: { name?: string; projectId?: string; sourceId?: string; sqlText?: string; metadataJson?: Record<string, unknown> };
+};
 type Message = { id: string; role: 'user' | 'assistant'; content: string; dataRun?: DataRunInfo };
 type DeepToolPlan = {
   mode: 'none' | 'confirm' | 'read';
@@ -61,6 +67,7 @@ export default function ProjectAgentChatPage() {
   const [error, setError] = useState('');
   const [expandedDataRuns, setExpandedDataRuns] = useState<Record<string, boolean>>({});
   const [activeTools, setActiveTools] = useState<string[]>([]);
+  const [savingActionId, setSavingActionId] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const enabledSources = useMemo(() => sources.filter((s) => s.status !== 'disabled'), [sources]);
@@ -209,6 +216,56 @@ export default function ProjectAgentChatPage() {
     }
   }
 
+  async function saveFromMessage(messageId: string, mode: 'save-sql' | 'save-table' | 'create-chart' | 'add-to-dashboard') {
+    const message = messages.find((m) => m.id === messageId);
+    const dataRun = message?.dataRun;
+    if (!dataRun?.trust?.sql || !selectedProjectId || !chatSourceId) return;
+
+    const endpoint =
+      mode === 'save-table'
+        ? '/api/project-agent/chat/save-table'
+        : mode === 'create-chart'
+          ? '/api/project-agent/chat/create-chart'
+          : mode === 'add-to-dashboard'
+            ? '/api/project-agent/chat/add-to-dashboard'
+            : '/api/project-agent/chat/save-sql';
+
+    const nameBase = (dataRun.querySpecDraft?.name || message?.content || 'Chat Result').slice(0, 80);
+    setSavingActionId(`${messageId}:${mode}`);
+    setError('');
+    try {
+      const res = await api(endpoint, {
+        method: 'POST',
+        body: JSON.stringify({
+          projectId: selectedProjectId,
+          sourceId: dataRun.source.id || chatSourceId,
+          sqlText: dataRun.trust.sql,
+          name:
+            mode === 'save-table'
+              ? `${nameBase} Table`
+              : mode === 'create-chart'
+                ? `${nameBase} Chart`
+                : mode === 'add-to-dashboard'
+                  ? `${nameBase} Dashboard Block`
+                  : `${nameBase} Query`,
+          metadataJson: dataRun.querySpecDraft?.metadataJson || {
+            rowCount: dataRun.trust.rowCount,
+            confidence: dataRun.trust.confidence ?? null,
+          },
+        }),
+      });
+      if (mode === 'add-to-dashboard') {
+        pushMessage({ role: 'assistant', content: `Added to dashboard ${res.dashboardArtifactId || ''}.` });
+      } else {
+        pushMessage({ role: 'assistant', content: `${mode.replace('-', ' ')} completed.` });
+      }
+    } catch (e: any) {
+      setError(e?.message || `Failed to ${mode}`);
+    } finally {
+      setSavingActionId('');
+    }
+  }
+
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <WorkstreamFilterBar
@@ -267,7 +324,7 @@ export default function ProjectAgentChatPage() {
             {messages.length === 0 ? (
               <p className="text-sm text-muted-foreground">Start chatting with your project data agent.</p>
             ) : (
-              messages.map((m, idx) => (
+              messages.map((m) => (
                 <div key={m.id} className={m.role === 'user' ? 'ml-auto max-w-[86%]' : 'mr-auto max-w-[86%]'}>
                   <div className={m.role === 'user' ? 'rounded-xl bg-primary text-primary-foreground px-3 py-2 text-sm shadow-sm' : 'rounded-xl bg-card border border-border px-3 py-2 text-sm shadow-sm'}>
                     <div className="whitespace-pre-wrap">{m.content}</div>
@@ -278,23 +335,69 @@ export default function ProjectAgentChatPage() {
                           className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted/80"
                           title="Show data run details"
                         >
-                          <span>{`1 query · ${m.dataRun.trust.rowCount} rows${m.dataRun.trust.confidence != null ? ` · confidence ${Number(m.dataRun.trust.confidence).toFixed(2)}` : ''}`}</span>
+                          <span>{`1 query - ${m.dataRun.trust.rowCount} rows${m.dataRun.trust.confidence != null ? ` - confidence ${Number(m.dataRun.trust.confidence).toFixed(2)}` : ''}`}</span>
                           <ChevronDown className={`h-3 w-3 transition-transform ${expandedDataRuns[m.id] ? 'rotate-180' : ''}`} />
                         </button>
                         {expandedDataRuns[m.id] ? (
                           <div className="mt-2 rounded-md border border-border bg-muted/60 p-2 text-xs">
                             <div className="mb-1">
                               <strong>Source:</strong> {m.dataRun.source.name} ({m.dataRun.source.type})
-                              {m.dataRun.runId ? ` · run ${m.dataRun.runId}` : ''}
+                              {m.dataRun.runId ? ` - run ${m.dataRun.runId}` : ''}
                             </div>
                             <div className="mb-1">
-                              <strong>Model:</strong> {m.dataRun.trust.model} · <strong>Rows:</strong> {m.dataRun.trust.rowCount}
-                              {m.dataRun.trust.confidence != null ? ` · Confidence: ${Number(m.dataRun.trust.confidence).toFixed(2)}` : ''}
+                              <strong>Model:</strong> {m.dataRun.trust.model} - <strong>Rows:</strong> {m.dataRun.trust.rowCount}
+                              {m.dataRun.trust.confidence != null ? ` - Confidence: ${Number(m.dataRun.trust.confidence).toFixed(2)}` : ''}
                             </div>
                             <div className="mb-1 font-semibold">Generated Query</div>
                             <pre className="overflow-x-auto rounded-md bg-slate-950 text-slate-100 p-2 text-[11px]">
                               {m.dataRun.trust.sql}
                             </pre>
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                              {(m.dataRun.artifactActions?.canSaveSql ?? true) ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => saveFromMessage(m.id, 'save-sql')}
+                                  disabled={savingActionId === `${m.id}:save-sql`}
+                                >
+                                  {savingActionId === `${m.id}:save-sql` ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                                  Save SQL
+                                </Button>
+                              ) : null}
+                              {(m.dataRun.artifactActions?.canSaveTable ?? true) ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => saveFromMessage(m.id, 'save-table')}
+                                  disabled={savingActionId === `${m.id}:save-table`}
+                                >
+                                  {savingActionId === `${m.id}:save-table` ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                                  Save Table
+                                </Button>
+                              ) : null}
+                              {(m.dataRun.artifactActions?.canCreateChart ?? true) ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => saveFromMessage(m.id, 'create-chart')}
+                                  disabled={savingActionId === `${m.id}:create-chart`}
+                                >
+                                  {savingActionId === `${m.id}:create-chart` ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                                  Create Chart
+                                </Button>
+                              ) : null}
+                              {(m.dataRun.artifactActions?.canAddToDashboard ?? true) ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => saveFromMessage(m.id, 'add-to-dashboard')}
+                                  disabled={savingActionId === `${m.id}:add-to-dashboard`}
+                                >
+                                  {savingActionId === `${m.id}:add-to-dashboard` ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                                  Add to Dashboard
+                                </Button>
+                              ) : null}
+                            </div>
                           </div>
                         ) : null}
                       </div>
@@ -313,7 +416,7 @@ export default function ProjectAgentChatPage() {
                       <span className="h-2 w-2 rounded-full bg-slate-400 animate-pulse" />
                     </span>
                     <span className="text-xs">
-                      {activeTools.length > 0 ? `Processing: ${activeTools.join(' · ')}` : 'Thinking...'}
+                      {activeTools.length > 0 ? `Processing: ${activeTools.join(' - ')}` : 'Thinking...'}
                     </span>
                   </div>
                 </div>
@@ -428,3 +531,4 @@ export default function ProjectAgentChatPage() {
     </div>
   );
 }
+

@@ -403,6 +403,23 @@ export async function runProjectAgentChat(input: {
       type: source.type,
     },
     answer: answerText.trim(),
+    artifactActions: {
+      canSaveTable: true,
+      canCreateChart: true,
+      canAddToDashboard: true,
+      canSaveSql: true,
+    },
+    querySpecDraft: {
+      name: message.slice(0, 80),
+      projectId: input.projectId,
+      sourceId: source.id,
+      sqlText: sqlForTrust,
+      metadataJson: {
+        rowCount: queryResult.rowCount,
+        confidence: confidenceForTrust,
+        reasoning: reasoningForTrust,
+      },
+    },
     trust: {
       sql: sqlForTrust,
       rowCount: queryResult.rowCount,

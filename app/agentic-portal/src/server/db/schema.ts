@@ -140,6 +140,79 @@ export const outputs = pgTable('outputs', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+// ============================================================================
+// ARTIFACTS (Agent-produced SQL-backed entities)
+// ============================================================================
+
+export const querySpecs = pgTable('query_specs', {
+  id: varchar('id', { length: 64 }).primaryKey(),
+  organizationId: varchar('organization_id', { length: 64 }).notNull(),
+  projectId: varchar('project_id', { length: 64 }).notNull(),
+  sourceId: varchar('source_id', { length: 64 }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  sqlText: text('sql_text').notNull(),
+  parametersJson: jsonb('parameters_json'),
+  metadataJson: jsonb('metadata_json'),
+  createdBy: varchar('created_by', { length: 64 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const artifacts = pgTable('artifacts', {
+  id: varchar('id', { length: 64 }).primaryKey(),
+  organizationId: varchar('organization_id', { length: 64 }).notNull(),
+  projectId: varchar('project_id', { length: 64 }).notNull(),
+  type: varchar('type', { length: 32 }).notNull(), // table | chart | dashboard | report | kpi
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  status: varchar('status', { length: 16 }).notNull().default('active'), // active | archived
+  latestVersion: integer('latest_version').notNull().default(1),
+  createdBy: varchar('created_by', { length: 64 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const artifactVersions = pgTable('artifact_versions', {
+  id: varchar('id', { length: 64 }).primaryKey(),
+  artifactId: varchar('artifact_id', { length: 64 }).notNull(),
+  version: integer('version').notNull(),
+  querySpecId: varchar('query_spec_id', { length: 64 }),
+  configJson: jsonb('config_json'),
+  layoutJson: jsonb('layout_json'),
+  notes: text('notes'),
+  createdBy: varchar('created_by', { length: 64 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const dashboardItems = pgTable('dashboard_items', {
+  id: varchar('id', { length: 64 }).primaryKey(),
+  dashboardArtifactId: varchar('dashboard_artifact_id', { length: 64 }).notNull(),
+  childArtifactId: varchar('child_artifact_id', { length: 64 }).notNull(),
+  childArtifactVersionId: varchar('child_artifact_version_id', { length: 64 }),
+  positionJson: jsonb('position_json'),
+  displayJson: jsonb('display_json'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const artifactRuns = pgTable('artifact_runs', {
+  id: varchar('id', { length: 64 }).primaryKey(),
+  artifactId: varchar('artifact_id', { length: 64 }).notNull(),
+  artifactVersionId: varchar('artifact_version_id', { length: 64 }),
+  querySpecId: varchar('query_spec_id', { length: 64 }),
+  organizationId: varchar('organization_id', { length: 64 }).notNull(),
+  projectId: varchar('project_id', { length: 64 }).notNull(),
+  status: varchar('status', { length: 16 }).notNull().default('running'), // running | succeeded | failed
+  triggerType: varchar('trigger_type', { length: 32 }).notNull().default('manual'), // chat | manual | api | delivery
+  runInputJson: jsonb('run_input_json'),
+  resultMetaJson: jsonb('result_meta_json'),
+  resultSampleJson: jsonb('result_sample_json'),
+  sqlTextSnapshot: text('sql_text_snapshot'),
+  errorText: text('error_text'),
+  startedAt: timestamp('started_at').defaultNow().notNull(),
+  completedAt: timestamp('completed_at'),
+});
+
 export const widgets = pgTable('widgets', {
   id: varchar('id', { length: 64 }).primaryKey(),
   dashboardId: varchar('dashboard_id', { length: 64 }).notNull(),
