@@ -52,6 +52,7 @@ const pipelineNavigation: NavItem[] = [
 
 const aiNavigation: NavItem[] = [
   { name: 'Ask Data Assistant', href: '/chat', icon: Sparkles },
+  { name: 'Project Agent', href: '/project-agent', icon: Bot },
 ];
 
 const orgNavigation: NavItem[] = [

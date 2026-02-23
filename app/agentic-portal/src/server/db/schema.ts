@@ -339,3 +339,94 @@ export const chatMessages = pgTable('chat_messages', {
   metadata: jsonb('metadata'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+// ============================================================================
+// PROJECT AGENT (Data Agent port scoped by workstream/project)
+// ============================================================================
+
+export const projectAgents = pgTable('project_agents', {
+  projectId: varchar('project_id', { length: 64 }).primaryKey(), // workstream.id
+  organizationId: varchar('organization_id', { length: 64 }).notNull(),
+  defaultModel: varchar('default_model', { length: 128 }).notNull().default('claude-sonnet-4-20250514'),
+  features: jsonb('features'), // dataQueryRuns/dataMemoryRules/dataWorkflows/dataDeepTools/dataAnnotations/dataGlobalNotes
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const projectAgentSourceMeta = pgTable('project_agent_source_meta', {
+  sourceId: varchar('source_id', { length: 64 }).primaryKey(), // data_sources.id
+  projectId: varchar('project_id', { length: 64 }).notNull(), // workstream.id
+  organizationId: varchar('organization_id', { length: 64 }).notNull(),
+  status: varchar('status', { length: 16 }).notNull().default('active'), // active | error | disabled
+  userNotes: text('user_notes'),
+  inferredNotes: text('inferred_notes'),
+  lastSyncedAt: timestamp('last_synced_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const projectDataQueryRuns = pgTable('project_data_query_runs', {
+  id: varchar('id', { length: 64 }).primaryKey(),
+  projectId: varchar('project_id', { length: 64 }).notNull(),
+  organizationId: varchar('organization_id', { length: 64 }).notNull(),
+  sourceId: varchar('source_id', { length: 64 }),
+  workflowId: varchar('workflow_id', { length: 64 }),
+  workflowRunId: varchar('workflow_run_id', { length: 64 }),
+  runType: varchar('run_type', { length: 32 }).notNull().default('chat'),
+  message: text('message').notNull(),
+  status: varchar('status', { length: 16 }).notNull().default('succeeded'),
+  sqlText: text('sql_text'),
+  rowCount: integer('row_count').notNull().default(0),
+  confidence: varchar('confidence', { length: 32 }),
+  reasoning: text('reasoning'),
+  answer: text('answer'),
+  resultSample: jsonb('result_sample'),
+  error: text('error'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  completedAt: timestamp('completed_at'),
+});
+
+export const projectDataMemoryRules = pgTable('project_data_memory_rules', {
+  id: varchar('id', { length: 64 }).primaryKey(),
+  projectId: varchar('project_id', { length: 64 }).notNull(),
+  organizationId: varchar('organization_id', { length: 64 }).notNull(),
+  sourceId: varchar('source_id', { length: 64 }),
+  name: varchar('name', { length: 255 }).notNull(),
+  ruleText: text('rule_text').notNull(),
+  enabled: integer('enabled').notNull().default(1),
+  priority: integer('priority').notNull().default(100),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const projectDataWorkflows = pgTable('project_data_workflows', {
+  id: varchar('id', { length: 64 }).primaryKey(),
+  projectId: varchar('project_id', { length: 64 }).notNull(),
+  organizationId: varchar('organization_id', { length: 64 }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  enabled: integer('enabled').notNull().default(1),
+  definition: jsonb('definition').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const projectDataWorkflowRuns = pgTable('project_data_workflow_runs', {
+  id: varchar('id', { length: 64 }).primaryKey(),
+  workflowId: varchar('workflow_id', { length: 64 }).notNull(),
+  projectId: varchar('project_id', { length: 64 }).notNull(),
+  organizationId: varchar('organization_id', { length: 64 }).notNull(),
+  status: varchar('status', { length: 16 }).notNull().default('running'),
+  triggeredBy: varchar('triggered_by', { length: 32 }).notNull().default('manual'),
+  input: jsonb('input'),
+  output: jsonb('output'),
+  error: text('error'),
+  startedAt: timestamp('started_at').defaultNow().notNull(),
+  completedAt: timestamp('completed_at'),
+});
+
+export const platformSettings = pgTable('ai_platform_settings', {
+  key: varchar('key', { length: 128 }).primaryKey(),
+  value: jsonb('value').notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
