@@ -25,19 +25,7 @@ function createClient(apiKey: string): Anthropic {
 }
 
 // Get API key for agent (checks per-agent DB key first, falls back to env var)
-async function getApiKey(agentId?: string): Promise<string> {
-  if (agentId) {
-    try {
-      // Lazy-import to avoid circular dependencies
-      const { getAgentApiKeyWithFallback } = await import('../capabilities/capabilityService');
-      const agentKey = await getAgentApiKeyWithFallback(agentId, 'anthropic_api_key');
-      if (agentKey) {
-        return agentKey;
-      }
-    } catch {
-      // capabilityService not available yet — fall through to env var
-    }
-  }
+async function getApiKey(): Promise<string> {
   return envApiKey || 'missing-key';
 }
 
@@ -156,7 +144,7 @@ export class ClaudeProvider implements LLMProvider {
   async generateWithTools(messages: LLMMessage[], options: GenerateOptions): Promise<GenerateResult> {
     const model = options.model || process.env.DEFAULT_MODEL || 'claude-sonnet-4-20250514';
 
-    const apiKey = await getApiKey(options.agentId);
+    const apiKey = await getApiKey();
     const client = createClient(apiKey);
 
     const { system, messages: coreMessages } = toAnthropicMessages(messages);
@@ -231,7 +219,7 @@ export class ClaudeProvider implements LLMProvider {
   ): Promise<void> {
     const model = options.model || process.env.DEFAULT_MODEL || 'claude-sonnet-4-20250514';
 
-    const apiKey = await getApiKey(options.agentId);
+    const apiKey = await getApiKey();
     const client = createClient(apiKey);
 
     const { system, messages: coreMessages } = toAnthropicMessages(messages);
@@ -268,3 +256,5 @@ export class ClaudeProvider implements LLMProvider {
     onChunk({ type: 'final', content: full });
   }
 }
+
+

@@ -11,16 +11,9 @@ import {
 
 const envApiKey = process.env.GOOGLE_AI_API_KEY;
 
-async function getApiKey(agentId?: string): Promise<string> {
-  if (agentId) {
-    try {
-      const { getAgentApiKeyWithFallback } = await import('../capabilities/capabilityService');
-      const agentKey = await getAgentApiKeyWithFallback(agentId, 'google_ai_api_key');
-      if (agentKey) return agentKey;
-    } catch {}
-  }
+async function getApiKey(): Promise<string> {
   if (!envApiKey) {
-    throw new Error('Google AI API key not configured. Set GOOGLE_AI_API_KEY env var or add a per-agent key in admin.');
+    throw new Error('Google AI API key not configured. Set GOOGLE_AI_API_KEY env var.');
   }
   return envApiKey;
 }
@@ -98,7 +91,7 @@ export class GeminiProvider implements LLMProvider {
 
   async generateWithTools(messages: LLMMessage[], options: GenerateOptions): Promise<GenerateResult> {
     const model = options.model || 'gemini-2.5-flash';
-    const apiKey = await getApiKey(options.agentId);
+    const apiKey = await getApiKey();
 
     const body: any = {
       max_tokens: options.maxTokens || 4096,
@@ -145,7 +138,7 @@ export class GeminiProvider implements LLMProvider {
     onChunk: (chunk: LLMStreamChunk) => void
   ): Promise<void> {
     const model = options.model || 'gemini-2.5-flash';
-    const apiKey = await getApiKey(options.agentId);
+    const apiKey = await getApiKey();
 
     const body: any = {
       max_tokens: options.maxTokens || 4096,
@@ -205,3 +198,5 @@ export class GeminiProvider implements LLMProvider {
     onChunk({ type: 'final', content: full });
   }
 }
+
+

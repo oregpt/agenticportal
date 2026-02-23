@@ -4,9 +4,8 @@ import { GeminiProvider } from './geminiProvider';
 import { GrokProvider } from './grokProvider';
 import { LLMProvider } from './types';
 
-// Re-export types and tool executor
+// Re-export types
 export * from './types';
-export { executeWithTools, getToolsForAgent, getDetailedToolsForAgent } from './toolExecutor';
 
 // Cached provider instances
 const providers: Record<string, LLMProvider> = {};

@@ -13,14 +13,7 @@ import {
 // Grok uses the OpenAI-compatible API at api.x.ai
 const envApiKey = process.env.XAI_API_KEY;
 
-async function getApiKey(agentId?: string): Promise<string> {
-  if (agentId) {
-    try {
-      const { getAgentApiKeyWithFallback } = await import('../capabilities/capabilityService');
-      const agentKey = await getAgentApiKeyWithFallback(agentId, 'xai_api_key');
-      if (agentKey) return agentKey;
-    } catch {}
-  }
+async function getApiKey(): Promise<string> {
   return envApiKey || 'missing-key';
 }
 
@@ -81,7 +74,7 @@ export class GrokProvider implements LLMProvider {
 
   async generateWithTools(messages: LLMMessage[], options: GenerateOptions): Promise<GenerateResult> {
     const model = options.model || 'grok-3';
-    const apiKey = await getApiKey(options.agentId);
+    const apiKey = await getApiKey();
     const client = this.createClient(apiKey);
 
     const params: OpenAI.Chat.ChatCompletionCreateParams = {
@@ -124,7 +117,7 @@ export class GrokProvider implements LLMProvider {
     onChunk: (chunk: LLMStreamChunk) => void
   ): Promise<void> {
     const model = options.model || 'grok-3';
-    const apiKey = await getApiKey(options.agentId);
+    const apiKey = await getApiKey();
     const client = this.createClient(apiKey);
 
     const params: OpenAI.Chat.ChatCompletionCreateParams = {
@@ -152,3 +145,5 @@ export class GrokProvider implements LLMProvider {
     onChunk({ type: 'final', content: full });
   }
 }
+
+
