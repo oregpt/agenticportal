@@ -632,11 +632,11 @@ export default function ProjectAgentPage() {
             No agents created for this project scope yet.
           </div>
         ) : (
-        <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
+        <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
           {createdAgents.map((project) => {
             const hasAgent = !!project.hasAgent;
             return (
-              <div key={project.id} style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: 12, backgroundColor: '#fff' }}>
+              <div key={project.id} style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: 12, backgroundColor: '#fff', minHeight: 128, display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 14 }}>{project.agentName || `${project.name} Agent`}</div>
@@ -646,7 +646,16 @@ export default function ProjectAgentPage() {
                     Active
                   </span>
                 </div>
-                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                <div style={{ display: 'flex', gap: 8, marginTop: 'auto', paddingTop: 12 }}>
+                  <button
+                    style={btn(hasAgent ? '#0f766e' : '#94a3b8')}
+                    disabled={!hasAgent}
+                    onClick={() => {
+                      router.push(`/project-agent/chat?projectId=${encodeURIComponent(project.id)}`);
+                    }}
+                  >
+                    Chat
+                  </button>
                   <button
                     style={btn('#334155')}
                     onClick={() => {
@@ -656,15 +665,6 @@ export default function ProjectAgentPage() {
                     }}
                   >
                     Configure
-                  </button>
-                  <button
-                    style={btn(hasAgent ? '#0f766e' : '#94a3b8')}
-                    disabled={!hasAgent}
-                    onClick={() => {
-                      router.push(`/project-agent/chat?projectId=${encodeURIComponent(project.id)}`);
-                    }}
-                  >
-                    Chat
                   </button>
                 </div>
               </div>

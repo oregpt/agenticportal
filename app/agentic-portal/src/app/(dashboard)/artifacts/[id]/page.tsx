@@ -121,6 +121,8 @@ function toSqlLiteral(value: string): string {
   return `'${value.replace(/'/g, "''")}'`;
 }
 
+const MANAGE_SOURCES_SENTINEL = '__manage_sources__';
+
 function normalizePosition(position: Record<string, any> | null | undefined, index: number): {
   i: string;
   x: number;
@@ -404,6 +406,15 @@ export default function ArtifactDetailPage() {
   }
 
   function onChangeSource(sourceId: string) {
+    if (sourceId === MANAGE_SOURCES_SENTINEL) {
+      const projectId = data?.artifact?.projectId;
+      if (projectId) {
+        router.push(`/datasources?workstreamId=${encodeURIComponent(projectId)}`);
+      } else {
+        router.push('/datasources');
+      }
+      return;
+    }
     setDirectSourceId(sourceId);
     resetGuidedState(sourceId);
   }
@@ -1024,6 +1035,7 @@ export default function ArtifactDetailPage() {
                     {dataSources.map((ds) => (
                       <option key={ds.id} value={ds.id}>{ds.name} ({ds.type})</option>
                     ))}
+                    <option value={MANAGE_SOURCES_SENTINEL}>+ Manage Sources...</option>
                   </select>
                 </div>
                 <div className="space-y-3 rounded-md border p-3">
