@@ -975,11 +975,11 @@ export default function ArtifactDetailPage() {
       </Card>
 
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] sm:max-w-2xl overflow-hidden">
           <DialogHeader>
             <DialogTitle>Add Artifact To Dashboard</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-3 overflow-y-auto pr-1 max-h-[calc(85vh-8rem)]">
             <div className="flex gap-2">
               <Button type="button" variant={addMode === 'existing' ? 'default' : 'outline'} size="sm" onClick={() => setAddMode('existing')}>
                 Existing Artifact
@@ -1191,7 +1191,7 @@ export default function ArtifactDetailPage() {
               <Label>Title Override (optional)</Label>
               <Input value={titleOverride} onChange={(e) => setTitleOverride(e.target.value)} placeholder="Custom artifact title" />
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 sticky bottom-0 bg-background pt-2">
               <Button variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
               <Button
                 data-testid="add-block-submit"
