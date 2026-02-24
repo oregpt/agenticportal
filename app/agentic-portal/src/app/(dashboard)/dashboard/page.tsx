@@ -26,7 +26,7 @@ type DashboardArtifact = {
 type ArtifactItem = {
   id: string;
   name: string;
-  type: 'table' | 'chart' | 'kpi' | 'report' | 'dashboard';
+  type: 'table' | 'chart' | 'kpi' | 'dashboard';
 };
 
 type DashboardItemRow = {
@@ -103,7 +103,7 @@ export default function DashboardEntryPage() {
         const nextLookup: Record<string, ArtifactItem> = {};
         for (const artifact of payload.artifacts || []) {
           const type = String(artifact.type || '');
-          if (!['table', 'chart', 'kpi', 'report', 'dashboard'].includes(type)) continue;
+          if (!['table', 'chart', 'kpi', 'dashboard'].includes(type)) continue;
           nextLookup[String(artifact.id)] = {
             id: String(artifact.id),
             name: String(artifact.name || artifact.id),

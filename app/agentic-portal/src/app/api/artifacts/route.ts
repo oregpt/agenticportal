@@ -4,7 +4,7 @@ import { createArtifactWithVersion, listArtifacts } from '@/server/artifacts';
 import type { ArtifactType } from '@/server/artifacts';
 
 function toArtifactType(input: string): ArtifactType | null {
-  return ['table', 'chart', 'dashboard', 'report', 'kpi'].includes(input) ? (input as ArtifactType) : null;
+  return ['table', 'chart', 'dashboard', 'kpi'].includes(input) ? (input as ArtifactType) : null;
 }
 
 export async function GET(request: NextRequest) {

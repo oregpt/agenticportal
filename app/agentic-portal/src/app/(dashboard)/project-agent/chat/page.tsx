@@ -335,7 +335,7 @@ export default function ProjectAgentChatPage() {
               : mode === 'add-chart'
                 ? `${nameBase} Chart`
                 : mode === 'add-kpi'
-                  ? `${nameBase} KPI`
+                  ? `${nameBase} Metric`
                   : `${nameBase} Query`,
           metadataJson: dataRun.querySpecDraft?.metadataJson || {
             rowCount: dataRun.trust.rowCount,
@@ -517,7 +517,7 @@ export default function ProjectAgentChatPage() {
                                   disabled={savingActionId === `${m.id}:add-kpi`}
                                 >
                                   {savingActionId === `${m.id}:add-kpi` ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-                                  Add KPI
+                                  Add Metric
                                 </Button>
                               ) : null}
                             </div>
@@ -585,7 +585,7 @@ export default function ProjectAgentChatPage() {
                 disabled={selectedMessageIds.length === 0}
                 onClick={() => openActionDialog('add-kpi', selectedMessageIds)}
               >
-                Add KPI
+                Add Metric
               </Button>
               {selectedMessageIds.length > 0 ? (
                 <Button

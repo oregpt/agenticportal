@@ -284,7 +284,7 @@ export default function WorkstreamsPage() {
                     onClick={() => router.push(`/workstreams/${ws.id}`)}
                     className="ml-auto flex items-center gap-2 text-muted-foreground group-hover:text-primary transition-colors"
                   >
-                    <span className="text-sm">Open canvas</span>
+                    <span className="text-sm">Open</span>
                     <ChevronRight className="w-4 h-4" />
                   </Button>
                 </div>

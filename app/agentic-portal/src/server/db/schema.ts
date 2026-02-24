@@ -202,7 +202,7 @@ export const artifacts = pgTable('artifacts', {
   id: varchar('id', { length: 64 }).primaryKey(),
   organizationId: varchar('organization_id', { length: 64 }).notNull(),
   projectId: varchar('project_id', { length: 64 }).notNull(),
-  type: varchar('type', { length: 32 }).notNull(), // table | chart | dashboard | report | kpi
+  type: varchar('type', { length: 32 }).notNull(), // table | chart | dashboard | kpi
   name: varchar('name', { length: 255 }).notNull(),
   description: text('description'),
   status: varchar('status', { length: 16 }).notNull().default('active'), // active | archived

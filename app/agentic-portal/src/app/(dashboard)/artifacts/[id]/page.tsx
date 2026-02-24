@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import GridLayout, { type Layout } from 'react-grid-layout';
 import { Badge } from '@/components/ui/badge';
@@ -32,7 +32,7 @@ import {
 type Artifact = {
   id: string;
   name: string;
-  type: 'table' | 'chart' | 'dashboard' | 'report' | 'kpi';
+  type: 'table' | 'chart' | 'dashboard' | 'kpi';
   status: string;
   description?: string | null;
   latestVersion: number;
@@ -221,6 +221,27 @@ export default function ArtifactDetailPage() {
   const [isRunning, setIsRunning] = useState(false);
   const [savingLayout, setSavingLayout] = useState(false);
   const [error, setError] = useState('');
+  const canvasRef = useRef<HTMLDivElement | null>(null);
+  const [canvasWidth, setCanvasWidth] = useState(1100);
+
+  useEffect(() => {
+    const node = canvasRef.current;
+    if (!node) return;
+
+    const measure = () => {
+      const width = Math.max(360, Math.floor(node.getBoundingClientRect().width));
+      setCanvasWidth(width);
+    };
+
+    measure();
+    const observer = new ResizeObserver(() => measure());
+    observer.observe(node);
+    window.addEventListener('resize', measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, []);
 
   const dashboardLayouts = useMemo(() => {
     return items.map((item, idx) => {
@@ -478,7 +499,7 @@ export default function ArtifactDetailPage() {
     if (!artifactId) return;
     try {
       if (addMode === 'direct') {
-        const name = directName.trim() || `New ${directType === 'kpi' ? 'KPI' : directType === 'chart' ? 'Chart' : 'Table'}`;
+        const name = directName.trim() || `New ${directType === 'kpi' ? 'Metric' : directType === 'chart' ? 'Chart' : 'Table'}`;
         const sqlText = generatedGuidedSql || directSqlText.trim();
         if (!directSourceId || !guidedTableName || !sqlText) {
           setError('Select a source and table for direct create.');
@@ -757,7 +778,7 @@ export default function ArtifactDetailPage() {
               <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading artifacts...</div>
             ) : items.length === 0 ? (
               <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
-                <p>No blocks yet. Add your first table/chart/KPI artifact.</p>
+                <p>No blocks yet. Add your first table/chart/metric artifact.</p>
                 {dataSources.length === 0 ? (
                   <div className="mt-3 space-y-2">
                     <p className="text-xs">No data sources are assigned to this project yet.</p>
@@ -773,37 +794,38 @@ export default function ArtifactDetailPage() {
                 )}
               </div>
             ) : (
-              <GridLayout
-                className="layout"
-                layout={dashboardLayouts}
-                gridConfig={{
-                  cols: 12,
-                  rowHeight: 48,
-                  margin: [12, 12],
-                  containerPadding: [0, 0],
-                  maxRows: Infinity,
-                }}
-                width={1100}
-                dragConfig={{
-                  enabled: true,
-                  handle: '.artifact-drag-handle',
-                }}
-                resizeConfig={{
-                  enabled: true,
-                  handles: ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'],
-                }}
-                onLayoutChange={(nextLayout: any) => {
-                  persistLayout(nextLayout as Layout);
-                }}
-              >
-                {items.map((item) => {
+              <div ref={canvasRef} className="w-full">
+                <GridLayout
+                  className="layout"
+                  layout={dashboardLayouts}
+                  gridConfig={{
+                    cols: 12,
+                    rowHeight: 48,
+                    margin: [12, 12],
+                    containerPadding: [0, 0],
+                    maxRows: Infinity,
+                  }}
+                  width={canvasWidth}
+                  dragConfig={{
+                    enabled: true,
+                    handle: '.artifact-drag-handle',
+                  }}
+                  resizeConfig={{
+                    enabled: true,
+                    handles: ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'],
+                  }}
+                  onLayoutChange={(nextLayout: any) => {
+                    persistLayout(nextLayout as Layout);
+                  }}
+                >
+                  {items.map((item) => {
                   const block = blocks[item.id];
                   const title = String(item.displayJson?.title || block?.artifact?.name || 'Artifact');
                   const type = block?.artifact?.type || 'table';
                   const rows = block?.rows || [];
                   const config = block?.version?.configJson || {};
                   return (
-                    <div key={item.id} className="rounded-lg border bg-card shadow-sm overflow-hidden">
+                    <div key={item.id} className="rounded-lg border bg-card shadow-sm overflow-hidden min-w-0 min-h-0">
                       <div className="flex items-center justify-between border-b bg-muted/40 px-3 py-2">
                         <div className="text-sm font-medium truncate">{title}</div>
                         <div className="flex items-center gap-1">
@@ -838,7 +860,7 @@ export default function ArtifactDetailPage() {
                           </Button>
                         </div>
                       </div>
-                      <div className="h-[calc(100%-42px)] p-2">
+                      <div className="h-[calc(100%-42px)] p-2 min-w-0 min-h-0 overflow-hidden">
                         {!block ? (
                               <div className="h-full flex items-center justify-center text-xs text-muted-foreground">Loading artifact...</div>
                         ) : type === 'kpi' ? (
@@ -847,7 +869,7 @@ export default function ArtifactDetailPage() {
                             <div className="text-xs text-muted-foreground mt-1">{String(config?.metricField || config?.aggregation || 'metric')}</div>
                           </div>
                         ) : type === 'table' ? (
-                          <div className="h-full overflow-auto">
+                          <div className="h-full overflow-auto min-w-0">
                             <table className="w-full text-xs">
                               <thead>
                                 <tr className="border-b">
@@ -868,11 +890,11 @@ export default function ArtifactDetailPage() {
                             </table>
                           </div>
                         ) : (
-                          <div className="h-full">
+                          <div className="h-full min-w-0 min-h-0 overflow-hidden">
                             {rows.length === 0 ? (
                               <div className="h-full flex items-center justify-center text-xs text-muted-foreground">No data</div>
                             ) : (
-                              <ResponsiveContainer width="100%" height="100%">
+                              <ResponsiveContainer width="99%" height="99%">
                                 {(() => {
                                   const chart = pickChartConfig(config, rows);
                                   if (chart.chartType === 'line') {
@@ -936,8 +958,9 @@ export default function ArtifactDetailPage() {
                       </div>
                     </div>
                   );
-                })}
-              </GridLayout>
+                  })}
+                </GridLayout>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -1016,7 +1039,7 @@ export default function ArtifactDetailPage() {
                   >
                     <option value="chart">Chart</option>
                     <option value="table">Table</option>
-                    <option value="kpi">KPI</option>
+                    <option value="kpi">Metric</option>
                   </select>
                 </div>
                 <div className="space-y-1">

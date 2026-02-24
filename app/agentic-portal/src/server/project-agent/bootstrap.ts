@@ -259,4 +259,7 @@ async function bootstrap(): Promise<void> {
   for (const stmt of indexes) {
     await db.execute(sql.raw(stmt)).catch(() => {});
   }
+
+  // Normalize legacy artifact type. Reports are now represented as tables.
+  await db.execute(sql`UPDATE artifacts SET type = 'table' WHERE type = 'report'`).catch(() => {});
 }

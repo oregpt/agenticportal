@@ -3,7 +3,18 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Bot, Database, LayoutDashboard, Loader2, PlusCircle, Table2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  Bot,
+  Database,
+  LayoutDashboard,
+  Loader2,
+  PlusCircle,
+  Table2,
+  Trash2,
+  Sparkles,
+  ChevronRight,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -26,6 +37,15 @@ type Workstream = {
   description?: string | null;
 };
 
+function artifactTypeLabel(node: PipelineNode): string {
+  const metadataType = String(node.metadata?.displayType || node.metadata?.artifactType || '').toLowerCase();
+  if (metadataType === 'kpi' || metadataType === 'metric') return 'Metric';
+  if (metadataType === 'report') return 'Table';
+  if (metadataType === 'chart') return 'Chart';
+  if (metadataType === 'table') return 'Table';
+  return 'Artifact';
+}
+
 export default function ProjectDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -35,88 +55,57 @@ export default function ProjectDetailPage() {
   const [nodes, setNodes] = useState<PipelineNode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreatingDashboard, setIsCreatingDashboard] = useState(false);
+  const [deletingId, setDeletingId] = useState('');
   const [error, setError] = useState('');
 
-  useEffect(() => {
+  async function loadProject() {
     if (!workstreamId) return;
-    let cancelled = false;
+    try {
+      setIsLoading(true);
+      setError('');
+      const res = await fetch(`/api/workstreams/${workstreamId}`);
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload?.error || 'Failed to load project');
+      setWorkstream(payload.workstream || null);
+      setNodes(payload.nodes || []);
+    } catch (e: any) {
+      setError(e?.message || 'Failed to load project');
+      setWorkstream(null);
+      setNodes([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
-    (async () => {
-      try {
-        setIsLoading(true);
-        setError('');
-        const res = await fetch(`/api/workstreams/${workstreamId}`);
-        const payload = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(payload?.error || 'Failed to load project');
-        if (!cancelled) {
-          setWorkstream(payload.workstream || null);
-          setNodes(payload.nodes || []);
-        }
-      } catch (e: any) {
-        if (!cancelled) {
-          setError(e?.message || 'Failed to load project');
-          setWorkstream(null);
-          setNodes([]);
-        }
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+  useEffect(() => {
+    void loadProject();
   }, [workstreamId]);
 
+  const sources = useMemo(() => nodes.filter((n) => n.type === 'datasource'), [nodes]);
   const dashboards = useMemo(() => nodes.filter((n) => n.type === 'dashboard'), [nodes]);
   const artifacts = useMemo(() => nodes.filter((n) => n.type === 'view'), [nodes]);
-  const sources = useMemo(() => nodes.filter((n) => n.type === 'datasource'), [nodes]);
-  const artifactCountByDashboard = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const artifact of artifacts) {
-      for (const parentId of artifact.parentIds || []) {
-        counts.set(parentId, (counts.get(parentId) || 0) + 1);
-      }
-    }
-    return counts;
-  }, [artifacts]);
-  const artifactListByDashboard = useMemo(() => {
-    const mapping = new Map<string, PipelineNode[]>();
-    for (const artifact of artifacts) {
-      for (const parentId of artifact.parentIds || []) {
-        const list = mapping.get(parentId) || [];
-        list.push(artifact);
-        mapping.set(parentId, list);
-      }
-    }
-    return mapping;
-  }, [artifacts]);
-  const checklist = useMemo(
-    () => [
-      {
-        id: 'sources',
-        title: 'Assign at least one data source',
-        done: sources.length > 0,
-        actionHref: `/datasources?workstreamId=${encodeURIComponent(workstreamId)}`,
-        actionLabel: 'Assign Sources',
-      },
-      {
-        id: 'dashboards',
-        title: 'Create your first dashboard',
-        done: dashboards.length > 0,
-        actionHref: '',
-        actionLabel: 'Create Dashboard',
-      },
-      {
-        id: 'artifacts',
-        title: 'Add at least one artifact block',
-        done: artifacts.length > 0,
-        actionHref: dashboards[0]?.id ? `/dashboard/${dashboards[0].id}` : '',
-        actionLabel: 'Open Dashboard',
-      },
-    ],
-    [artifacts.length, dashboards, sources.length, workstreamId]
+  const projectAgent = useMemo(
+    () => nodes.find((n) => n.type === 'output' && String(n.metadata?.type || '') === 'project_agent') || null,
+    [nodes]
   );
+
+  const dashboardById = useMemo(() => {
+    const map = new Map<string, PipelineNode>();
+    for (const dashboard of dashboards) map.set(dashboard.id, dashboard);
+    return map;
+  }, [dashboards]);
+
+  const dashboardsByArtifactId = useMemo(() => {
+    const map = new Map<string, PipelineNode[]>();
+    for (const dashboard of dashboards) {
+      for (const artifactId of dashboard.parentIds || []) {
+        const list = map.get(artifactId) || [];
+        list.push(dashboard);
+        map.set(artifactId, list);
+      }
+    }
+    return map;
+  }, [dashboards]);
 
   async function createDashboard() {
     if (!workstreamId) return;
@@ -130,19 +119,16 @@ export default function ProjectDetailPage() {
           projectId: workstreamId,
           type: 'dashboard',
           name: `Dashboard ${new Date().toLocaleString()}`,
-          description: 'Dashboard created from project page.',
+          description: 'Dashboard created from project canvas.',
           configJson: { mode: 'grid' },
           layoutJson: { columns: 12 },
         }),
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(payload?.error || 'Failed to create dashboard');
-      const createdId = payload?.artifact?.id as string | undefined;
-      if (createdId) {
-        router.push(`/dashboard/${createdId}`);
-        return;
-      }
-      throw new Error('Dashboard created but no id returned');
+      const createdId = String(payload?.artifact?.id || '');
+      if (!createdId) throw new Error('Dashboard created but no id returned');
+      router.push(`/dashboard/${createdId}`);
     } catch (e: any) {
       setError(e?.message || 'Failed to create dashboard');
     } finally {
@@ -150,10 +136,44 @@ export default function ProjectDetailPage() {
     }
   }
 
+  async function deleteSource(sourceId: string) {
+    const confirmed = window.confirm('Delete this data source?');
+    if (!confirmed) return;
+    try {
+      setDeletingId(sourceId);
+      setError('');
+      const res = await fetch(`/api/datasources/${sourceId}`, { method: 'DELETE' });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload?.error || 'Failed to delete data source');
+      await loadProject();
+    } catch (e: any) {
+      setError(e?.message || 'Failed to delete data source');
+    } finally {
+      setDeletingId('');
+    }
+  }
+
+  async function deleteArtifact(artifactId: string, label: string) {
+    const confirmed = window.confirm(`Delete ${label}?`);
+    if (!confirmed) return;
+    try {
+      setDeletingId(artifactId);
+      setError('');
+      const res = await fetch(`/api/artifacts/${artifactId}`, { method: 'DELETE' });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload?.error || `Failed to delete ${label}`);
+      await loadProject();
+    } catch (e: any) {
+      setError(e?.message || `Failed to delete ${label}`);
+    } finally {
+      setDeletingId('');
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="p-8 text-sm text-muted-foreground flex items-center gap-2">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading project...
+        <Loader2 className="h-4 w-4 animate-spin" /> Loading project canvas...
       </div>
     );
   }
@@ -171,7 +191,7 @@ export default function ProjectDetailPage() {
           </Link>
           <h1 className="text-2xl font-semibold">{workstream.name}</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {workstream.description || 'Create dashboards, then add artifacts manually or with the project agent.'}
+            Sources feed dashboards, dashboards contain artifacts, and Project Agent helps generate them.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -180,136 +200,187 @@ export default function ProjectDetailPage() {
             Create Dashboard
           </Button>
           <Button variant="outline" asChild>
-            <Link href={`/project-agent/chat?projectId=${encodeURIComponent(workstreamId)}`}>
-              <Bot className="h-4 w-4 mr-2" />
-              Open Project Agent
+            <Link href={`/project-agent?projectId=${encodeURIComponent(workstreamId)}`}>
+              <Bot className="h-4 w-4 mr-2" /> Configure Agent
             </Link>
           </Button>
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-3">
-        <Card>
-          <CardContent className="py-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs uppercase text-muted-foreground">Dashboards</p>
-              <p className="text-2xl font-semibold">{dashboards.length}</p>
-            </div>
-            <LayoutDashboard className="h-5 w-5 text-violet-500" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs uppercase text-muted-foreground">Artifacts</p>
-              <p className="text-2xl font-semibold">{artifacts.length}</p>
-            </div>
-            <Table2 className="h-5 w-5 text-amber-500" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="py-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs uppercase text-muted-foreground">Data Sources</p>
-              <p className="text-2xl font-semibold">{sources.length}</p>
-            </div>
-            <Database className="h-5 w-5 text-blue-500" />
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="overflow-hidden">
-        <div className="border-b px-4 py-3">
-          <h2 className="text-sm font-semibold">Project Setup Checklist</h2>
-          <p className="text-xs text-muted-foreground mt-1">
-            Complete these to get from project setup to a working dashboard.
-          </p>
-        </div>
-        <div className="divide-y">
-          {checklist.map((item) => (
-            <div key={item.id} className="flex items-center justify-between gap-3 px-4 py-3">
-              <div className="min-w-0">
-                <p className="text-sm font-medium">{item.title}</p>
-                <p className="text-xs text-muted-foreground">{item.done ? 'Complete' : 'Pending'}</p>
-              </div>
-              {item.done ? (
-                <Badge variant="default">Done</Badge>
-              ) : item.id === 'dashboards' ? (
-                <Button size="sm" onClick={() => void createDashboard()} disabled={isCreatingDashboard}>
-                  {isCreatingDashboard ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : null}
-                  {item.actionLabel}
-                </Button>
-              ) : (
-                <Button size="sm" variant="outline" asChild>
-                  <Link href={item.actionHref}>{item.actionLabel}</Link>
-                </Button>
-              )}
-            </div>
-          ))}
-        </div>
+      <Card>
+        <CardContent className="py-4 flex flex-wrap items-center gap-3 text-sm">
+          <div className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5">
+            <Database className="h-4 w-4 text-blue-500" /> Sources <Badge variant="secondary">{sources.length}</Badge>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <div className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5">
+            <LayoutDashboard className="h-4 w-4 text-violet-500" /> Dashboards <Badge variant="secondary">{dashboards.length}</Badge>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <div className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5">
+            <Table2 className="h-4 w-4 text-amber-500" /> Artifacts <Badge variant="secondary">{artifacts.length}</Badge>
+          </div>
+          <div className="ml-auto inline-flex items-center gap-2 rounded-md border px-3 py-1.5 bg-muted/30">
+            <Sparkles className="h-4 w-4 text-emerald-600" /> Project Agent
+            <Badge variant={projectAgent ? 'default' : 'outline'}>{projectAgent ? 'Configured' : 'Not Created'}</Badge>
+          </div>
+        </CardContent>
       </Card>
 
-      <Card className="overflow-hidden">
-        <div className="grid grid-cols-12 gap-3 border-b bg-muted/40 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          <div className="col-span-5">Dashboard</div>
-          <div className="col-span-2">Artifacts</div>
-          <div className="col-span-2">Status</div>
-          <div className="col-span-3 text-right">Actions</div>
-        </div>
-        <div className="divide-y">
-          {dashboards.length === 0 ? (
-            <div className="px-4 py-6 text-sm text-muted-foreground">No dashboards yet. Create your first dashboard to start collecting artifacts.</div>
-          ) : (
-            dashboards.map((dashboard) => (
-              <div key={dashboard.id} className="grid grid-cols-12 items-center gap-3 px-4 py-3 text-sm">
-                <div className="col-span-5 min-w-0">
-                  <Link href={`/dashboard/${dashboard.id}`} className="truncate font-medium hover:underline inline-flex items-center gap-2">
-                    <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
-                    {dashboard.name}
-                  </Link>
-                  {dashboard.description ? <p className="text-xs text-muted-foreground truncate mt-0.5">{dashboard.description}</p> : null}
-                  {(artifactListByDashboard.get(dashboard.id)?.length || 0) > 0 ? (
-                    <div className="mt-1.5 flex flex-wrap gap-1">
-                      {(artifactListByDashboard.get(dashboard.id) || []).slice(0, 3).map((artifact) => (
-                        <span key={artifact.id} className="inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] text-muted-foreground">
-                          {artifact.name}
-                        </span>
-                      ))}
-                      {(artifactListByDashboard.get(dashboard.id)?.length || 0) > 3 ? (
-                        <span className="inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] text-muted-foreground">
-                          +{(artifactListByDashboard.get(dashboard.id)?.length || 0) - 3} more
-                        </span>
-                      ) : null}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold">Sources</h2>
+              <Button size="sm" variant="outline" asChild>
+                <Link href={`/datasources?workstreamId=${encodeURIComponent(workstreamId)}`}>Add</Link>
+              </Button>
+            </div>
+            {sources.length === 0 ? <p className="text-xs text-muted-foreground">No sources assigned.</p> : null}
+            <div className="space-y-2">
+              {sources.map((source) => (
+                <div key={source.id} className="rounded-md border p-2">
+                  <p className="text-sm font-medium truncate">{source.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">{source.description || 'Data source'}</p>
+                  <div className="mt-2 flex items-center justify-end gap-2">
+                    <Button size="sm" variant="outline" asChild>
+                      <Link href={`/datasources/${source.id}`}>Open</Link>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-red-600 hover:text-red-700"
+                      onClick={() => void deleteSource(source.id)}
+                      disabled={deletingId === source.id}
+                    >
+                      {deletingId === source.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold">Dashboards</h2>
+              <Button size="sm" variant="outline" onClick={() => void createDashboard()} disabled={isCreatingDashboard}>
+                {isCreatingDashboard ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : null}
+                Add
+              </Button>
+            </div>
+            {dashboards.length === 0 ? <p className="text-xs text-muted-foreground">No dashboards yet.</p> : null}
+            <div className="space-y-2">
+              {dashboards.map((dashboard) => (
+                <div key={dashboard.id} className="rounded-md border p-2">
+                  <p className="text-sm font-medium truncate">{dashboard.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {(dashboard.parentIds || []).length} artifact{(dashboard.parentIds || []).length === 1 ? '' : 's'}
+                  </p>
+                  <div className="mt-2 flex items-center justify-end gap-2">
+                    <Button size="sm" variant="outline" asChild>
+                      <Link href={`/dashboard/${dashboard.id}`}>Open</Link>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-red-600 hover:text-red-700"
+                      onClick={() => void deleteArtifact(dashboard.id, 'dashboard')}
+                      disabled={deletingId === dashboard.id}
+                    >
+                      {deletingId === dashboard.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold">Artifacts</h2>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  if (!dashboards.length) {
+                    setError('Create a dashboard first, then add artifacts.');
+                    return;
+                  }
+                  router.push(`/dashboard/${dashboards[0].id}`);
+                }}
+              >
+                Add
+              </Button>
+            </div>
+            {artifacts.length === 0 ? <p className="text-xs text-muted-foreground">No artifacts yet.</p> : null}
+            <div className="space-y-2 max-h-[60vh] overflow-auto pr-1">
+              {artifacts.map((artifact) => {
+                const linkedDashboards = dashboardsByArtifactId.get(artifact.id) || [];
+                return (
+                  <div key={artifact.id} className="rounded-md border p-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium truncate">{artifact.name}</p>
+                      <Badge variant="outline">{artifactTypeLabel(artifact)}</Badge>
                     </div>
-                  ) : null}
-                </div>
-                <div className="col-span-2 text-xs text-muted-foreground">
-                  {artifactCountByDashboard.get(dashboard.id) || 0}
-                </div>
-                <div className="col-span-2">
-                  <Badge variant={dashboard.status === 'active' ? 'default' : dashboard.status === 'error' ? 'destructive' : 'secondary'}>
-                    {dashboard.status || 'active'}
-                  </Badge>
-                </div>
-                <div className="col-span-3 flex justify-end gap-2">
-                  <Button size="sm" variant="outline" asChild>
-                    <Link href={`/dashboard/${dashboard.id}`}>Open Dashboard</Link>
-                  </Button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </Card>
-
-      <div className="flex flex-wrap gap-2">
-        <Button variant="outline" asChild>
-          <Link href={`/artifacts?workstreamId=${encodeURIComponent(workstreamId)}`}>View All Artifacts</Link>
-        </Button>
-        <Button variant="outline" asChild>
-          <Link href={`/datasources?workstreamId=${encodeURIComponent(workstreamId)}`}>Manage Data Sources</Link>
-        </Button>
+                    {linkedDashboards.length > 0 ? (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {linkedDashboards.slice(0, 2).map((dashboard) => (
+                          <span key={dashboard.id} className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                            {dashboardById.get(dashboard.id)?.name || dashboard.id}
+                          </span>
+                        ))}
+                        {linkedDashboards.length > 2 ? (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">+{linkedDashboards.length - 2}</span>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground mt-1">Not added to a dashboard yet</p>
+                    )}
+                    <div className="mt-2 flex items-center justify-end gap-2">
+                      <Button size="sm" variant="outline" asChild>
+                        <Link href={`/artifacts/${artifact.id}`}>Open</Link>
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-red-600 hover:text-red-700"
+                        onClick={() => void deleteArtifact(artifact.id, 'artifact')}
+                        disabled={deletingId === artifact.id}
+                      >
+                        {deletingId === artifact.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      <Card>
+        <CardContent className="py-4 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium">Project Agent</p>
+            <p className="text-xs text-muted-foreground">
+              {projectAgent ? `${projectAgent.name} is ready to generate SQL-backed artifacts.` : 'No agent created yet for this project.'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" asChild>
+              <Link href={`/project-agent?projectId=${encodeURIComponent(workstreamId)}`}>Configure</Link>
+            </Button>
+            <Button asChild>
+              <Link href={`/project-agent/chat?projectId=${encodeURIComponent(workstreamId)}`}>Open</Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
     </div>

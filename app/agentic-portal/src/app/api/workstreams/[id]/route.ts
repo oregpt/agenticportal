@@ -20,6 +20,12 @@ interface DataSourceSchemaCache {
   tables?: CachedTable[];
 }
 
+function artifactTypeLabel(type: string) {
+  if (type === 'kpi') return 'metric';
+  if (type === 'report') return 'table';
+  return type;
+}
+
 // Helper to get current user from session
 async function getCurrentUser() {
   const cookieStore = await cookies();
@@ -108,6 +114,22 @@ export async function GET(
         )
       );
 
+    const [projectAgent] = await db
+      .select({
+        projectId: schema.projectAgents.projectId,
+        agentName: schema.projectAgents.agentName,
+        defaultModel: schema.projectAgents.defaultModel,
+        updatedAt: schema.projectAgents.updatedAt,
+      })
+      .from(schema.projectAgents)
+      .where(
+        and(
+          eq(schema.projectAgents.organizationId, orgId),
+          eq(schema.projectAgents.projectId, workstreamId)
+        )
+      )
+      .limit(1);
+
     const artifactIds = artifacts.map((artifact) => artifact.id);
     const artifactVersions = artifactIds.length
       ? await db
@@ -194,10 +216,10 @@ export async function GET(
         id: artifact.id,
         type: 'view' as const,
         name: artifact.name,
-        description: artifact.description || `${artifact.type} artifact`,
+        description: artifact.description || `${artifactTypeLabel(artifact.type)} artifact`,
         parentIds: sourceId ? [sourceId] : [],
         status: 'active' as const,
-        metadata: { artifactType: artifact.type },
+        metadata: { artifactType: artifact.type, displayType: artifactTypeLabel(artifact.type) },
       };
     });
 
@@ -245,6 +267,19 @@ export async function GET(
         status: output.status || 'active',
         metadata: { type: output.type, schedule: output.schedule },
       })),
+      ...(projectAgent
+        ? [
+            {
+              id: `project-agent:${projectAgent.projectId}`,
+              type: 'output' as const,
+              name: projectAgent.agentName || `${workstream.name} Agent`,
+              description: `Project agent (${projectAgent.defaultModel})`,
+              parentIds: [],
+              status: 'active' as const,
+              metadata: { type: 'project_agent', updatedAt: projectAgent.updatedAt },
+            },
+          ]
+        : []),
     ];
 
     return NextResponse.json({

@@ -10,7 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Loader2, Play, PlusCircle, Search, Trash2 } from 'lucide-react';
 
-type ArtifactType = 'table' | 'chart' | 'dashboard' | 'report' | 'kpi';
+type ArtifactType = 'table' | 'chart' | 'dashboard' | 'kpi';
 type WorkstreamOption = { id: string; name: string };
 type Artifact = {
   id: string;
@@ -28,9 +28,13 @@ const TYPE_LABELS: Array<{ value: ArtifactType | 'all'; label: string }> = [
   { value: 'table', label: 'Tables' },
   { value: 'chart', label: 'Charts' },
   { value: 'dashboard', label: 'Dashboards' },
-  { value: 'report', label: 'Reports' },
-  { value: 'kpi', label: 'KPIs' },
+  { value: 'kpi', label: 'Metrics' },
 ];
+
+function displayArtifactType(type: ArtifactType): string {
+  if (type === 'kpi') return 'metric';
+  return type;
+}
 
 function ArtifactsPageContent() {
   const router = useRouter();
@@ -136,7 +140,7 @@ function ArtifactsPageContent() {
         selectedWorkstreamId={selectedWorkstreamId}
         onWorkstreamChange={handleWorkstreamChange}
         pageLabel="Artifacts"
-        pageDescription="Agent-produced SQL-backed assets (tables, charts, dashboards, reports, KPIs)."
+        pageDescription="Agent-produced SQL-backed assets (tables, charts, dashboards, and metrics)."
         rightSlot={
           <Button asChild>
             <Link href="/project-agent/chat">
@@ -190,7 +194,7 @@ function ArtifactsPageContent() {
                   ) : null}
                 </div>
                 <div className="col-span-2">
-                  <Badge variant="outline">{artifact.type}</Badge>
+                  <Badge variant="outline">{displayArtifactType(artifact.type)}</Badge>
                 </div>
                 <div className="col-span-1 text-muted-foreground">v{artifact.latestVersion}</div>
                 <div className="col-span-2 text-xs text-muted-foreground">{new Date(artifact.updatedAt).toLocaleString()}</div>

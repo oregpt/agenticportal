@@ -1,4 +1,4 @@
-export type ArtifactType = 'table' | 'chart' | 'dashboard' | 'report' | 'kpi';
+export type ArtifactType = 'table' | 'chart' | 'dashboard' | 'kpi';
 export type ArtifactStatus = 'active' | 'archived';
 export type ArtifactRunStatus = 'running' | 'succeeded' | 'failed';
 export type ArtifactRunTrigger = 'chat' | 'manual' | 'api' | 'delivery';

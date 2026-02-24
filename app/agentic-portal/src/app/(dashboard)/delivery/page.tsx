@@ -156,7 +156,7 @@ export default function DeliveryPage() {
         if (!artifactRes.ok) throw new Error(artifactData?.error || 'Failed to load artifacts');
 
         const artifactRows: ArtifactOption[] = (artifactData.artifacts || [])
-          .filter((artifact: any) => ['table', 'chart', 'kpi', 'report', 'dashboard'].includes(String(artifact.type)))
+          .filter((artifact: any) => ['table', 'chart', 'kpi', 'dashboard'].includes(String(artifact.type)))
           .map((artifact: any) => ({
             id: String(artifact.id),
             name: String(artifact.name || artifact.id),
@@ -500,7 +500,7 @@ export default function DeliveryPage() {
                 id="delivery-name"
                 value={form.name}
                 onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
-                placeholder="Morning KPI Email"
+                placeholder="Morning Metric Email"
               />
             </div>
 
