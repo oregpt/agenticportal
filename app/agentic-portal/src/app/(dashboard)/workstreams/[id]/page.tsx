@@ -71,6 +71,52 @@ export default function ProjectDetailPage() {
   const dashboards = useMemo(() => nodes.filter((n) => n.type === 'dashboard'), [nodes]);
   const artifacts = useMemo(() => nodes.filter((n) => n.type === 'view'), [nodes]);
   const sources = useMemo(() => nodes.filter((n) => n.type === 'datasource'), [nodes]);
+  const artifactCountByDashboard = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const artifact of artifacts) {
+      for (const parentId of artifact.parentIds || []) {
+        counts.set(parentId, (counts.get(parentId) || 0) + 1);
+      }
+    }
+    return counts;
+  }, [artifacts]);
+  const artifactListByDashboard = useMemo(() => {
+    const mapping = new Map<string, PipelineNode[]>();
+    for (const artifact of artifacts) {
+      for (const parentId of artifact.parentIds || []) {
+        const list = mapping.get(parentId) || [];
+        list.push(artifact);
+        mapping.set(parentId, list);
+      }
+    }
+    return mapping;
+  }, [artifacts]);
+  const checklist = useMemo(
+    () => [
+      {
+        id: 'sources',
+        title: 'Assign at least one data source',
+        done: sources.length > 0,
+        actionHref: `/datasources?workstreamId=${encodeURIComponent(workstreamId)}`,
+        actionLabel: 'Assign Sources',
+      },
+      {
+        id: 'dashboards',
+        title: 'Create your first dashboard',
+        done: dashboards.length > 0,
+        actionHref: '',
+        actionLabel: 'Create Dashboard',
+      },
+      {
+        id: 'artifacts',
+        title: 'Add at least one artifact block',
+        done: artifacts.length > 0,
+        actionHref: dashboards[0]?.id ? `/artifacts/${dashboards[0].id}` : '',
+        actionLabel: 'Open Dashboard',
+      },
+    ],
+    [artifacts.length, dashboards, sources.length, workstreamId]
+  );
 
   async function createDashboard() {
     if (!workstreamId) return;
@@ -173,10 +219,42 @@ export default function ProjectDetailPage() {
       </div>
 
       <Card className="overflow-hidden">
+        <div className="border-b px-4 py-3">
+          <h2 className="text-sm font-semibold">Project Setup Checklist</h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            Complete these to get from project setup to a working dashboard.
+          </p>
+        </div>
+        <div className="divide-y">
+          {checklist.map((item) => (
+            <div key={item.id} className="flex items-center justify-between gap-3 px-4 py-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium">{item.title}</p>
+                <p className="text-xs text-muted-foreground">{item.done ? 'Complete' : 'Pending'}</p>
+              </div>
+              {item.done ? (
+                <Badge variant="default">Done</Badge>
+              ) : item.id === 'dashboards' ? (
+                <Button size="sm" onClick={() => void createDashboard()} disabled={isCreatingDashboard}>
+                  {isCreatingDashboard ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : null}
+                  {item.actionLabel}
+                </Button>
+              ) : (
+                <Button size="sm" variant="outline" asChild>
+                  <Link href={item.actionHref}>{item.actionLabel}</Link>
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card className="overflow-hidden">
         <div className="grid grid-cols-12 gap-3 border-b bg-muted/40 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           <div className="col-span-5">Dashboard</div>
-          <div className="col-span-3">Status</div>
-          <div className="col-span-4 text-right">Actions</div>
+          <div className="col-span-2">Artifacts</div>
+          <div className="col-span-2">Status</div>
+          <div className="col-span-3 text-right">Actions</div>
         </div>
         <div className="divide-y">
           {dashboards.length === 0 ? (
@@ -190,18 +268,32 @@ export default function ProjectDetailPage() {
                     {dashboard.name}
                   </Link>
                   {dashboard.description ? <p className="text-xs text-muted-foreground truncate mt-0.5">{dashboard.description}</p> : null}
+                  {(artifactListByDashboard.get(dashboard.id)?.length || 0) > 0 ? (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {(artifactListByDashboard.get(dashboard.id) || []).slice(0, 3).map((artifact) => (
+                        <span key={artifact.id} className="inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] text-muted-foreground">
+                          {artifact.name}
+                        </span>
+                      ))}
+                      {(artifactListByDashboard.get(dashboard.id)?.length || 0) > 3 ? (
+                        <span className="inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] text-muted-foreground">
+                          +{(artifactListByDashboard.get(dashboard.id)?.length || 0) - 3} more
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
-                <div className="col-span-3">
+                <div className="col-span-2 text-xs text-muted-foreground">
+                  {artifactCountByDashboard.get(dashboard.id) || 0}
+                </div>
+                <div className="col-span-2">
                   <Badge variant={dashboard.status === 'active' ? 'default' : dashboard.status === 'error' ? 'destructive' : 'secondary'}>
                     {dashboard.status || 'active'}
                   </Badge>
                 </div>
-                <div className="col-span-4 flex justify-end gap-2">
+                <div className="col-span-3 flex justify-end gap-2">
                   <Button size="sm" variant="outline" asChild>
-                    <Link href={`/artifacts/${dashboard.id}`}>Open</Link>
-                  </Button>
-                  <Button size="sm" variant="outline" asChild>
-                    <Link href={`/artifacts/${dashboard.id}/compose`}>Compose</Link>
+                    <Link href={`/artifacts/${dashboard.id}`}>Open Dashboard</Link>
                   </Button>
                 </div>
               </div>

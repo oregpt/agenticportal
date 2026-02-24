@@ -18,6 +18,7 @@ type Project = {
   name: string;
   description?: string | null;
   hasAgent?: boolean;
+  agentName?: string | null;
   defaultModel?: string | null;
   instructions?: string;
 };
@@ -102,10 +103,12 @@ export default function ProjectAgentPage() {
   });
   const [savingFeature, setSavingFeature] = useState('');
   const [agentInstructions, setAgentInstructions] = useState('');
+  const [agentName, setAgentName] = useState('');
   const [creatingAgent, setCreatingAgent] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [showNewAgentModal, setShowNewAgentModal] = useState(false);
   const [newAgentProjectId, setNewAgentProjectId] = useState('');
+  const [newAgentName, setNewAgentName] = useState('');
   const [newAgentInstructions, setNewAgentInstructions] = useState('');
   const [activeView, setActiveView] = useState<AgentViewMode>('none');
 
@@ -145,6 +148,7 @@ export default function ProjectAgentPage() {
     () => (projectFilterId ? projects.filter((p) => p.id === projectFilterId) : projects),
     [projects, projectFilterId]
   );
+  const createdAgents = useMemo(() => filteredProjects.filter((project) => !!project.hasAgent), [filteredProjects]);
   const enabledSources = sources.filter((s) => s.status !== 'disabled');
 
   function jumpToSection(id: string) {
@@ -178,6 +182,7 @@ export default function ProjectAgentPage() {
     }
 
     const settingsRes = await api(`/api/project-agent/settings?projectId=${encodeURIComponent(projectId)}`).catch(() => null);
+    setAgentName(settingsRes?.settings?.agentName || '');
     setAgentInstructions(settingsRes?.settings?.instructions || '');
   }
 
@@ -211,9 +216,9 @@ export default function ProjectAgentPage() {
         const p = await api('/api/project-agent/projects');
         const list: Project[] = p.projects || [];
         setProjects(list);
-        const initial = list[0]?.id || '';
+        const initial = list.find((project) => project.hasAgent)?.id || '';
         setSelectedProjectId(initial);
-        if (initial && list[0]?.hasAgent) await refreshAll(initial);
+        if (initial) await refreshAll(initial);
       } catch (e: any) {
         setError(e?.message || 'Failed to load Project Agent');
       }
@@ -362,32 +367,6 @@ export default function ProjectAgentPage() {
     }
   }
 
-  async function createAgentForProject() {
-    if (!selectedProjectId) return;
-    try {
-      setCreatingAgent(true);
-      await api('/api/project-agent/create', {
-        method: 'POST',
-        body: JSON.stringify({
-          projectId: selectedProjectId,
-          instructions: agentInstructions,
-          defaultModel: 'claude-sonnet-4-20250514',
-        }),
-      });
-      const p = await api('/api/project-agent/projects');
-      const list: Project[] = p.projects || [];
-      setProjects(list);
-      setActiveView('configure');
-      setFlash('Project Agent created.');
-      await refreshAll(selectedProjectId);
-      await refreshDataExtras(selectedProjectId, features);
-    } catch (e: any) {
-      setError(e?.message || 'Failed to create Project Agent');
-    } finally {
-      setCreatingAgent(false);
-    }
-  }
-
   async function createAgentFromModal() {
     if (!newAgentProjectId) return;
     try {
@@ -396,6 +375,7 @@ export default function ProjectAgentPage() {
         method: 'POST',
         body: JSON.stringify({
           projectId: newAgentProjectId,
+          agentName: newAgentName.trim() || `${projects.find((p) => p.id === newAgentProjectId)?.name || 'Project'} Agent`,
           instructions: newAgentInstructions,
           defaultModel: 'claude-sonnet-4-20250514',
         }),
@@ -404,8 +384,10 @@ export default function ProjectAgentPage() {
       const list: Project[] = p.projects || [];
       setProjects(list);
       setSelectedProjectId(newAgentProjectId);
+      setAgentName(newAgentName.trim() || `${projects.find((p) => p.id === newAgentProjectId)?.name || 'Project'} Agent`);
       setAgentInstructions(newAgentInstructions);
       setShowNewAgentModal(false);
+      setNewAgentName('');
       setNewAgentInstructions('');
       setActiveView('configure');
       setFlash('Project Agent created.');
@@ -427,6 +409,7 @@ export default function ProjectAgentPage() {
         method: 'PUT',
         body: JSON.stringify({
           projectId: selectedProjectId,
+          agentName,
           instructions: agentInstructions,
         }),
       });
@@ -623,6 +606,7 @@ export default function ProjectAgentPage() {
             onClick={() => {
               const candidate = projects.find((p) => !p.hasAgent) || projects[0];
               setNewAgentProjectId(candidate?.id || '');
+              setNewAgentName(candidate ? `${candidate.name} Agent` : '');
               setNewAgentInstructions('');
               setShowNewAgentModal(true);
             }}
@@ -643,18 +627,23 @@ export default function ProjectAgentPage() {
 
       <div style={section}>
         <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Project Agents</div>
+        {createdAgents.length === 0 ? (
+          <div style={{ border: '1px dashed #cbd5e1', borderRadius: 10, padding: 14, color: '#64748b', fontSize: 13 }}>
+            No agents created for this project scope yet.
+          </div>
+        ) : (
         <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
-          {filteredProjects.map((project) => {
+          {createdAgents.map((project) => {
             const hasAgent = !!project.hasAgent;
             return (
               <div key={project.id} style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: 12, backgroundColor: '#fff' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 14 }}>{project.name}</div>
-                    <div style={{ marginTop: 4, fontSize: 12, color: '#64748b' }}>{hasAgent ? 'Agent configured' : 'No agent yet'}</div>
+                    <div style={{ fontWeight: 700, fontSize: 14 }}>{project.agentName || `${project.name} Agent`}</div>
+                    <div style={{ marginTop: 4, fontSize: 12, color: '#64748b' }}>Project: {project.name}</div>
                   </div>
-                  <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 999, backgroundColor: hasAgent ? '#dcfce7' : '#f1f5f9', color: hasAgent ? '#166534' : '#475569' }}>
-                    {hasAgent ? 'Active' : 'Not Created'}
+                  <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 999, backgroundColor: '#dcfce7', color: '#166534' }}>
+                    Active
                   </span>
                 </div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
@@ -662,12 +651,6 @@ export default function ProjectAgentPage() {
                     style={btn('#334155')}
                     onClick={() => {
                       setSelectedProjectId(project.id);
-                      if (!hasAgent) {
-                        setNewAgentProjectId(project.id);
-                        setNewAgentInstructions(project.instructions || '');
-                        setShowNewAgentModal(true);
-                        return;
-                      }
                       setActiveView('configure');
                       setTimeout(() => jumpToSection('project-agent-settings'), 120);
                     }}
@@ -688,28 +671,10 @@ export default function ProjectAgentPage() {
             );
           })}
         </div>
+        )}
       </div>
 
-      {!selectedProject?.hasAgent ? (
-        <div style={section}>
-          <h3 style={{ marginTop: 0 }}>Create Project Agent</h3>
-          <p style={{ marginTop: 0, color: '#64748b', fontSize: 13 }}>
-            This project does not have a Project Agent yet. Create one to enable data chat, memory rules, workflows, and annotations.
-          </p>
-          <div style={{ marginBottom: 8, fontSize: 12, color: '#334155' }}>Instructions</div>
-          <textarea
-            style={{ ...field, minHeight: 140 }}
-            value={agentInstructions}
-            onChange={(e) => setAgentInstructions(e.target.value)}
-            placeholder="Optional: add project-specific analysis instructions for the agent."
-          />
-          <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-            <button style={btn('#0f766e')} onClick={createAgentForProject} disabled={creatingAgent}>
-              {creatingAgent ? 'Creating...' : 'Create Project Agent'}
-            </button>
-          </div>
-        </div>
-      ) : (
+      {selectedProject?.hasAgent && (
       <>
       {activeView === 'none' && (
         <div style={{ ...section, color: '#475569', fontSize: 13 }}>
@@ -719,6 +684,12 @@ export default function ProjectAgentPage() {
 
       {activeView === 'configure' && <div id="project-agent-settings" style={section}>
         <h3 style={{ marginTop: 0 }}>Agent Settings</h3>
+        <input
+          style={{ ...field, marginBottom: 8 }}
+          value={agentName}
+          onChange={(e) => setAgentName(e.target.value)}
+          placeholder="Agent name"
+        />
         <textarea
           style={{ ...field, minHeight: 100 }}
           value={agentInstructions}
@@ -1027,7 +998,12 @@ export default function ProjectAgentPage() {
             <select
               style={{ ...field, marginBottom: 8 }}
               value={newAgentProjectId}
-              onChange={(e) => setNewAgentProjectId(e.target.value)}
+              onChange={(e) => {
+                const nextProjectId = e.target.value;
+                setNewAgentProjectId(nextProjectId);
+                const project = projects.find((p) => p.id === nextProjectId);
+                if (project && !newAgentName.trim()) setNewAgentName(`${project.name} Agent`);
+              }}
             >
               <option value="">Select project...</option>
               {projects.map((p) => (
@@ -1036,6 +1012,13 @@ export default function ProjectAgentPage() {
                 </option>
               ))}
             </select>
+            <div style={{ marginBottom: 8, fontSize: 12, color: '#334155' }}>Agent Name</div>
+            <input
+              style={{ ...field, marginBottom: 8 }}
+              value={newAgentName}
+              onChange={(e) => setNewAgentName(e.target.value)}
+              placeholder="e.g., Revenue Analyst Agent"
+            />
             <div style={{ marginBottom: 8, fontSize: 12, color: '#334155' }}>Instructions</div>
             <textarea
               style={{ ...field, minHeight: 140 }}
@@ -1044,7 +1027,7 @@ export default function ProjectAgentPage() {
               placeholder="Optional: add project-specific analysis instructions for the agent."
             />
             <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
-              <button style={btn('#0f766e')} disabled={creatingAgent || !newAgentProjectId} onClick={createAgentFromModal}>
+              <button style={btn('#0f766e')} disabled={creatingAgent || !newAgentProjectId || !newAgentName.trim()} onClick={createAgentFromModal}>
                 {creatingAgent ? 'Creating...' : 'Create Agent'}
               </button>
               <button style={btn('#64748b')} disabled={creatingAgent} onClick={() => setShowNewAgentModal(false)}>

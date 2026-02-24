@@ -9,7 +9,6 @@ import {
   Database, 
   Table2, 
   LayoutDashboard,
-  FileOutput,
   ChevronRight,
   Calendar,
   Layers,
@@ -192,41 +191,6 @@ export default function WorkstreamsPage() {
         </Button>
       </div>
 
-      <div className="mb-6 rounded-xl border border-border bg-card p-4">
-        <h2 className="text-sm font-semibold mb-3">Primary Flow</h2>
-        <div className="flex flex-wrap gap-3">
-          <Button onClick={() => setShowCreateModal(true)}>Create Project</Button>
-          <Link href="/dashboard">
-            <Button variant="outline">Create Dashboard</Button>
-          </Link>
-          <Link href="/project-agent/chat">
-            <Button variant="outline">Create Artifact With Agent</Button>
-          </Link>
-          <Link href="/datasources">
-            <Button variant="outline">Utilities: Data Sources</Button>
-          </Link>
-        </div>
-      </div>
-
-      {/* Pipeline Legend */}
-      <div className="flex items-center gap-6 mb-8 text-sm text-muted-foreground bg-muted/50 rounded-lg px-4 py-3">
-        <span className="font-medium">The flow:</span>
-        <div className="flex items-center gap-2">
-          <Workflow className="w-4 h-4 text-blue-500" />
-          <span>Project</span>
-        </div>
-        <ChevronRight className="w-4 h-4" />
-        <div className="flex items-center gap-2">
-          <LayoutDashboard className="w-4 h-4 text-violet-500" />
-          <span>Dashboard</span>
-        </div>
-        <ChevronRight className="w-4 h-4" />
-        <div className="flex items-center gap-2">
-          <Table2 className="w-4 h-4 text-amber-500" />
-          <span>Artifacts</span>
-        </div>
-      </div>
-
       {/* Search */}
       <div className="relative mb-6">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -369,8 +333,10 @@ export default function WorkstreamsPage() {
 
           <div className="space-y-4 py-4">
             <div>
-              <label className="text-sm font-medium text-gray-700">Name</label>
+              <label htmlFor="project-name" className="text-sm font-medium text-gray-700">Name</label>
               <input
+                id="project-name"
+                data-testid="project-name-input"
                 type="text"
                 value={newWorkstream.name}
                 onChange={(e) => setNewWorkstream(ws => ({ ...ws, name: e.target.value }))}
@@ -380,8 +346,10 @@ export default function WorkstreamsPage() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700">Description (optional)</label>
+              <label htmlFor="project-description" className="text-sm font-medium text-gray-700">Description (optional)</label>
               <textarea
+                id="project-description"
+                data-testid="project-description-input"
                 value={newWorkstream.description}
                 onChange={(e) => setNewWorkstream(ws => ({ ...ws, description: e.target.value }))}
                 placeholder="What is this project for?"
@@ -390,10 +358,12 @@ export default function WorkstreamsPage() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Color</label>
-              <div className="flex gap-2 flex-wrap">
+              <label htmlFor="project-color" className="text-sm font-medium text-gray-700 mb-2 block">Color</label>
+              <div id="project-color" className="flex gap-2 flex-wrap">
                 {colorOptions.map((color) => (
                   <button
+                    type="button"
+                    data-testid={`project-color-${color.replace('#', '')}`}
                     key={color}
                     onClick={() => setNewWorkstream(ws => ({ ...ws, color }))}
                     className={`w-8 h-8 rounded-lg transition-all ${
@@ -411,6 +381,7 @@ export default function WorkstreamsPage() {
               </Button>
               <Button 
                 className="flex-1" 
+                data-testid="create-project-submit"
                 onClick={handleCreate}
                 disabled={!newWorkstream.name || isCreating}
               >

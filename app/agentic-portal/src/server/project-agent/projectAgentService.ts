@@ -70,6 +70,7 @@ export async function listProjectAgents(organizationId: string) {
     return {
       ...project,
       hasAgent: !!agent,
+      agentName: agent?.agentName || '',
       defaultModel: agent?.defaultModel || null,
       instructions: agent?.instructions || '',
       createdAt: agent?.createdAt || null,
@@ -80,6 +81,7 @@ export async function listProjectAgents(organizationId: string) {
 export async function createProjectAgent(input: {
   projectId: string;
   organizationId: string;
+  agentName?: string;
   defaultModel?: string;
   instructions?: string;
 }) {
@@ -105,6 +107,7 @@ export async function createProjectAgent(input: {
     .values({
       projectId: input.projectId,
       organizationId: input.organizationId,
+      agentName: (input.agentName || '').trim() || null,
       defaultModel: input.defaultModel || 'claude-sonnet-4-20250514',
       instructions: (input.instructions || '').trim(),
       features: DEFAULT_FEATURES,
@@ -118,6 +121,7 @@ export async function createProjectAgent(input: {
 export async function getProjectAgentSettings(projectId: string, organizationId: string) {
   const agent = await assertProjectAgent(projectId, organizationId);
   return {
+    agentName: agent.agentName || '',
     defaultModel: agent.defaultModel || 'claude-sonnet-4-20250514',
     instructions: agent.instructions || '',
   };
@@ -126,10 +130,12 @@ export async function getProjectAgentSettings(projectId: string, organizationId:
 export async function updateProjectAgentSettings(input: {
   projectId: string;
   organizationId: string;
+  agentName?: string;
   defaultModel?: string;
   instructions?: string;
 }) {
   const patch: Record<string, unknown> = { updatedAt: new Date() };
+  if (typeof input.agentName === 'string') patch.agentName = input.agentName.trim() || null;
   if (typeof input.defaultModel === 'string' && input.defaultModel.trim()) patch.defaultModel = input.defaultModel.trim();
   if (typeof input.instructions === 'string') patch.instructions = input.instructions;
 
@@ -140,6 +146,7 @@ export async function updateProjectAgentSettings(input: {
     .returning();
   if (!rows[0]) throw new Error('Project agent not configured. Create one first.');
   return {
+    agentName: rows[0].agentName || '',
     defaultModel: rows[0].defaultModel || 'claude-sonnet-4-20250514',
     instructions: rows[0].instructions || '',
   };

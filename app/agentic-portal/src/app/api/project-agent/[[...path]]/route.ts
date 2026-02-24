@@ -256,11 +256,12 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ pat
     }
 
     if (seg1 === 'settings') {
-      const { projectId, defaultModel, instructions } = await request.json();
+      const { projectId, agentName, defaultModel, instructions } = await request.json();
       if (!projectId) return badRequest('projectId is required');
       const settings = await updateProjectAgentSettings({
         projectId,
         organizationId: user.organizationId!,
+        agentName,
         defaultModel,
         instructions,
       });
@@ -420,8 +421,9 @@ export async function POST(request: NextRequest, context: { params: Promise<{ pa
     }
 
     if (seg1 === 'create') {
-      const { projectId, defaultModel, instructions } = body as {
+      const { projectId, agentName, defaultModel, instructions } = body as {
         projectId: string;
+        agentName?: string;
         defaultModel?: string;
         instructions?: string;
       };
@@ -429,6 +431,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ pa
       const agent = await createProjectAgent({
         projectId,
         organizationId: user.organizationId!,
+        agentName,
         defaultModel,
         instructions,
       });

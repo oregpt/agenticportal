@@ -76,9 +76,50 @@ type DataSourceOption = {
   id: string;
   name: string;
   type: string;
+  organizationId: string;
+  tables: Array<{
+    name: string;
+    columns: Array<{ name: string; type?: string }>;
+  }>;
 };
 
 const CHART_COLORS = ['#0f766e', '#2563eb', '#9333ea', '#ea580c', '#dc2626'];
+
+function parseSourceTables(schemaCache: unknown): Array<{ name: string; columns: Array<{ name: string; type?: string }> }> {
+  if (!schemaCache || typeof schemaCache !== 'object') return [];
+  const rawTables = (schemaCache as { tables?: unknown[] }).tables;
+  if (!Array.isArray(rawTables)) return [];
+  const parsed: Array<{ name: string; columns: Array<{ name: string; type?: string }> }> = [];
+  for (const table of rawTables) {
+    if (!table || typeof table !== 'object') continue;
+    const typedTable = table as { name?: unknown; columns?: unknown[] };
+    const tableName = typeof typedTable.name === 'string' ? typedTable.name : '';
+    if (!tableName) continue;
+    const columns: Array<{ name: string; type?: string }> = [];
+    if (Array.isArray(typedTable.columns)) {
+      for (const column of typedTable.columns) {
+        if (!column || typeof column !== 'object') continue;
+        const typedColumn = column as { name?: unknown; type?: unknown };
+        const columnName = typeof typedColumn.name === 'string' ? typedColumn.name : '';
+        if (!columnName) continue;
+        columns.push({
+          name: columnName,
+          type: typeof typedColumn.type === 'string' ? typedColumn.type : undefined,
+        });
+      }
+    }
+    parsed.push({ name: tableName, columns });
+  }
+  return parsed;
+}
+
+function quoteIdentifier(value: string): string {
+  return `\`${value.replace(/`/g, '')}\``;
+}
+
+function toSqlLiteral(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`;
+}
 
 function normalizePosition(position: Record<string, any> | null | undefined, index: number): {
   i: string;
@@ -149,6 +190,14 @@ export default function ArtifactDetailPage() {
   const [directDescription, setDirectDescription] = useState('');
   const [directSourceId, setDirectSourceId] = useState('');
   const [directSqlText, setDirectSqlText] = useState('');
+  const [guidedTableName, setGuidedTableName] = useState('');
+  const [guidedColumns, setGuidedColumns] = useState<string[]>([]);
+  const [guidedFilterColumn, setGuidedFilterColumn] = useState('');
+  const [guidedFilterValue, setGuidedFilterValue] = useState('');
+  const [previewRows, setPreviewRows] = useState<Array<Record<string, unknown>>>([]);
+  const [previewColumns, setPreviewColumns] = useState<string[]>([]);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [previewError, setPreviewError] = useState('');
   const [directChartType, setDirectChartType] = useState<'bar' | 'line' | 'area' | 'pie'>('bar');
   const [directChartXField, setDirectChartXField] = useState('');
   const [directChartYField, setDirectChartYField] = useState('');
@@ -177,6 +226,29 @@ export default function ArtifactDetailPage() {
       return { ...pos, i: item.id };
     });
   }, [items]);
+  const selectedDirectSource = useMemo(
+    () => dataSources.find((source) => source.id === directSourceId) || null,
+    [dataSources, directSourceId]
+  );
+  const guidedTables = selectedDirectSource?.tables || [];
+  const selectedGuidedTable = useMemo(
+    () => guidedTables.find((table) => table.name === guidedTableName) || null,
+    [guidedTables, guidedTableName]
+  );
+  const guidedTableColumns = selectedGuidedTable?.columns || [];
+  const generatedGuidedSql = useMemo(() => {
+    if (!selectedGuidedTable) return '';
+    const selected = guidedColumns.length ? guidedColumns : ['*'];
+    const selectClause =
+      selected.length === 1 && selected[0] === '*'
+        ? '*'
+        : selected.map((column) => quoteIdentifier(column)).join(', ');
+    const whereClause =
+      guidedFilterColumn && guidedFilterValue.trim()
+        ? ` WHERE ${quoteIdentifier(guidedFilterColumn)} = ${toSqlLiteral(guidedFilterValue.trim())}`
+        : '';
+    return `SELECT ${selectClause} FROM ${quoteIdentifier(selectedGuidedTable.name)}${whereClause} LIMIT 200`;
+  }, [selectedGuidedTable, guidedColumns, guidedFilterColumn, guidedFilterValue]);
 
   async function fetchChildBlock(item: DashboardItem): Promise<ChildBlock | null> {
     try {
@@ -243,10 +315,18 @@ export default function ArtifactDetailPage() {
           id: String(ds.id),
           name: String(ds.name || ds.id),
           type: String(ds.type || 'source'),
+          organizationId: String(ds.organizationId || ''),
+          tables: parseSourceTables(ds.schemaCache),
         }));
         setDataSources(nextSources);
         if (!directSourceId && nextSources.length > 0) {
           setDirectSourceId(nextSources[0]!.id);
+          const firstTable = nextSources[0]?.tables[0];
+          if (firstTable) {
+            const starterColumns = firstTable.columns.slice(0, 3).map((column) => column.name);
+            setGuidedTableName(firstTable.name);
+            setGuidedColumns(starterColumns.length ? starterColumns : ['*']);
+          }
         }
 
         setLoadingBlocks(true);
@@ -262,6 +342,10 @@ export default function ArtifactDetailPage() {
         setItems([]);
         setBlocks({});
         setDataSources([]);
+        setGuidedTableName('');
+        setGuidedColumns([]);
+        setPreviewRows([]);
+        setPreviewColumns([]);
       }
     } catch (e: any) {
       setError(e?.message || 'Failed to load artifact');
@@ -277,6 +361,88 @@ export default function ArtifactDetailPage() {
   useEffect(() => {
     refresh();
   }, [artifactId]);
+
+  useEffect(() => {
+    if (!selectedDirectSource) return;
+    if (!guidedTableName) {
+      const firstTable = selectedDirectSource.tables[0];
+      if (!firstTable) return;
+      setGuidedTableName(firstTable.name);
+      const firstColumns = firstTable.columns.slice(0, 3).map((column) => column.name);
+      setGuidedColumns(firstColumns.length ? firstColumns : ['*']);
+    }
+  }, [selectedDirectSource, guidedTableName]);
+
+  useEffect(() => {
+    if (!selectedGuidedTable) return;
+    const available = new Set(selectedGuidedTable.columns.map((column) => column.name));
+    setGuidedColumns((prev) => {
+      const next = prev.filter((col) => col === '*' || available.has(col));
+      if (next.length > 0) return next;
+      const seed = selectedGuidedTable.columns.slice(0, 3).map((column) => column.name);
+      return seed.length ? seed : ['*'];
+    });
+    setGuidedFilterColumn((prev) => (prev && available.has(prev) ? prev : ''));
+  }, [selectedGuidedTable]);
+
+  function resetGuidedState(nextSourceId?: string) {
+    const sourceId = nextSourceId ?? directSourceId;
+    const source = dataSources.find((ds) => ds.id === sourceId) || null;
+    const firstTable = source?.tables[0]?.name || '';
+    const firstColumns = source?.tables[0]?.columns?.slice(0, 3).map((column) => column.name) || [];
+    setGuidedTableName(firstTable);
+    setGuidedColumns(firstColumns.length ? firstColumns : ['*']);
+    setGuidedFilterColumn('');
+    setGuidedFilterValue('');
+    setPreviewRows([]);
+    setPreviewColumns([]);
+    setPreviewError('');
+    if (!directSqlText.trim() && source?.tables[0]) {
+      const seedColumns = firstColumns.length ? firstColumns.map((column) => quoteIdentifier(column)).join(', ') : '*';
+      setDirectSqlText(`SELECT ${seedColumns} FROM ${quoteIdentifier(source.tables[0].name)} LIMIT 200`);
+    }
+  }
+
+  function onChangeSource(sourceId: string) {
+    setDirectSourceId(sourceId);
+    resetGuidedState(sourceId);
+  }
+
+  async function previewGuidedSql() {
+    if (!selectedDirectSource || !generatedGuidedSql) {
+      setPreviewError('Select a source and table first.');
+      return;
+    }
+    setIsPreviewing(true);
+    setPreviewError('');
+    try {
+      const res = await fetch(
+        `/api/datasources/${encodeURIComponent(selectedDirectSource.id)}/query?organizationId=${encodeURIComponent(
+          selectedDirectSource.organizationId
+        )}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sql: generatedGuidedSql, limit: 100 }),
+        }
+      );
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(payload?.error || payload?.details || 'Preview failed');
+      }
+      const columns = Array.isArray(payload?.result?.columns) ? payload.result.columns.map((col: any) => String(col.name || col)) : [];
+      const rows = Array.isArray(payload?.result?.rows) ? payload.result.rows : [];
+      setPreviewColumns(columns);
+      setPreviewRows(rows);
+      setDirectSqlText(generatedGuidedSql);
+    } catch (e: any) {
+      setPreviewRows([]);
+      setPreviewColumns([]);
+      setPreviewError(e?.message || 'Preview failed');
+    } finally {
+      setIsPreviewing(false);
+    }
+  }
 
   async function runNow() {
     if (!artifactId) return;
@@ -303,9 +469,9 @@ export default function ArtifactDetailPage() {
     try {
       if (addMode === 'direct') {
         const name = directName.trim() || `New ${directType === 'kpi' ? 'KPI' : directType === 'chart' ? 'Chart' : 'Table'}`;
-        const sqlText = directSqlText.trim();
-        if (!directSourceId || !sqlText) {
-          setError('Source and SQL are required for direct create.');
+        const sqlText = generatedGuidedSql || directSqlText.trim();
+        if (!directSourceId || !guidedTableName || !sqlText) {
+          setError('Select a source and table for direct create.');
           return;
         }
 
@@ -362,13 +528,17 @@ export default function ArtifactDetailPage() {
           }),
         });
         const payload = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(payload?.error || 'Failed to create block');
+        if (!res.ok) throw new Error(payload?.error || 'Failed to create artifact');
 
         setIsAddOpen(false);
         setTitleOverride('');
         setDirectName('');
         setDirectDescription('');
         setDirectSqlText('');
+        setGuidedFilterColumn('');
+        setGuidedFilterValue('');
+        setPreviewRows([]);
+        setPreviewColumns([]);
         await refresh();
         return;
       }
@@ -383,13 +553,13 @@ export default function ArtifactDetailPage() {
         }),
       });
       const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(payload?.error || 'Failed to add block');
+      if (!res.ok) throw new Error(payload?.error || 'Failed to add artifact');
       setIsAddOpen(false);
       setSelectedArtifactId('');
       setTitleOverride('');
       await refresh();
     } catch (e: any) {
-      setError(e?.message || 'Failed to add block');
+      setError(e?.message || 'Failed to add artifact');
     }
   }
 
@@ -401,10 +571,10 @@ export default function ArtifactDetailPage() {
         body: JSON.stringify({}),
       });
       const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(payload?.error || 'Failed to remove block');
+      if (!res.ok) throw new Error(payload?.error || 'Failed to remove artifact');
       await refresh();
     } catch (e: any) {
-      setError(e?.message || 'Failed to remove block');
+      setError(e?.message || 'Failed to remove artifact');
     }
   }
 
@@ -480,7 +650,7 @@ export default function ArtifactDetailPage() {
         }),
       });
       const versionPayload = await versionRes.json().catch(() => ({}));
-      if (!versionRes.ok) throw new Error(versionPayload?.error || 'Failed to save block config');
+      if (!versionRes.ok) throw new Error(versionPayload?.error || 'Failed to save artifact config');
 
       const itemRes = await fetch(`/api/artifacts/${artifactId}/items/${itemId}`, {
         method: 'PUT',
@@ -497,7 +667,7 @@ export default function ArtifactDetailPage() {
       setEditingItemId('');
       await refresh();
     } catch (e: any) {
-      setError(e?.message || 'Failed to save block settings');
+      setError(e?.message || 'Failed to save artifact settings');
     }
   }
 
@@ -554,7 +724,7 @@ export default function ArtifactDetailPage() {
           {isDashboard ? (
             <Button variant="outline" onClick={() => setIsAddOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              Add Block
+              Add Artifact
             </Button>
           ) : null}
           <Button onClick={runNow} disabled={isRunning}>
@@ -569,15 +739,28 @@ export default function ArtifactDetailPage() {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle>Dashboard Canvas</CardTitle>
-              <div className="text-xs text-muted-foreground">{savingLayout ? 'Saving layout...' : `${items.length} block(s)`}</div>
+              <div className="text-xs text-muted-foreground">{savingLayout ? 'Saving layout...' : `${items.length} artifact(s)`}</div>
             </div>
           </CardHeader>
           <CardContent>
             {loadingBlocks ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading blocks...</div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading artifacts...</div>
             ) : items.length === 0 ? (
               <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
-                No blocks yet. Click "Add Block" to add table/chart/KPI artifacts.
+                <p>No blocks yet. Add your first table/chart/KPI artifact.</p>
+                {dataSources.length === 0 ? (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-xs">No data sources are assigned to this project yet.</p>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/datasources?workstreamId=${encodeURIComponent(data.artifact.projectId)}`}>Assign Data Sources</Link>
+                    </Button>
+                  </div>
+                ) : (
+                  <Button className="mt-3" size="sm" variant="outline" onClick={() => setIsAddOpen(true)}>
+                    <Plus className="h-3.5 w-3.5 mr-1.5" />
+                    Add Artifact
+                  </Button>
+                )}
               </div>
             ) : (
               <GridLayout
@@ -605,7 +788,7 @@ export default function ArtifactDetailPage() {
               >
                 {items.map((item) => {
                   const block = blocks[item.id];
-                  const title = String(item.displayJson?.title || block?.artifact?.name || 'Block');
+                  const title = String(item.displayJson?.title || block?.artifact?.name || 'Artifact');
                   const type = block?.artifact?.type || 'table';
                   const rows = block?.rows || [];
                   const config = block?.version?.configJson || {};
@@ -614,7 +797,7 @@ export default function ArtifactDetailPage() {
                       <div className="flex items-center justify-between border-b bg-muted/40 px-3 py-2">
                         <div className="text-sm font-medium truncate">{title}</div>
                         <div className="flex items-center gap-1">
-                          <div className="artifact-drag-handle text-slate-400 hover:text-slate-700 cursor-move px-1" title="Drag block">
+                          <div className="artifact-drag-handle text-slate-400 hover:text-slate-700 cursor-move px-1" title="Drag artifact">
                             <GripVertical className="h-3.5 w-3.5" />
                           </div>
                           <Badge variant="outline" className="text-[10px]">{type}</Badge>
@@ -647,7 +830,7 @@ export default function ArtifactDetailPage() {
                       </div>
                       <div className="h-[calc(100%-42px)] p-2">
                         {!block ? (
-                          <div className="h-full flex items-center justify-center text-xs text-muted-foreground">Loading block...</div>
+                              <div className="h-full flex items-center justify-center text-xs text-muted-foreground">Loading artifact...</div>
                         ) : type === 'kpi' ? (
                           <div className="h-full flex flex-col items-center justify-center">
                             <div className="text-3xl font-semibold">{metricValue(config, rows)}</div>
@@ -784,7 +967,7 @@ export default function ArtifactDetailPage() {
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Block To Dashboard</DialogTitle>
+            <DialogTitle>Add Artifact To Dashboard</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="flex gap-2">
@@ -815,7 +998,12 @@ export default function ArtifactDetailPage() {
               <>
                 <div className="space-y-1">
                   <Label>Type</Label>
-                  <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={directType} onChange={(e) => setDirectType(e.target.value as 'table' | 'chart' | 'kpi')}>
+                  <select
+                    data-testid="add-block-type-select"
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={directType}
+                    onChange={(e) => setDirectType(e.target.value as 'table' | 'chart' | 'kpi')}
+                  >
                     <option value="chart">Chart</option>
                     <option value="table">Table</option>
                     <option value="kpi">KPI</option>
@@ -823,25 +1011,117 @@ export default function ArtifactDetailPage() {
                 </div>
                 <div className="space-y-1">
                   <Label>Name</Label>
-                  <Input value={directName} onChange={(e) => setDirectName(e.target.value)} placeholder="e.g., Revenue By Month" />
+                  <Input data-testid="add-block-name-input" value={directName} onChange={(e) => setDirectName(e.target.value)} placeholder="e.g., Revenue By Month" />
                 </div>
                 <div className="space-y-1">
                   <Label>Source</Label>
-                  <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={directSourceId} onChange={(e) => setDirectSourceId(e.target.value)}>
+                  <select
+                    data-testid="add-block-source-select"
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={directSourceId}
+                    onChange={(e) => onChangeSource(e.target.value)}
+                  >
                     <option value="">Select source</option>
                     {dataSources.map((ds) => (
                       <option key={ds.id} value={ds.id}>{ds.name} ({ds.type})</option>
                     ))}
                   </select>
                 </div>
-                <div className="space-y-1">
-                  <Label>SQL</Label>
-                  <textarea
-                    className="min-h-[110px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    value={directSqlText}
-                    onChange={(e) => setDirectSqlText(e.target.value)}
-                    placeholder="SELECT * FROM your_table LIMIT 100"
-                  />
+                <div className="space-y-3 rounded-md border p-3">
+                  <p className="text-xs text-muted-foreground">
+                    Direct create uses a table from a project-connected data source.
+                  </p>
+                    <div className="space-y-1">
+                      <Label>Table</Label>
+                      <select
+                        className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                        value={guidedTableName}
+                        onChange={(e) => {
+                          setGuidedTableName(e.target.value);
+                          setPreviewRows([]);
+                          setPreviewColumns([]);
+                          setPreviewError('');
+                        }}
+                      >
+                        <option value="">Select table</option>
+                        {guidedTables.map((table) => (
+                          <option key={table.name} value={table.name}>{table.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Columns</Label>
+                      <div className="max-h-32 overflow-auto rounded-md border p-2 text-xs">
+                        {guidedTableColumns.length === 0 ? (
+                          <p className="text-muted-foreground">No columns available.</p>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {guidedTableColumns.map((column) => (
+                              <label key={column.name} className="inline-flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={guidedColumns.includes(column.name)}
+                                  onChange={(e) => {
+                                    setGuidedColumns((prev) =>
+                                      e.target.checked ? [...new Set([...prev.filter((c) => c !== '*'), column.name])] : prev.filter((c) => c !== column.name)
+                                    );
+                                  }}
+                                />
+                                <span>{column.name}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label>Filter Column (optional)</Label>
+                        <select
+                          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                          value={guidedFilterColumn}
+                          onChange={(e) => setGuidedFilterColumn(e.target.value)}
+                        >
+                          <option value="">None</option>
+                          {guidedTableColumns.map((column) => (
+                            <option key={column.name} value={column.name}>{column.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Filter Value</Label>
+                        <Input value={guidedFilterValue} onChange={(e) => setGuidedFilterValue(e.target.value)} placeholder="e.g., 2025-01" />
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button type="button" size="sm" variant="outline" onClick={() => void previewGuidedSql()} disabled={isPreviewing || !generatedGuidedSql || !selectedDirectSource}>
+                        {isPreviewing ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
+                        Preview
+                      </Button>
+                    </div>
+                    {previewError ? <p className="text-xs text-red-600">{previewError}</p> : null}
+                    {previewRows.length > 0 ? (
+                      <div className="max-h-40 overflow-auto rounded-md border">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="border-b bg-muted/40">
+                              {previewColumns.map((column) => (
+                                <th key={column} className="px-2 py-1 text-left font-medium">{column}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {previewRows.slice(0, 8).map((row, rowIdx) => (
+                              <tr key={rowIdx} className="border-b last:border-b-0">
+                                {previewColumns.map((column) => (
+                                  <td key={`${rowIdx}-${column}`} className="px-2 py-1">{String((row as Record<string, unknown>)[column] ?? '')}</td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : null}
                 </div>
                 {directType === 'chart' ? (
                   <>
@@ -898,15 +1178,16 @@ export default function ArtifactDetailPage() {
             )}
             <div className="space-y-1">
               <Label>Title Override (optional)</Label>
-              <Input value={titleOverride} onChange={(e) => setTitleOverride(e.target.value)} placeholder="Custom block title" />
+              <Input value={titleOverride} onChange={(e) => setTitleOverride(e.target.value)} placeholder="Custom artifact title" />
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
               <Button
+                data-testid="add-block-submit"
                 onClick={addBlock}
-                disabled={addMode === 'existing' ? !selectedArtifactId : !directSourceId || !directSqlText.trim()}
+                disabled={addMode === 'existing' ? !selectedArtifactId : !directSourceId || !guidedTableName}
               >
-                Add Block
+                Add Artifact
               </Button>
             </div>
           </div>
@@ -916,7 +1197,7 @@ export default function ArtifactDetailPage() {
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Block Settings</DialogTitle>
+            <DialogTitle>Edit Artifact Settings</DialogTitle>
           </DialogHeader>
           {editingItemId && blocks[editingItemId] ? (
             <div className="space-y-3">

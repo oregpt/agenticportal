@@ -15,6 +15,7 @@ async function bootstrap(): Promise<void> {
     CREATE TABLE IF NOT EXISTS project_agents (
       project_id VARCHAR(64) PRIMARY KEY,
       organization_id VARCHAR(64) NOT NULL,
+      agent_name VARCHAR(255),
       default_model VARCHAR(128) NOT NULL DEFAULT 'claude-sonnet-4-20250514',
       instructions TEXT,
       features JSONB,
@@ -23,6 +24,7 @@ async function bootstrap(): Promise<void> {
     )
   `);
   await db.execute(sql`ALTER TABLE project_agents ADD COLUMN IF NOT EXISTS instructions TEXT`).catch(() => {});
+  await db.execute(sql`ALTER TABLE project_agents ADD COLUMN IF NOT EXISTS agent_name VARCHAR(255)`).catch(() => {});
 
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS project_agent_source_meta (

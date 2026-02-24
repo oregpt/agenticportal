@@ -259,6 +259,7 @@ export const chatMessages = pgTable('chat_messages', {
 export const projectAgents = pgTable('project_agents', {
   projectId: varchar('project_id', { length: 64 }).primaryKey(), // workstream.id
   organizationId: varchar('organization_id', { length: 64 }).notNull(),
+  agentName: varchar('agent_name', { length: 255 }),
   defaultModel: varchar('default_model', { length: 128 }).notNull().default('claude-sonnet-4-20250514'),
   instructions: text('instructions'),
   features: jsonb('features'), // dataQueryRuns/dataMemoryRules/dataWorkflows/dataDeepTools/dataAnnotations/dataGlobalNotes
