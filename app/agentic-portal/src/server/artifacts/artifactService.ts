@@ -209,6 +209,18 @@ export async function deleteArtifact(input: {
     .delete(schema.artifactRuns)
     .where(eq(schema.artifactRuns.artifactId, artifact.id));
 
+  const deliveryChannelRows = await db
+    .select({ id: schema.deliveryChannels.id })
+    .from(schema.deliveryChannels)
+    .where(eq(schema.deliveryChannels.artifactId, artifact.id));
+  const deliveryChannelIds = deliveryChannelRows.map((row) => row.id);
+  if (deliveryChannelIds.length > 0) {
+    for (const channelId of deliveryChannelIds) {
+      await db.delete(schema.deliveryRuns).where(eq(schema.deliveryRuns.channelId, channelId));
+    }
+    await db.delete(schema.deliveryChannels).where(eq(schema.deliveryChannels.artifactId, artifact.id));
+  }
+
   await db
     .delete(schema.artifactVersions)
     .where(eq(schema.artifactVersions.artifactId, artifact.id));

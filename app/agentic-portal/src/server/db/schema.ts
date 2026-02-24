@@ -140,6 +140,46 @@ export const outputs = pgTable('outputs', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+export const deliveryChannels = pgTable('delivery_channels', {
+  id: varchar('id', { length: 64 }).primaryKey(),
+  organizationId: varchar('organization_id', { length: 64 }).notNull(),
+  projectId: varchar('project_id', { length: 64 }).notNull(),
+  artifactId: varchar('artifact_id', { length: 64 }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  channelType: varchar('channel_type', { length: 16 }).notNull(), // email | slack | teams
+  deliveryMode: varchar('delivery_mode', { length: 16 }).notNull().default('on_demand'), // on_demand | scheduled
+  scheduleFrequency: varchar('schedule_frequency', { length: 16 }), // daily | weekly | monthly
+  scheduleDayOfWeek: integer('schedule_day_of_week'), // 0-6 (Sunday=0)
+  scheduleDayOfMonth: integer('schedule_day_of_month'), // 1-31
+  scheduleTime: varchar('schedule_time', { length: 5 }), // HH:mm
+  scheduleTimezone: varchar('schedule_timezone', { length: 64 }).default('UTC'),
+  configJson: jsonb('config_json'),
+  isEnabled: integer('is_enabled').notNull().default(1),
+  lastRunAt: timestamp('last_run_at'),
+  nextRunAt: timestamp('next_run_at'),
+  lastStatus: varchar('last_status', { length: 16 }),
+  lastError: text('last_error'),
+  createdBy: varchar('created_by', { length: 64 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const deliveryRuns = pgTable('delivery_runs', {
+  id: varchar('id', { length: 64 }).primaryKey(),
+  channelId: varchar('channel_id', { length: 64 }).notNull(),
+  organizationId: varchar('organization_id', { length: 64 }).notNull(),
+  projectId: varchar('project_id', { length: 64 }).notNull(),
+  artifactId: varchar('artifact_id', { length: 64 }).notNull(),
+  artifactRunId: varchar('artifact_run_id', { length: 64 }),
+  status: varchar('status', { length: 16 }).notNull().default('running'), // running | succeeded | failed
+  triggerType: varchar('trigger_type', { length: 16 }).notNull().default('manual'), // manual | scheduled | api
+  payloadJson: jsonb('payload_json'),
+  responseJson: jsonb('response_json'),
+  errorText: text('error_text'),
+  startedAt: timestamp('started_at').defaultNow().notNull(),
+  completedAt: timestamp('completed_at'),
+});
+
 // ============================================================================
 // ARTIFACTS (Agent-produced SQL-backed entities)
 // ============================================================================

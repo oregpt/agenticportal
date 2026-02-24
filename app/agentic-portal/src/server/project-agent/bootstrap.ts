@@ -195,6 +195,50 @@ async function bootstrap(): Promise<void> {
     )
   `);
 
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS delivery_channels (
+      id VARCHAR(64) PRIMARY KEY,
+      organization_id VARCHAR(64) NOT NULL,
+      project_id VARCHAR(64) NOT NULL,
+      artifact_id VARCHAR(64) NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      channel_type VARCHAR(16) NOT NULL,
+      delivery_mode VARCHAR(16) NOT NULL DEFAULT 'on_demand',
+      schedule_frequency VARCHAR(16),
+      schedule_day_of_week INTEGER,
+      schedule_day_of_month INTEGER,
+      schedule_time VARCHAR(5),
+      schedule_timezone VARCHAR(64) DEFAULT 'UTC',
+      config_json JSONB,
+      is_enabled INTEGER NOT NULL DEFAULT 1,
+      last_run_at TIMESTAMP,
+      next_run_at TIMESTAMP,
+      last_status VARCHAR(16),
+      last_error TEXT,
+      created_by VARCHAR(64),
+      created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+      updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS delivery_runs (
+      id VARCHAR(64) PRIMARY KEY,
+      channel_id VARCHAR(64) NOT NULL,
+      organization_id VARCHAR(64) NOT NULL,
+      project_id VARCHAR(64) NOT NULL,
+      artifact_id VARCHAR(64) NOT NULL,
+      artifact_run_id VARCHAR(64),
+      status VARCHAR(16) NOT NULL DEFAULT 'running',
+      trigger_type VARCHAR(16) NOT NULL DEFAULT 'manual',
+      payload_json JSONB,
+      response_json JSONB,
+      error_text TEXT,
+      started_at TIMESTAMP DEFAULT NOW() NOT NULL,
+      completed_at TIMESTAMP
+    )
+  `);
+
   const indexes = [
     'CREATE INDEX IF NOT EXISTS idx_project_agents_org ON project_agents(organization_id)',
     'CREATE INDEX IF NOT EXISTS idx_pa_source_meta_project ON project_agent_source_meta(project_id)',
@@ -208,6 +252,9 @@ async function bootstrap(): Promise<void> {
     'CREATE INDEX IF NOT EXISTS idx_dashboard_items_dashboard ON dashboard_items(dashboard_artifact_id, created_at ASC)',
     'CREATE INDEX IF NOT EXISTS idx_artifact_runs_artifact_started ON artifact_runs(artifact_id, started_at DESC)',
     'CREATE INDEX IF NOT EXISTS idx_artifact_runs_org_project ON artifact_runs(organization_id, project_id, started_at DESC)',
+    'CREATE INDEX IF NOT EXISTS idx_delivery_channels_org_project ON delivery_channels(organization_id, project_id, updated_at DESC)',
+    'CREATE INDEX IF NOT EXISTS idx_delivery_channels_next_run ON delivery_channels(next_run_at) WHERE is_enabled = 1 AND delivery_mode = \'scheduled\'',
+    'CREATE INDEX IF NOT EXISTS idx_delivery_runs_channel_started ON delivery_runs(channel_id, started_at DESC)',
   ];
   for (const stmt of indexes) {
     await db.execute(sql.raw(stmt)).catch(() => {});
