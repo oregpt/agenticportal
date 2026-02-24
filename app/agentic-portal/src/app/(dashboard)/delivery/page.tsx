@@ -126,6 +126,7 @@ export default function DeliveryPage() {
   const [isDeletingId, setIsDeletingId] = useState('');
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
   const [error, setError] = useState('');
+  const [showSlackAdvanced, setShowSlackAdvanced] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -168,7 +169,7 @@ export default function DeliveryPage() {
         if (selectedWorkstreamId) channelParams.set('projectId', selectedWorkstreamId);
         const channelRes = await fetch(`/api/delivery/channels?${channelParams.toString()}`);
         const channelData = await channelRes.json().catch(() => ({}));
-        if (!channelRes.ok) throw new Error(channelData?.error || 'Failed to load delivery channels');
+        if (!channelRes.ok) throw new Error(channelData?.error || 'Failed to load deliveries');
         setChannels(channelData.channels || []);
       } catch (e: any) {
         setError(e?.message || 'Failed to load delivery data');
@@ -187,6 +188,7 @@ export default function DeliveryPage() {
   function openCreateDialog() {
     const firstArtifactId = artifacts[0]?.id || '';
     setForm({ ...DEFAULT_FORM, artifactId: firstArtifactId });
+    setShowSlackAdvanced(false);
     setIsDialogOpen(true);
   }
 
@@ -212,6 +214,7 @@ export default function DeliveryPage() {
       teamsWebhookUrl: channel.configJson?.teams?.webhookUrl || '',
       messageTemplate: channel.configJson?.messageTemplate || '',
     });
+    setShowSlackAdvanced(Boolean(channel.configJson?.slack?.webhookUrl));
     setIsDialogOpen(true);
   }
 
@@ -258,7 +261,7 @@ export default function DeliveryPage() {
       return;
     }
     if (!form.name.trim() || !form.artifactId) {
-      setError('Channel name and artifact are required.');
+      setError('Delivery name and artifact are required.');
       return;
     }
 
@@ -274,14 +277,14 @@ export default function DeliveryPage() {
         body: JSON.stringify(payload),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || 'Failed to save delivery channel');
+      if (!res.ok) throw new Error(data?.error || 'Failed to save delivery');
 
       setIsDialogOpen(false);
       const reloadRes = await fetch(`/api/delivery/channels?projectId=${encodeURIComponent(selectedWorkstreamId)}`);
       const reloadData = await reloadRes.json().catch(() => ({}));
       if (reloadRes.ok) setChannels(reloadData.channels || []);
     } catch (e: any) {
-      setError(e?.message || 'Failed to save delivery channel');
+      setError(e?.message || 'Failed to save delivery');
     } finally {
       setIsSaving(false);
     }
@@ -293,19 +296,19 @@ export default function DeliveryPage() {
       setError('');
       const res = await fetch(`/api/delivery/channels/${channelId}/run`, { method: 'POST' });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || 'Failed to run delivery channel');
+      if (!res.ok) throw new Error(data?.error || 'Failed to run delivery');
       const reloadRes = await fetch(`/api/delivery/channels?projectId=${encodeURIComponent(selectedWorkstreamId)}`);
       const reloadData = await reloadRes.json().catch(() => ({}));
       if (reloadRes.ok) setChannels(reloadData.channels || []);
     } catch (e: any) {
-      setError(e?.message || 'Failed to run delivery channel');
+      setError(e?.message || 'Failed to run delivery');
     } finally {
       setIsRunningId('');
     }
   }
 
   async function deleteChannel(channelId: string) {
-    const confirmed = window.confirm('Delete this delivery channel?');
+    const confirmed = window.confirm('Delete this delivery?');
     if (!confirmed) return;
 
     try {
@@ -313,10 +316,10 @@ export default function DeliveryPage() {
       setError('');
       const res = await fetch(`/api/delivery/channels/${channelId}`, { method: 'DELETE' });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || 'Failed to delete channel');
+      if (!res.ok) throw new Error(data?.error || 'Failed to delete delivery');
       setChannels((prev) => prev.filter((row) => row.id !== channelId));
     } catch (e: any) {
-      setError(e?.message || 'Failed to delete channel');
+      setError(e?.message || 'Failed to delete delivery');
     } finally {
       setIsDeletingId('');
     }
@@ -331,10 +334,10 @@ export default function DeliveryPage() {
         body: JSON.stringify({ isEnabled: enabled }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || 'Failed to update channel status');
+      if (!res.ok) throw new Error(data?.error || 'Failed to update delivery status');
       setChannels((prev) => prev.map((row) => (row.id === channel.id ? data.channel : row)));
     } catch (e: any) {
-      setError(e?.message || 'Failed to update channel status');
+      setError(e?.message || 'Failed to update delivery status');
     }
   }
 
@@ -351,10 +354,10 @@ export default function DeliveryPage() {
         selectedWorkstreamId={selectedWorkstreamId}
         onWorkstreamChange={(projectId) => setSelectedWorkstreamId(projectId || '')}
         pageLabel="Delivery"
-        pageDescription="Configure channel-based delivery for artifact outputs per project."
+        pageDescription="Configure artifact deliveries for each project."
         rightSlot={
           <Button onClick={openCreateDialog} disabled={!selectedWorkstreamId || artifacts.length === 0}>
-            <PlusCircle className="h-4 w-4 mr-2" /> New Channel
+            <PlusCircle className="h-4 w-4 mr-2" /> Create Delivery
           </Button>
         }
       />
@@ -367,11 +370,11 @@ export default function DeliveryPage() {
 
       {isLoading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading delivery channels...
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading deliveries...
         </div>
       ) : !selectedWorkstreamId ? (
         <Card>
-          <CardContent className="py-8 text-sm text-muted-foreground">Select a project to manage delivery channels.</CardContent>
+          <CardContent className="py-8 text-sm text-muted-foreground">Select a project to manage deliveries.</CardContent>
         </Card>
       ) : artifacts.length === 0 ? (
         <Card>
@@ -382,7 +385,7 @@ export default function DeliveryPage() {
       ) : channels.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-sm text-muted-foreground">
-            No delivery channels configured for this project.
+            No deliveries configured for this project.
           </CardContent>
         </Card>
       ) : (
@@ -391,7 +394,7 @@ export default function DeliveryPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Channel</TableHead>
+                  <TableHead>Delivery</TableHead>
                   <TableHead>Artifact</TableHead>
                   <TableHead>Mode</TableHead>
                   <TableHead>Schedule</TableHead>
@@ -482,17 +485,17 @@ export default function DeliveryPage() {
       )}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[88vh] overflow-y-auto">
+        <DialogContent className="w-[96vw] max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{form.id ? 'Edit Delivery Channel' : 'Create Delivery Channel'}</DialogTitle>
+            <DialogTitle>{form.id ? 'Edit Delivery' : 'Create Delivery'}</DialogTitle>
             <DialogDescription>
-              Configure destination channel, artifact target, and schedule policy.
+              Configure destination, target artifact, and schedule policy.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="grid gap-2">
-              <Label htmlFor="delivery-name">Channel Name</Label>
+              <Label htmlFor="delivery-name">Delivery Name</Label>
               <Input
                 id="delivery-name"
                 value={form.name}
@@ -503,7 +506,7 @@ export default function DeliveryPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="grid gap-2">
-                <Label>Channel Type</Label>
+                <Label>Destination</Label>
                 <Select
                   value={form.channelType}
                   onValueChange={(value) => setForm((prev) => ({ ...prev, channelType: value as ChannelType }))}
@@ -527,10 +530,12 @@ export default function DeliveryPage() {
                   <SelectTrigger>
                     <SelectValue placeholder="Select artifact" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-w-[min(78vw,52rem)]">
                     {artifacts.map((artifact) => (
-                      <SelectItem key={artifact.id} value={artifact.id}>
-                        {artifact.name} ({artifact.type})
+                      <SelectItem key={artifact.id} value={artifact.id} className="max-w-[min(74vw,48rem)]">
+                        <span className="block truncate">
+                          {artifact.name} ({artifact.type})
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -669,15 +674,7 @@ export default function DeliveryPage() {
             {form.channelType === 'slack' ? (
               <div className="space-y-3 p-3 border rounded-lg">
                 <div className="grid gap-2">
-                  <Label>Webhook URL (optional)</Label>
-                  <Input
-                    value={form.slackWebhookUrl}
-                    onChange={(event) => setForm((prev) => ({ ...prev, slackWebhookUrl: event.target.value }))}
-                    placeholder="https://hooks.slack.com/services/..."
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Bot Token (optional)</Label>
+                  <Label>Bot Token</Label>
                   <Input
                     value={form.slackBotToken}
                     onChange={(event) => setForm((prev) => ({ ...prev, slackBotToken: event.target.value }))}
@@ -685,24 +682,41 @@ export default function DeliveryPage() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label>Channel (for bot token mode)</Label>
+                  <Label>Channel</Label>
                   <Input
                     value={form.slackChannel}
                     onChange={(event) => setForm((prev) => ({ ...prev, slackChannel: event.target.value }))}
                     placeholder="#finance-delivery"
                   />
                 </div>
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground underline underline-offset-4"
+                  onClick={() => setShowSlackAdvanced((prev) => !prev)}
+                >
+                  {showSlackAdvanced ? 'Hide advanced options' : 'Show advanced options'}
+                </button>
+                {showSlackAdvanced ? (
+                  <div className="grid gap-2">
+                    <Label>Fallback Incoming Webhook URL (optional)</Label>
+                    <Input
+                      value={form.slackWebhookUrl}
+                      onChange={(event) => setForm((prev) => ({ ...prev, slackWebhookUrl: event.target.value }))}
+                      placeholder="https://hooks.slack.com/services/..."
+                    />
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
             {form.channelType === 'teams' ? (
               <div className="space-y-3 p-3 border rounded-lg">
                 <div className="grid gap-2">
-                  <Label>Teams Webhook URL</Label>
+                  <Label>Teams Channel URL</Label>
                   <Input
                     value={form.teamsWebhookUrl}
                     onChange={(event) => setForm((prev) => ({ ...prev, teamsWebhookUrl: event.target.value }))}
-                    placeholder="https://...webhook.office.com/..."
+                    placeholder="https://...office.com/..."
                   />
                 </div>
               </div>
@@ -725,7 +739,7 @@ export default function DeliveryPage() {
             </Button>
             <Button onClick={() => void submitChannel()} disabled={isSaving}>
               {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-              {form.id ? 'Save Changes' : 'Create Channel'}
+              {form.id ? 'Save Changes' : 'Create Delivery'}
             </Button>
           </DialogFooter>
         </DialogContent>
