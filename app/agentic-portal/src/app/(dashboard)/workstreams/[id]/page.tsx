@@ -111,7 +111,7 @@ export default function ProjectDetailPage() {
         id: 'artifacts',
         title: 'Add at least one artifact block',
         done: artifacts.length > 0,
-        actionHref: dashboards[0]?.id ? `/artifacts/${dashboards[0].id}` : '',
+        actionHref: dashboards[0]?.id ? `/dashboard/${dashboards[0].id}` : '',
         actionLabel: 'Open Dashboard',
       },
     ],
@@ -139,7 +139,7 @@ export default function ProjectDetailPage() {
       if (!res.ok) throw new Error(payload?.error || 'Failed to create dashboard');
       const createdId = payload?.artifact?.id as string | undefined;
       if (createdId) {
-        router.push(`/artifacts/${createdId}`);
+        router.push(`/dashboard/${createdId}`);
         return;
       }
       throw new Error('Dashboard created but no id returned');
@@ -263,7 +263,7 @@ export default function ProjectDetailPage() {
             dashboards.map((dashboard) => (
               <div key={dashboard.id} className="grid grid-cols-12 items-center gap-3 px-4 py-3 text-sm">
                 <div className="col-span-5 min-w-0">
-                  <Link href={`/artifacts/${dashboard.id}`} className="truncate font-medium hover:underline inline-flex items-center gap-2">
+                  <Link href={`/dashboard/${dashboard.id}`} className="truncate font-medium hover:underline inline-flex items-center gap-2">
                     <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
                     {dashboard.name}
                   </Link>
@@ -293,7 +293,7 @@ export default function ProjectDetailPage() {
                 </div>
                 <div className="col-span-3 flex justify-end gap-2">
                   <Button size="sm" variant="outline" asChild>
-                    <Link href={`/artifacts/${dashboard.id}`}>Open Dashboard</Link>
+                    <Link href={`/dashboard/${dashboard.id}`}>Open Dashboard</Link>
                   </Button>
                 </div>
               </div>

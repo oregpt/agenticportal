@@ -174,7 +174,7 @@ export default function DashboardEntryPage() {
       if (!res.ok) throw new Error(payload?.error || 'Failed to create dashboard');
       const createdId = payload?.artifact?.id as string | undefined;
       if (createdId) {
-        router.push(`/artifacts/${createdId}`);
+        router.push(`/dashboard/${createdId}`);
         return;
       }
       throw new Error('Dashboard created but no id returned');
@@ -313,7 +313,7 @@ export default function DashboardEntryPage() {
                     >
                       {expandedDashboardId === dashboard.id ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                     </button>
-                    <Link href={`/artifacts/${dashboard.id}`} className="truncate font-medium hover:underline inline-flex items-center gap-2">
+                  <Link href={`/dashboard/${dashboard.id}`} className="truncate font-medium hover:underline inline-flex items-center gap-2">
                       <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
                       {dashboard.name}
                     </Link>
@@ -327,10 +327,10 @@ export default function DashboardEntryPage() {
                 </div>
                 <div className="col-span-2 flex items-center justify-end gap-2">
                   <Button size="sm" variant="outline" asChild>
-                    <Link href={`/artifacts/${dashboard.id}`}>Open</Link>
+                    <Link href={`/dashboard/${dashboard.id}`}>Open</Link>
                   </Button>
                   <Button size="sm" variant="outline" asChild>
-                    <Link href={`/artifacts/${dashboard.id}`}>Add Artifact</Link>
+                    <Link href={`/dashboard/${dashboard.id}`}>Add Artifact</Link>
                   </Button>
                   <Button
                     size="sm"
@@ -348,7 +348,7 @@ export default function DashboardEntryPage() {
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Artifacts In Dashboard</p>
                     <Button size="sm" variant="outline" asChild>
-                      <Link href={`/artifacts/${dashboard.id}`}>Add Artifact</Link>
+                      <Link href={`/dashboard/${dashboard.id}`}>Add Artifact</Link>
                     </Button>
                   </div>
                   {loadingItemsForDashboardId === dashboard.id ? (
