@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { WorkstreamFilterBar } from '@/components/filters/WorkstreamFilterBar';
 import { ChevronDown, Loader2, Send, Terminal, Zap } from 'lucide-react';
@@ -12,6 +13,7 @@ import { ChevronDown, Loader2, Send, Terminal, Zap } from 'lucide-react';
 type SourceType = 'bigquery' | 'postgres' | 'google_sheets' | 'google_sheets_live';
 type Project = { id: string; name: string; hasAgent?: boolean };
 type DataSource = { id: string; name: string; type: SourceType; status: string };
+type DashboardOption = { id: string; name: string };
 type Workflow = { id: string; name: string; enabled: number };
 type DataRunInfo = {
   source: { id: string; name: string; type: SourceType };
@@ -72,6 +74,7 @@ export default function ProjectAgentChatPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [sources, setSources] = useState<DataSource[]>([]);
+  const [dashboardOptions, setDashboardOptions] = useState<DashboardOption[]>([]);
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [chatSourceId, setChatSourceId] = useState('');
   const [input, setInput] = useState('');
@@ -85,14 +88,27 @@ export default function ProjectAgentChatPage() {
   const [expandedDataRuns, setExpandedDataRuns] = useState<Record<string, boolean>>({});
   const [activeTools, setActiveTools] = useState<string[]>([]);
   const [savingActionId, setSavingActionId] = useState<string>('');
+  const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
+  const [actionDialogOpen, setActionDialogOpen] = useState(false);
+  const [actionMode, setActionMode] = useState<'add-table' | 'add-chart' | 'add-kpi' | null>(null);
+  const [actionTargetMessageIds, setActionTargetMessageIds] = useState<string[]>([]);
+  const [selectedDashboardId, setSelectedDashboardId] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const enabledSources = useMemo(() => sources.filter((s) => s.status !== 'disabled'), [sources]);
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
+  const selectableMessageIds = useMemo(
+    () => messages.filter((m) => m.role === 'assistant' && !!m.dataRun?.trust?.sql).map((m) => m.id),
+    [messages]
+  );
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isSending, activeTools]);
+
+  useEffect(() => {
+    setSelectedMessageIds((prev) => prev.filter((id) => selectableMessageIds.includes(id)));
+  }, [selectableMessageIds]);
 
   function pushMessage(message: Omit<Message, 'id'>) {
     setMessages((prev) => [...prev, { id: nextMessageId(), ...message }]);
@@ -100,6 +116,20 @@ export default function ProjectAgentChatPage() {
 
   function toggleDataRun(messageId: string) {
     setExpandedDataRuns((prev) => ({ ...prev, [messageId]: !prev[messageId] }));
+  }
+
+  function toggleMessageSelection(messageId: string) {
+    setSelectedMessageIds((prev) =>
+      prev.includes(messageId) ? prev.filter((id) => id !== messageId) : [...prev, messageId]
+    );
+  }
+
+  function openActionDialog(mode: 'add-table' | 'add-chart' | 'add-kpi', messageIds: string[]) {
+    if (!messageIds.length) return;
+    setActionMode(mode);
+    setActionTargetMessageIds(messageIds);
+    setSelectedDashboardId('');
+    setActionDialogOpen(true);
   }
 
   async function streamAssistantMessage(content: string, dataRun?: DataRunInfo) {
@@ -117,16 +147,19 @@ export default function ProjectAgentChatPage() {
   }
 
   async function refreshProjectContext(projectId: string) {
-    const [sourceRes, wfRes] = await Promise.all([
+    const [sourceRes, wfRes, dashboardsRes] = await Promise.all([
       api(`/api/project-agent/sources?projectId=${encodeURIComponent(projectId)}`),
       api(`/api/project-agent/workflows?projectId=${encodeURIComponent(projectId)}`).catch(() => ({ workflows: [] })),
+      api(`/api/artifacts?projectId=${encodeURIComponent(projectId)}&type=dashboard`).catch(() => ({ artifacts: [] })),
     ]);
     const nextSources = sourceRes.sources || [];
     setSources(nextSources);
     setWorkflows(wfRes.workflows || []);
+    setDashboardOptions((dashboardsRes.artifacts || []).map((a: any) => ({ id: String(a.id), name: String(a.name || 'Dashboard') })));
     if (!nextSources.find((s: DataSource) => s.id === chatSourceId && s.status !== 'disabled')) {
       setChatSourceId(nextSources.find((s: DataSource) => s.status !== 'disabled')?.id || '');
     }
+    setSelectedMessageIds([]);
   }
 
   useEffect(() => {
@@ -268,7 +301,11 @@ export default function ProjectAgentChatPage() {
     }
   }
 
-  async function saveFromMessage(messageId: string, mode: 'save-sql' | 'add-table' | 'add-chart' | 'add-kpi') {
+  async function saveFromMessage(
+    messageId: string,
+    mode: 'save-sql' | 'add-table' | 'add-chart' | 'add-kpi',
+    dashboardArtifactId?: string
+  ) {
     const message = messages.find((m) => m.id === messageId);
     const dataRun = message?.dataRun;
     if (!dataRun?.trust?.sql || !selectedProjectId || !chatSourceId) return;
@@ -306,6 +343,7 @@ export default function ProjectAgentChatPage() {
             sampleRows: dataRun.trust.sampleRows || [],
             reasoning: dataRun.trust.reasoning || null,
           },
+          dashboardArtifactId: dashboardArtifactId || undefined,
         }),
       });
       if (mode === 'save-sql') {
@@ -321,6 +359,25 @@ export default function ProjectAgentChatPage() {
     } finally {
       setSavingActionId('');
     }
+  }
+
+  async function runActionForMessages(
+    mode: 'save-sql' | 'add-table' | 'add-chart' | 'add-kpi',
+    messageIds: string[],
+    dashboardArtifactId?: string
+  ) {
+    for (const messageId of messageIds) {
+      await saveFromMessage(messageId, mode, dashboardArtifactId);
+    }
+  }
+
+  async function executeDialogAction() {
+    if (!actionMode || actionTargetMessageIds.length === 0) return;
+    await runActionForMessages(actionMode, actionTargetMessageIds, selectedDashboardId || undefined);
+    setActionDialogOpen(false);
+    setActionMode(null);
+    setActionTargetMessageIds([]);
+    setSelectedMessageIds([]);
   }
 
   return (
@@ -387,6 +444,15 @@ export default function ProjectAgentChatPage() {
                     <div className="whitespace-pre-wrap">{m.content}</div>
                     {m.role === 'assistant' && m.dataRun ? (
                       <div className="mt-2">
+                        <div className="mb-2 flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={selectedMessageIds.includes(m.id)}
+                            onChange={() => toggleMessageSelection(m.id)}
+                            className="h-3.5 w-3.5"
+                          />
+                          <span className="text-[11px] text-muted-foreground">Select</span>
+                        </div>
                         <button
                           onClick={() => toggleDataRun(m.id)}
                           className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted/80"
@@ -425,7 +491,7 @@ export default function ProjectAgentChatPage() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => saveFromMessage(m.id, 'add-table')}
+                                  onClick={() => openActionDialog('add-table', [m.id])}
                                   disabled={savingActionId === `${m.id}:add-table`}
                                 >
                                   {savingActionId === `${m.id}:add-table` ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
@@ -436,7 +502,7 @@ export default function ProjectAgentChatPage() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => saveFromMessage(m.id, 'add-chart')}
+                                  onClick={() => openActionDialog('add-chart', [m.id])}
                                   disabled={savingActionId === `${m.id}:add-chart`}
                                 >
                                   {savingActionId === `${m.id}:add-chart` ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
@@ -447,7 +513,7 @@ export default function ProjectAgentChatPage() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => saveFromMessage(m.id, 'add-kpi')}
+                                  onClick={() => openActionDialog('add-kpi', [m.id])}
                                   disabled={savingActionId === `${m.id}:add-kpi`}
                                 >
                                   {savingActionId === `${m.id}:add-kpi` ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
@@ -483,6 +549,54 @@ export default function ProjectAgentChatPage() {
           </div>
 
           <div className="border-t border-border p-4">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground">
+                {selectedMessageIds.length > 0
+                  ? `${selectedMessageIds.length} selected`
+                  : 'Select assistant messages to apply actions'}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={selectedMessageIds.length === 0}
+                onClick={() => runActionForMessages('save-sql', selectedMessageIds)}
+              >
+                Save SQL
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={selectedMessageIds.length === 0}
+                onClick={() => openActionDialog('add-table', selectedMessageIds)}
+              >
+                Add Table
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={selectedMessageIds.length === 0}
+                onClick={() => openActionDialog('add-chart', selectedMessageIds)}
+              >
+                Add Chart
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={selectedMessageIds.length === 0}
+                onClick={() => openActionDialog('add-kpi', selectedMessageIds)}
+              >
+                Add KPI
+              </Button>
+              {selectedMessageIds.length > 0 ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setSelectedMessageIds([])}
+                >
+                  Clear
+                </Button>
+              ) : null}
+            </div>
             <div className="relative flex items-center gap-2">
               <Button
                 type="button"
@@ -580,6 +694,35 @@ export default function ProjectAgentChatPage() {
                 </div>
               </div>
             ) : null}
+
+            <Dialog open={actionDialogOpen} onOpenChange={setActionDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Select Dashboard</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Choose where to add this block. If none selected, the default project dashboard is used.
+                  </p>
+                  <select
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={selectedDashboardId}
+                    onChange={(e) => setSelectedDashboardId(e.target.value)}
+                  >
+                    <option value="">Default Project Dashboard (Auto)</option>
+                    {dashboardOptions.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setActionDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={executeDialogAction}>Continue</Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
 
             {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
           </div>

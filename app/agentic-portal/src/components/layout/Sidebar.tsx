@@ -36,6 +36,7 @@ export function getSectionFromPath(pathname: string): NavSection {
 const pipelineNavigation: NavItem[] = [
   { name: 'All Projects', href: '/workstreams', icon: Workflow },
   { name: 'Data Sources', href: '/datasources', icon: Database },
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Artifacts', href: '/artifacts', icon: Boxes },
   { name: 'Run History', href: '/artifact-runs', icon: History },
   { name: 'Delivery', href: '/delivery', icon: SendHorizontal },
@@ -81,6 +82,7 @@ interface SidebarProps {
 
 function getPipelinePageMeta(pathname: string): { label: string; description: string } {
   if (pathname.startsWith('/datasources')) return { label: 'Data Sources', description: 'Connect and assign data sources across projects.' };
+  if (pathname.startsWith('/dashboard')) return { label: 'Dashboard', description: 'View and manage dashboard entities for your selected project.' };
   if (pathname.startsWith('/artifacts')) return { label: 'Artifacts', description: 'SQL-backed assets produced by your project agent.' };
   if (pathname.startsWith('/artifact-runs')) return { label: 'Run History', description: 'Execution history and diagnostics for artifacts.' };
   if (pathname.startsWith('/delivery')) return { label: 'Delivery', description: 'Configure schedules and distribution for generated artifacts.' };
