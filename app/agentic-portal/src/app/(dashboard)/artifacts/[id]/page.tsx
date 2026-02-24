@@ -456,7 +456,6 @@ export default function ArtifactDetailPage() {
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(payload?.error || 'Failed to run artifact');
       await refresh();
-      router.push('/artifact-runs');
     } catch (e: any) {
       setError(e?.message || 'Failed to run artifact');
     } finally {

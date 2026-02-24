@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { LayoutDashboard, Loader2, PlusCircle, Search, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, LayoutDashboard, Loader2, PlusCircle, Search, Trash2 } from 'lucide-react';
 
 type WorkstreamOption = { id: string; name: string };
 
@@ -202,6 +202,32 @@ export default function DashboardEntryPage() {
         childArtifactId: String(item.childArtifactId),
       }));
       setDashboardItems((prev) => ({ ...prev, [dashboardId]: rows }));
+      const missingArtifactIds = Array.from(
+        new Set(rows.map((row) => row.childArtifactId).filter((id) => id && !itemsArtifactLookup[id]))
+      );
+      if (missingArtifactIds.length > 0) {
+        const detailResults = await Promise.all(
+          missingArtifactIds.map(async (artifactId) => {
+            const detailRes = await fetch(`/api/artifacts/${artifactId}`);
+            const detailPayload = await detailRes.json().catch(() => ({}));
+            if (!detailRes.ok || !detailPayload?.artifact) return null;
+            const artifact = detailPayload.artifact;
+            return {
+              id: String(artifact.id),
+              name: String(artifact.name || artifact.id),
+              type: String(artifact.type || 'artifact') as ArtifactItem['type'],
+            };
+          })
+        );
+        const mapped = detailResults.filter((item): item is ArtifactItem => Boolean(item));
+        if (mapped.length > 0) {
+          setItemsArtifactLookup((prev) => {
+            const next = { ...prev };
+            for (const item of mapped) next[item.id] = item;
+            return next;
+          });
+        }
+      }
     } catch (e: any) {
       setError(e?.message || 'Failed to load dashboard artifacts');
     } finally {
@@ -278,10 +304,20 @@ export default function DashboardEntryPage() {
               <div key={dashboard.id}>
               <div className="grid grid-cols-12 items-center gap-3 px-4 py-3 text-sm">
                 <div className="col-span-5 min-w-0">
-                  <Link href={`/artifacts/${dashboard.id}`} className="truncate font-medium hover:underline inline-flex items-center gap-2">
-                    <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
-                    {dashboard.name}
-                  </Link>
+                  <div className="inline-flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="inline-flex h-6 w-6 items-center justify-center rounded hover:bg-muted"
+                      onClick={() => void toggleDrillIn(dashboard.id)}
+                      title={expandedDashboardId === dashboard.id ? 'Collapse artifacts' : 'Expand artifacts'}
+                    >
+                      {expandedDashboardId === dashboard.id ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                    </button>
+                    <Link href={`/artifacts/${dashboard.id}`} className="truncate font-medium hover:underline inline-flex items-center gap-2">
+                      <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
+                      {dashboard.name}
+                    </Link>
+                  </div>
                   {dashboard.description ? <p className="mt-0.5 truncate text-xs text-muted-foreground">{dashboard.description}</p> : null}
                 </div>
                 <div className="col-span-2 text-muted-foreground">v{dashboard.latestVersion}</div>
@@ -295,9 +331,6 @@ export default function DashboardEntryPage() {
                   </Button>
                   <Button size="sm" variant="outline" asChild>
                     <Link href={`/artifacts/${dashboard.id}`}>Add Artifact</Link>
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => void toggleDrillIn(dashboard.id)}>
-                    {expandedDashboardId === dashboard.id ? 'Hide Artifacts' : 'Drill In'}
                   </Button>
                   <Button
                     size="sm"
