@@ -23,6 +23,17 @@ type DashboardArtifact = {
   updatedAt: string;
 };
 
+type ArtifactItem = {
+  id: string;
+  name: string;
+  type: 'table' | 'chart' | 'kpi' | 'report' | 'dashboard';
+};
+
+type DashboardItemRow = {
+  id: string;
+  childArtifactId: string;
+};
+
 export default function DashboardEntryPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -34,6 +45,11 @@ export default function DashboardEntryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [deletingId, setDeletingId] = useState('');
+  const [expandedDashboardId, setExpandedDashboardId] = useState('');
+  const [dashboardItems, setDashboardItems] = useState<Record<string, DashboardItemRow[]>>({});
+  const [loadingItemsForDashboardId, setLoadingItemsForDashboardId] = useState('');
+  const [itemsArtifactLookup, setItemsArtifactLookup] = useState<Record<string, ArtifactItem>>({});
+  const [removingItemId, setRemovingItemId] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -70,6 +86,32 @@ export default function DashboardEntryPage() {
       } finally {
         setIsLoading(false);
       }
+    })();
+  }, [selectedWorkstreamId]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const projectId = selectedWorkstreamId || '';
+        if (!projectId) {
+          setItemsArtifactLookup({});
+          return;
+        }
+        const res = await fetch(`/api/artifacts?projectId=${encodeURIComponent(projectId)}&includeArchived=false`);
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) return;
+        const nextLookup: Record<string, ArtifactItem> = {};
+        for (const artifact of payload.artifacts || []) {
+          const type = String(artifact.type || '');
+          if (!['table', 'chart', 'kpi', 'report', 'dashboard'].includes(type)) continue;
+          nextLookup[String(artifact.id)] = {
+            id: String(artifact.id),
+            name: String(artifact.name || artifact.id),
+            type: type as ArtifactItem['type'],
+          };
+        }
+        setItemsArtifactLookup(nextLookup);
+      } catch {}
     })();
   }, [selectedWorkstreamId]);
 
@@ -143,6 +185,51 @@ export default function DashboardEntryPage() {
     }
   }
 
+  async function toggleDrillIn(dashboardId: string) {
+    if (expandedDashboardId === dashboardId) {
+      setExpandedDashboardId('');
+      return;
+    }
+    setExpandedDashboardId(dashboardId);
+    if (dashboardItems[dashboardId]) return;
+    try {
+      setLoadingItemsForDashboardId(dashboardId);
+      const res = await fetch(`/api/artifacts/${dashboardId}/items`);
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload?.error || 'Failed to load dashboard artifacts');
+      const rows: DashboardItemRow[] = (payload.items || []).map((item: any) => ({
+        id: String(item.id),
+        childArtifactId: String(item.childArtifactId),
+      }));
+      setDashboardItems((prev) => ({ ...prev, [dashboardId]: rows }));
+    } catch (e: any) {
+      setError(e?.message || 'Failed to load dashboard artifacts');
+    } finally {
+      setLoadingItemsForDashboardId('');
+    }
+  }
+
+  async function removeArtifactFromDashboard(dashboardId: string, itemId: string) {
+    try {
+      setRemovingItemId(itemId);
+      const res = await fetch(`/api/artifacts/${dashboardId}/items/${itemId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload?.error || 'Failed to remove artifact from dashboard');
+      setDashboardItems((prev) => ({
+        ...prev,
+        [dashboardId]: (prev[dashboardId] || []).filter((item) => item.id !== itemId),
+      }));
+    } catch (e: any) {
+      setError(e?.message || 'Failed to remove artifact from dashboard');
+    } finally {
+      setRemovingItemId('');
+    }
+  }
+
   return (
     <div className="p-8 space-y-6">
       <WorkstreamFilterBar
@@ -188,7 +275,8 @@ export default function DashboardEntryPage() {
           </div>
           <div className="divide-y">
             {filtered.map((dashboard) => (
-              <div key={dashboard.id} className="grid grid-cols-12 items-center gap-3 px-4 py-3 text-sm">
+              <div key={dashboard.id}>
+              <div className="grid grid-cols-12 items-center gap-3 px-4 py-3 text-sm">
                 <div className="col-span-5 min-w-0">
                   <Link href={`/artifacts/${dashboard.id}`} className="truncate font-medium hover:underline inline-flex items-center gap-2">
                     <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
@@ -206,7 +294,10 @@ export default function DashboardEntryPage() {
                     <Link href={`/artifacts/${dashboard.id}`}>Open</Link>
                   </Button>
                   <Button size="sm" variant="outline" asChild>
-                    <Link href={`/artifacts/${dashboard.id}/compose`}>Compose</Link>
+                    <Link href={`/artifacts/${dashboard.id}`}>Add Artifact</Link>
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => void toggleDrillIn(dashboard.id)}>
+                    {expandedDashboardId === dashboard.id ? 'Hide Artifacts' : 'Drill In'}
                   </Button>
                   <Button
                     size="sm"
@@ -218,6 +309,47 @@ export default function DashboardEntryPage() {
                     {deletingId === dashboard.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                   </Button>
                 </div>
+              </div>
+              {expandedDashboardId === dashboard.id ? (
+                <div className="bg-muted/20 px-4 py-3 border-t">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Artifacts In Dashboard</p>
+                    <Button size="sm" variant="outline" asChild>
+                      <Link href={`/artifacts/${dashboard.id}`}>Add Artifact</Link>
+                    </Button>
+                  </div>
+                  {loadingItemsForDashboardId === dashboard.id ? (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading artifacts...
+                    </div>
+                  ) : (dashboardItems[dashboard.id] || []).length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No artifacts yet. Click Add Artifact to add one.</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {(dashboardItems[dashboard.id] || []).map((item) => {
+                        const artifact = itemsArtifactLookup[item.childArtifactId];
+                        return (
+                          <div key={item.id} className="flex items-center justify-between rounded-md border bg-background px-2.5 py-2">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm">{artifact?.name || item.childArtifactId}</p>
+                              <p className="text-[11px] text-muted-foreground">{artifact?.type || 'artifact'}</p>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-red-600 hover:text-red-700"
+                              disabled={removingItemId === item.id}
+                              onClick={() => void removeArtifactFromDashboard(dashboard.id, item.id)}
+                            >
+                              {removingItemId === item.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Remove'}
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : null}
               </div>
             ))}
           </div>
