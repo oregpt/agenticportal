@@ -13,7 +13,6 @@ import {
   Building2,
   Bot,
   Workflow,
-  Network,
   Boxes,
   History,
   SendHorizontal,
@@ -33,18 +32,20 @@ export function getSectionFromPath(pathname: string): NavSection {
   return 'pipeline';
 }
 
-const pipelineNavigation: NavItem[] = [
+const coreNavigation: NavItem[] = [
   { name: 'All Projects', href: '/workstreams', icon: Workflow },
-  { name: 'Data Sources', href: '/datasources', icon: Database },
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Artifacts', href: '/artifacts', icon: Boxes },
-  { name: 'Run History', href: '/artifact-runs', icon: History },
-  { name: 'Delivery', href: '/delivery', icon: SendHorizontal },
-  { name: 'Data Relationships', href: '/relationship-explorer', icon: Network },
+  { name: 'Dashboards', href: '/dashboard', icon: LayoutDashboard },
 ];
 
 const aiNavigation: NavItem[] = [
   { name: 'Project Agent', href: '/project-agent', icon: Bot },
+];
+
+const utilityNavigation: NavItem[] = [
+  { name: 'Artifacts', href: '/artifacts', icon: Boxes },
+  { name: 'Data Sources', href: '/datasources', icon: Database },
+  { name: 'Run History', href: '/artifact-runs', icon: History },
+  { name: 'Delivery', href: '/delivery', icon: SendHorizontal },
 ];
 
 const orgNavigation: NavItem[] = [
@@ -81,17 +82,17 @@ interface SidebarProps {
 }
 
 function getPipelinePageMeta(pathname: string): { label: string; description: string } {
-  if (pathname.startsWith('/datasources')) return { label: 'Data Sources', description: 'Connect and assign data sources across projects.' };
-  if (pathname.startsWith('/dashboard')) return { label: 'Dashboard', description: 'View and manage dashboard entities for your selected project.' };
-  if (pathname.startsWith('/artifacts')) return { label: 'Artifacts', description: 'SQL-backed assets produced by your project agent.' };
+  if (pathname.startsWith('/datasources')) return { label: 'Data Sources', description: 'Utilities for connecting data used by project dashboards.' };
+  if (pathname.startsWith('/dashboard')) return { label: 'Dashboards', description: 'Primary workspace for dashboard management by project.' };
+  if (pathname.startsWith('/artifacts')) return { label: 'Artifacts', description: 'Dashboard blocks and outputs (manual + AI-created).' };
   if (pathname.startsWith('/artifact-runs')) return { label: 'Run History', description: 'Execution history and diagnostics for artifacts.' };
   if (pathname.startsWith('/delivery')) return { label: 'Delivery', description: 'Configure schedules and distribution for generated artifacts.' };
-  if (pathname.startsWith('/views')) return { label: 'Legacy Views', description: 'Legacy page retained for compatibility while artifacts become primary.' };
-  if (pathname.startsWith('/dashboards')) return { label: 'Legacy Dashboards', description: 'Legacy page retained for compatibility while artifacts become primary.' };
-  if (pathname.startsWith('/outputs')) return { label: 'Legacy Outputs', description: 'Legacy page retained for compatibility while artifacts become primary.' };
-  if (pathname.startsWith('/relationship-explorer')) return { label: 'Data Relationships', description: 'Explore table and entity relationships by project.' };
+  if (pathname.startsWith('/views')) return { label: 'Views', description: 'Legacy route redirected to Artifacts.' };
+  if (pathname.startsWith('/dashboards')) return { label: 'Dashboards', description: 'Legacy route redirected to Dashboard workspace.' };
+  if (pathname.startsWith('/outputs')) return { label: 'Outputs', description: 'Legacy route redirected to Artifacts.' };
+  if (pathname.startsWith('/relationship-explorer')) return { label: 'Relationships', description: 'Legacy route redirected to Projects.' };
   if (pathname.startsWith('/project-agent')) return { label: 'Project Agent', description: 'Configure and use the project-scoped data agent.' };
-  return { label: 'Projects', description: 'Manage projects and build your data pipeline.' };
+  return { label: 'Projects', description: 'Create projects, then dashboards, then artifacts.' };
 }
 
 export function Sidebar({ section }: SidebarProps) {
@@ -101,8 +102,9 @@ export function Sidebar({ section }: SidebarProps) {
   const navGroups =
     section === 'pipeline'
       ? [
-          { title: '', items: pipelineNavigation },
+          { title: '', items: coreNavigation },
           { title: 'AI Tools', items: aiNavigation },
+          { title: 'Utilities', items: utilityNavigation },
         ]
       : section === 'organization'
         ? [{ title: 'Organization', items: orgNavigation }]
@@ -117,7 +119,7 @@ export function Sidebar({ section }: SidebarProps) {
 
   const effectiveGroups = canViewSection
     ? navGroups
-    : [{ title: 'Projects', items: pipelineNavigation }];
+    : [{ title: 'Projects', items: coreNavigation }];
   const meta = section === 'pipeline' ? getPipelinePageMeta(pathname) : sectionMeta[section];
 
   return (

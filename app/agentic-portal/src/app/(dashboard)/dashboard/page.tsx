@@ -32,6 +32,7 @@ export default function DashboardEntryPage() {
   const [selectedWorkstreamId, setSelectedWorkstreamId] = useState('');
   const [searchText, setSearchText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
   const [deletingId, setDeletingId] = useState('');
   const [error, setError] = useState('');
 
@@ -104,9 +105,43 @@ export default function DashboardEntryPage() {
     }
   }
 
-  const createHref = selectedWorkstreamId
-    ? `/project-agent/chat?projectId=${encodeURIComponent(selectedWorkstreamId)}`
-    : '/project-agent/chat';
+  async function createDashboard() {
+    const projectId = selectedWorkstreamId || (workstreams.length === 1 ? workstreams[0]?.id || '' : '');
+    if (!projectId) {
+      setError('Select a project first, then click Create Dashboard.');
+      return;
+    }
+
+    try {
+      setIsCreating(true);
+      setError('');
+      const name = `Dashboard ${new Date().toLocaleString()}`;
+      const res = await fetch('/api/artifacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId,
+          type: 'dashboard',
+          name,
+          description: 'Dashboard created from Dashboard page.',
+          configJson: { mode: 'grid' },
+          layoutJson: { columns: 12 },
+        }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload?.error || 'Failed to create dashboard');
+      const createdId = payload?.artifact?.id as string | undefined;
+      if (createdId) {
+        router.push(`/artifacts/${createdId}`);
+        return;
+      }
+      throw new Error('Dashboard created but no id returned');
+    } catch (e: any) {
+      setError(e?.message || 'Failed to create dashboard');
+    } finally {
+      setIsCreating(false);
+    }
+  }
 
   return (
     <div className="p-8 space-y-6">
@@ -114,14 +149,12 @@ export default function DashboardEntryPage() {
         workstreams={workstreams}
         selectedWorkstreamId={selectedWorkstreamId}
         onWorkstreamChange={handleWorkstreamChange}
-        pageLabel="Dashboard"
-        pageDescription="Manage dashboard artifacts and their visual compositions by project."
+        pageLabel="Dashboards"
+        pageDescription="Create and manage dashboards inside each project."
         rightSlot={
-          <Button asChild>
-            <Link href={createHref}>
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Create Dashboard
-            </Link>
+          <Button onClick={() => void createDashboard()} disabled={isCreating}>
+            {isCreating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <PlusCircle className="h-4 w-4 mr-2" />}
+            Create Dashboard
           </Button>
         }
       />
@@ -142,7 +175,7 @@ export default function DashboardEntryPage() {
         </div>
       ) : filtered.length === 0 ? (
         <Card>
-          <CardContent className="py-10 text-sm text-muted-foreground">No dashboards yet. Create one from Project Agent chat.</CardContent>
+          <CardContent className="py-10 text-sm text-muted-foreground">No dashboards yet. Click Create Dashboard to start this project workspace.</CardContent>
         </Card>
       ) : (
         <Card className="overflow-hidden">

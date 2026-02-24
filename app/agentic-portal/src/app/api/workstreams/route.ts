@@ -49,31 +49,34 @@ export async function GET(request: NextRequest) {
       workstreams.map(async (ws) => {
         const dataSourceIds = await getDataSourceIdsForWorkstream(orgId, ws.id);
 
-        // Count views
-        const [viewCount] = await db
+        // Count dashboards (artifact-native)
+        const [dashboardCount] = await db
           .select({ count: sql<number>`count(*)` })
-          .from(schema.views)
-          .where(eq(schema.views.workstreamId, ws.id));
+          .from(schema.artifacts)
+          .where(
+            sql`${schema.artifacts.organizationId} = ${orgId}
+                AND ${schema.artifacts.projectId} = ${ws.id}
+                AND ${schema.artifacts.type} = 'dashboard'
+                AND ${schema.artifacts.status} = 'active'`
+          );
 
-        // Count dashboards
-        const [dashCount] = await db
+        // Count non-dashboard artifacts (table/chart/kpi/report)
+        const [artifactCount] = await db
           .select({ count: sql<number>`count(*)` })
-          .from(schema.dashboards)
-          .where(eq(schema.dashboards.workstreamId, ws.id));
-
-        // Count outputs
-        const [outCount] = await db
-          .select({ count: sql<number>`count(*)` })
-          .from(schema.outputs)
-          .where(eq(schema.outputs.workstreamId, ws.id));
+          .from(schema.artifacts)
+          .where(
+            sql`${schema.artifacts.organizationId} = ${orgId}
+                AND ${schema.artifacts.projectId} = ${ws.id}
+                AND ${schema.artifacts.type} <> 'dashboard'
+                AND ${schema.artifacts.status} = 'active'`
+          );
 
         return {
           ...ws,
           stats: {
             dataSources: dataSourceIds.length,
-            views: Number(viewCount?.count || 0),
-            dashboards: Number(dashCount?.count || 0),
-            outputs: Number(outCount?.count || 0),
+            dashboards: Number(dashboardCount?.count || 0),
+            artifacts: Number(artifactCount?.count || 0),
           }
         };
       })
@@ -128,7 +131,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       workstream: {
         ...workstream,
-        stats: { dataSources: 0, views: 0, dashboards: 0, outputs: 0 }
+        stats: { dataSources: 0, dashboards: 0, artifacts: 0 }
       }
     }, { status: 201 });
   } catch (error) {

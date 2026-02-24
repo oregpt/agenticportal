@@ -66,7 +66,7 @@ export function AppLayout({ children, initialEmbedded = false }: AppLayoutProps)
   }, [pathname]);
 
   const sectionTabs: Array<{ key: NavSection; label: string; href: string; icon: ComponentType<{ className?: string }> }> = [
-    { key: 'pipeline', label: 'Home', href: '/workstreams', icon: Layers3 },
+    { key: 'pipeline', label: 'Projects', href: '/workstreams', icon: Layers3 },
     { key: 'platform', label: 'Platform Admin', href: '/admin', icon: Shield },
   ];
 

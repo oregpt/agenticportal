@@ -29,9 +29,8 @@ import {
 
 interface WorkstreamStats {
   dataSources: number;
-  views: number;
   dashboards: number;
-  outputs: number;
+  artifacts: number;
 }
 
 interface Workstream {
@@ -105,7 +104,7 @@ export default function WorkstreamsPage() {
         setWorkstreams(prev => [data.workstream, ...prev]);
         setShowCreateModal(false);
         setNewWorkstream({ name: '', description: '', color: '#8b5cf6' });
-        toast({ title: 'Project created', description: 'You can now add data sources, views, and dashboards.' });
+        toast({ title: 'Project created', description: 'Create a dashboard to start building artifacts.' });
       } else {
         toast({ title: 'Could not create project', variant: 'destructive' });
       }
@@ -118,7 +117,7 @@ export default function WorkstreamsPage() {
 
   const handleDelete = async (workstream: Workstream) => {
     const confirmed = window.confirm(
-      `Delete project "${workstream.name}"?\n\nThis removes the project container. Related data sources, views, dashboards, and outputs will remain and become unassigned.`
+      `Delete project "${workstream.name}"?\n\nThis removes the project container. Related data sources and artifacts will remain and become unassigned.`
     );
     if (!confirmed) return;
 
@@ -184,7 +183,7 @@ export default function WorkstreamsPage() {
             Projects
           </h1>
           <p className="text-muted-foreground">
-            Organize your data flow from connection to dashboard
+            Create projects, then build dashboards and artifacts
           </p>
         </div>
         <Button className="gap-2" onClick={() => setShowCreateModal(true)}>
@@ -194,20 +193,17 @@ export default function WorkstreamsPage() {
       </div>
 
       <div className="mb-6 rounded-xl border border-border bg-card p-4">
-        <h2 className="text-sm font-semibold mb-3">Quick Actions</h2>
+        <h2 className="text-sm font-semibold mb-3">Primary Flow</h2>
         <div className="flex flex-wrap gap-3">
           <Button onClick={() => setShowCreateModal(true)}>Create Project</Button>
-          <Link href="/datasources">
-            <Button variant="outline">Connect Data</Button>
-          </Link>
-          <Link href="/views/new?mode=chat">
-            <Button variant="outline">Create View</Button>
-          </Link>
-          <Link href="/dashboards/new">
+          <Link href="/dashboard">
             <Button variant="outline">Create Dashboard</Button>
           </Link>
-          <Link href="/outputs">
-            <Button variant="outline">Create Output</Button>
+          <Link href="/project-agent/chat">
+            <Button variant="outline">Create Artifact With Agent</Button>
+          </Link>
+          <Link href="/datasources">
+            <Button variant="outline">Utilities: Data Sources</Button>
           </Link>
         </div>
       </div>
@@ -216,23 +212,18 @@ export default function WorkstreamsPage() {
       <div className="flex items-center gap-6 mb-8 text-sm text-muted-foreground bg-muted/50 rounded-lg px-4 py-3">
         <span className="font-medium">The flow:</span>
         <div className="flex items-center gap-2">
-          <Database className="w-4 h-4 text-blue-500" />
-          <span>Sources</span>
-        </div>
-        <ChevronRight className="w-4 h-4" />
-        <div className="flex items-center gap-2">
-          <Table2 className="w-4 h-4 text-emerald-500" />
-          <span>Views</span>
+          <Workflow className="w-4 h-4 text-blue-500" />
+          <span>Project</span>
         </div>
         <ChevronRight className="w-4 h-4" />
         <div className="flex items-center gap-2">
           <LayoutDashboard className="w-4 h-4 text-violet-500" />
-          <span>Dashboards</span>
+          <span>Dashboard</span>
         </div>
         <ChevronRight className="w-4 h-4" />
         <div className="flex items-center gap-2">
-          <FileOutput className="w-4 h-4 text-amber-500" />
-          <span>Outputs</span>
+          <Table2 className="w-4 h-4 text-amber-500" />
+          <span>Artifacts</span>
         </div>
       </div>
 
@@ -307,16 +298,8 @@ export default function WorkstreamsPage() {
                     <span className="text-blue-600 dark:text-blue-400 font-medium">{ws.stats.dataSources}</span>
                     <span className="text-blue-500/60">sources</span>
                   </div>
-                  
-                  <div className="w-6 h-px bg-gradient-to-r from-blue-500/50 to-emerald-500/50" />
-                  
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-sm">
-                    <Table2 className="w-4 h-4 text-emerald-500" />
-                    <span className="text-emerald-600 dark:text-emerald-400 font-medium">{ws.stats.views}</span>
-                    <span className="text-emerald-500/60">views</span>
-                  </div>
-                  
-                  <div className="w-6 h-px bg-gradient-to-r from-emerald-500/50 to-violet-500/50" />
+
+                  <div className="w-6 h-px bg-gradient-to-r from-blue-500/50 to-violet-500/50" />
                   
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-violet-500/10 border border-violet-500/20 rounded-lg text-sm">
                     <LayoutDashboard className="w-4 h-4 text-violet-500" />
@@ -327,9 +310,9 @@ export default function WorkstreamsPage() {
                   <div className="w-6 h-px bg-gradient-to-r from-violet-500/50 to-amber-500/50" />
                   
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-sm">
-                    <FileOutput className="w-4 h-4 text-amber-500" />
-                    <span className="text-amber-600 dark:text-amber-400 font-medium">{ws.stats.outputs}</span>
-                    <span className="text-amber-500/60">outputs</span>
+                    <Table2 className="w-4 h-4 text-amber-500" />
+                    <span className="text-amber-600 dark:text-amber-400 font-medium">{ws.stats.artifacts}</span>
+                    <span className="text-amber-500/60">artifacts</span>
                   </div>
 
                   <Button
@@ -359,7 +342,7 @@ export default function WorkstreamsPage() {
           <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
             {searchQuery 
               ? "Try adjusting your search"
-              : "Projects help you organize your data flow from sources to dashboards."
+              : "Projects organize dashboard workspaces and their artifacts."
             }
           </p>
           {!searchQuery && (
@@ -380,7 +363,7 @@ export default function WorkstreamsPage() {
               Create Project
             </DialogTitle>
             <DialogDescription>
-              A project groups your data from source to dashboard
+              A project is the home for dashboards, artifacts, and agent activity
             </DialogDescription>
           </DialogHeader>
 
