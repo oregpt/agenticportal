@@ -1,8 +1,9 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/lib/db';
 import { eq, and, inArray } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 import { ensureDataSourceAssignmentTable, getDataSourceIdsForWorkstream } from '@/server/datasource-assignments';
+import { ensureProjectAgentTables } from '@/server/project-agent/bootstrap';
 
 interface CachedColumn {
   name: string;
@@ -52,6 +53,7 @@ export async function GET(
 ) {
   try {
     await ensureDataSourceAssignmentTable();
+    await ensureProjectAgentTables();
     const { id: workstreamId } = await params;
     const user = await getCurrentUser();
     const orgId = user?.organizationId || request.headers.get('x-org-id') || 'default-org';
@@ -89,43 +91,127 @@ export async function GET(
           )
       : [];
 
-    const views = await db
+    const artifacts = await db
       .select({
-        id: schema.views.id,
-        name: schema.views.name,
-        description: schema.views.description,
-        dataSourceId: schema.views.dataSourceId,
-        sourceTable: schema.views.sourceTable,
-        columns: schema.views.columns,
+        id: schema.artifacts.id,
+        type: schema.artifacts.type,
+        name: schema.artifacts.name,
+        description: schema.artifacts.description,
+        status: schema.artifacts.status,
       })
-      .from(schema.views)
-      .where(eq(schema.views.workstreamId, workstreamId));
+      .from(schema.artifacts)
+      .where(
+        and(
+          eq(schema.artifacts.organizationId, orgId),
+          eq(schema.artifacts.projectId, workstreamId),
+          eq(schema.artifacts.status, 'active')
+        )
+      );
 
-    const dashboards = await db
-      .select({
-        id: schema.dashboards.id,
-        name: schema.dashboards.name,
-        description: schema.dashboards.description,
-      })
-      .from(schema.dashboards)
-      .where(eq(schema.dashboards.workstreamId, workstreamId));
-
-    const dashboardsWithViews = await Promise.all(
-      dashboards.map(async (dash) => {
-        const widgets = await db
+    const artifactIds = artifacts.map((artifact) => artifact.id);
+    const artifactVersions = artifactIds.length
+      ? await db
           .select({
-            viewId: schema.widgets.viewId,
+            artifactId: schema.artifactVersions.artifactId,
+            querySpecId: schema.artifactVersions.querySpecId,
+            version: schema.artifactVersions.version,
           })
-          .from(schema.widgets)
-          .where(eq(schema.widgets.dashboardId, dash.id));
+          .from(schema.artifactVersions)
+          .where(inArray(schema.artifactVersions.artifactId, artifactIds))
+      : [];
 
-        return {
-          ...dash,
-          viewIds: [...new Set(widgets.map((widget) => widget.viewId))],
-          widgetCount: widgets.length,
-        };
-      })
+    const latestVersionByArtifactId = new Map<string, { querySpecId: string | null; version: number }>();
+    for (const artifactVersion of artifactVersions) {
+      const current = latestVersionByArtifactId.get(artifactVersion.artifactId);
+      if (!current || artifactVersion.version > current.version) {
+        latestVersionByArtifactId.set(artifactVersion.artifactId, {
+          querySpecId: artifactVersion.querySpecId,
+          version: artifactVersion.version,
+        });
+      }
+    }
+
+    const querySpecIds = Array.from(
+      new Set(
+        Array.from(latestVersionByArtifactId.values())
+          .map((version) => version.querySpecId)
+          .filter((id): id is string => Boolean(id))
+      )
     );
+    const querySpecs = querySpecIds.length
+      ? await db
+          .select({
+            id: schema.querySpecs.id,
+            sourceId: schema.querySpecs.sourceId,
+          })
+          .from(schema.querySpecs)
+          .where(
+            and(
+              eq(schema.querySpecs.organizationId, orgId),
+              inArray(schema.querySpecs.id, querySpecIds)
+            )
+          )
+      : [];
+    const sourceIdByQuerySpecId = new Map(querySpecs.map((spec) => [spec.id, spec.sourceId]));
+
+    const dashboardIds = artifacts
+      .filter((artifact) => artifact.type === 'dashboard')
+      .map((artifact) => artifact.id);
+    const dashboardItems = dashboardIds.length
+      ? await db
+          .select({
+            dashboardArtifactId: schema.dashboardItems.dashboardArtifactId,
+            childArtifactId: schema.dashboardItems.childArtifactId,
+          })
+          .from(schema.dashboardItems)
+          .where(inArray(schema.dashboardItems.dashboardArtifactId, dashboardIds))
+      : [];
+
+    const dashboardIdsByChildArtifact = new Map<string, Set<string>>();
+    for (const item of dashboardItems) {
+      const existing = dashboardIdsByChildArtifact.get(item.childArtifactId) || new Set<string>();
+      existing.add(item.dashboardArtifactId);
+      dashboardIdsByChildArtifact.set(item.childArtifactId, existing);
+    }
+
+    const artifactNodes = artifacts.map((artifact) => {
+      if (artifact.type === 'dashboard') {
+        const widgetCount = dashboardItems.filter((item) => item.dashboardArtifactId === artifact.id).length;
+        return {
+          id: artifact.id,
+          type: 'dashboard' as const,
+          name: artifact.name,
+          description: artifact.description || `${widgetCount} widgets`,
+          parentIds: [] as string[],
+          status: 'active' as const,
+          metadata: { artifactType: artifact.type, widgetCount },
+        };
+      }
+
+      const latestVersion = latestVersionByArtifactId.get(artifact.id);
+      const sourceId = latestVersion?.querySpecId ? sourceIdByQuerySpecId.get(latestVersion.querySpecId) : undefined;
+      return {
+        id: artifact.id,
+        type: 'view' as const,
+        name: artifact.name,
+        description: artifact.description || `${artifact.type} artifact`,
+        parentIds: sourceId ? [sourceId] : [],
+        status: 'active' as const,
+        metadata: { artifactType: artifact.type },
+      };
+    });
+
+    const dashboardNodeById = new Map(
+      artifactNodes.filter((node) => node.type === 'dashboard').map((node) => [node.id, node])
+    );
+
+    for (const item of dashboardItems) {
+      const dashboardNode = dashboardNodeById.get(item.dashboardArtifactId);
+      if (!dashboardNode) continue;
+      if (!dashboardNode.parentIds.includes(item.childArtifactId)) {
+        dashboardNode.parentIds.push(item.childArtifactId);
+      }
+    }
 
     const outputs = await db
       .select({
@@ -139,13 +225,6 @@ export async function GET(
       .from(schema.outputs)
       .where(eq(schema.outputs.workstreamId, workstreamId));
 
-    const dataSourceSchemaById = new Map(
-      dataSources.map((ds) => [
-        ds.id,
-        (ds.schemaCache as DataSourceSchemaCache | null) || null,
-      ])
-    );
-
     const nodes = [
       ...dataSources.map((ds) => ({
         id: ds.id,
@@ -156,34 +235,7 @@ export async function GET(
         status: ds.lastSyncedAt ? 'active' : 'syncing',
         metadata: { type: ds.type, schemaCache: ds.schemaCache },
       })),
-      ...views.map((view) => {
-        const viewColumns = (view.columns as Array<{ name: string; type: string }> | null) || [];
-        const sourceTableColumns =
-          dataSourceSchemaById
-            .get(view.dataSourceId)
-            ?.tables?.find((table) => table.name === view.sourceTable)
-            ?.columns || [];
-        const effectiveColumnCount = viewColumns.length || sourceTableColumns.length;
-
-        return {
-          id: view.id,
-          type: 'view' as const,
-          name: view.name,
-          description: view.description || `${effectiveColumnCount} columns`,
-          parentIds: [view.dataSourceId],
-          status: 'active',
-          metadata: { columns: viewColumns, sourceTable: view.sourceTable },
-        };
-      }),
-      ...dashboardsWithViews.map((dashboard) => ({
-        id: dashboard.id,
-        type: 'dashboard' as const,
-        name: dashboard.name,
-        description: dashboard.description || `${dashboard.widgetCount} widgets`,
-        parentIds: dashboard.viewIds,
-        status: 'active',
-        metadata: { widgetCount: dashboard.widgetCount },
-      })),
+      ...artifactNodes,
       ...outputs.map((output) => ({
         id: output.id,
         type: 'output' as const,
@@ -212,6 +264,7 @@ export async function PATCH(
 ) {
   try {
     await ensureDataSourceAssignmentTable();
+    await ensureProjectAgentTables();
     const { id: workstreamId } = await params;
     const user = await getCurrentUser();
     const orgId = user?.organizationId || request.headers.get('x-org-id') || 'default-org';

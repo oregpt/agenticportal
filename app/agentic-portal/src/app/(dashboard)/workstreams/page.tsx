@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -334,7 +334,7 @@ export default function WorkstreamsPage() {
 
                   <Button
                     variant="ghost"
-                    onClick={() => router.push(`/workstream-canvas/${ws.id}`)}
+                    onClick={() => router.push(`/workstreams/${ws.id}`)}
                     className="ml-auto flex items-center gap-2 text-muted-foreground group-hover:text-primary transition-colors"
                   >
                     <span className="text-sm">Open canvas</span>
