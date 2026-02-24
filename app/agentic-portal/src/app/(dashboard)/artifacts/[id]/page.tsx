@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Play, Plus, Settings, Trash2 } from 'lucide-react';
+import { Loader2, Play, Plus, Settings, Trash2, GripVertical } from 'lucide-react';
 import {
   Area,
   AreaChart,
@@ -70,6 +70,12 @@ type ChildBlock = {
   artifact: Artifact;
   version: ArtifactVersion | null;
   rows: Array<Record<string, unknown>>;
+};
+
+type DataSourceOption = {
+  id: string;
+  name: string;
+  type: string;
 };
 
 const CHART_COLORS = ['#0f766e', '#2563eb', '#9333ea', '#ea580c', '#dc2626'];
@@ -134,8 +140,21 @@ export default function ArtifactDetailPage() {
   const [items, setItems] = useState<DashboardItem[]>([]);
   const [blocks, setBlocks] = useState<Record<string, ChildBlock>>({});
   const [allArtifacts, setAllArtifacts] = useState<Artifact[]>([]);
+  const [dataSources, setDataSources] = useState<DataSourceOption[]>([]);
+  const [addMode, setAddMode] = useState<'existing' | 'direct'>('existing');
   const [selectedArtifactId, setSelectedArtifactId] = useState('');
   const [titleOverride, setTitleOverride] = useState('');
+  const [directType, setDirectType] = useState<'table' | 'chart' | 'kpi'>('chart');
+  const [directName, setDirectName] = useState('');
+  const [directDescription, setDirectDescription] = useState('');
+  const [directSourceId, setDirectSourceId] = useState('');
+  const [directSqlText, setDirectSqlText] = useState('');
+  const [directChartType, setDirectChartType] = useState<'bar' | 'line' | 'area' | 'pie'>('bar');
+  const [directChartXField, setDirectChartXField] = useState('');
+  const [directChartYField, setDirectChartYField] = useState('');
+  const [directMetricField, setDirectMetricField] = useState('');
+  const [directMetricAggregation, setDirectMetricAggregation] = useState<'count' | 'sum' | 'avg' | 'min' | 'max'>('count');
+  const [directTableColumns, setDirectTableColumns] = useState('');
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingItemId, setEditingItemId] = useState('');
@@ -209,15 +228,26 @@ export default function ArtifactDetailPage() {
       setRuns(runsPayload?.runs || []);
 
       if (artifactData.artifact.type === 'dashboard') {
-        const [itemsRes, artifactsRes] = await Promise.all([
+        const [itemsRes, artifactsRes, sourcesRes] = await Promise.all([
           fetch(`/api/artifacts/${artifactId}/items`),
           fetch(`/api/artifacts?projectId=${encodeURIComponent(artifactData.artifact.projectId)}`),
+          fetch(`/api/datasources?workstreamId=${encodeURIComponent(artifactData.artifact.projectId)}`),
         ]);
         const itemsPayload = await itemsRes.json().catch(() => ({}));
         const artifactsPayload = await artifactsRes.json().catch(() => ({}));
+        const sourcesPayload = await sourcesRes.json().catch(() => ({}));
         const nextItems: DashboardItem[] = itemsPayload?.items || [];
         setItems(nextItems);
         setAllArtifacts((artifactsPayload?.artifacts || []).filter((a: Artifact) => a.type !== 'dashboard'));
+        const nextSources: DataSourceOption[] = (sourcesPayload?.dataSources || []).map((ds: any) => ({
+          id: String(ds.id),
+          name: String(ds.name || ds.id),
+          type: String(ds.type || 'source'),
+        }));
+        setDataSources(nextSources);
+        if (!directSourceId && nextSources.length > 0) {
+          setDirectSourceId(nextSources[0]!.id);
+        }
 
         setLoadingBlocks(true);
         const resolved = await Promise.all(nextItems.map((item) => fetchChildBlock(item)));
@@ -231,6 +261,7 @@ export default function ArtifactDetailPage() {
       } else {
         setItems([]);
         setBlocks({});
+        setDataSources([]);
       }
     } catch (e: any) {
       setError(e?.message || 'Failed to load artifact');
@@ -268,8 +299,81 @@ export default function ArtifactDetailPage() {
   }
 
   async function addBlock() {
-    if (!selectedArtifactId || !artifactId) return;
+    if (!artifactId) return;
     try {
+      if (addMode === 'direct') {
+        const name = directName.trim() || `New ${directType === 'kpi' ? 'KPI' : directType === 'chart' ? 'Chart' : 'Table'}`;
+        const sqlText = directSqlText.trim();
+        if (!directSourceId || !sqlText) {
+          setError('Source and SQL are required for direct create.');
+          return;
+        }
+
+        let configJson: Record<string, unknown> = {};
+        let metadataJson: Record<string, unknown> = {};
+        if (directType === 'chart') {
+          configJson = {
+            renderer: 'chart',
+            chartType: directChartType,
+            xField: directChartXField || null,
+            yField: directChartYField || null,
+          };
+          metadataJson = {
+            preferredChartType: directChartType,
+            xField: directChartXField || null,
+            yField: directChartYField || null,
+          };
+        } else if (directType === 'kpi') {
+          configJson = {
+            renderer: 'kpi',
+            metricField: directMetricField || null,
+            aggregation: directMetricAggregation,
+          };
+          metadataJson = {
+            metricField: directMetricField || null,
+            aggregation: directMetricAggregation,
+          };
+        } else if (directType === 'table') {
+          const columns = directTableColumns
+            .split(',')
+            .map((c) => c.trim())
+            .filter(Boolean);
+          configJson = {
+            renderer: 'table',
+            columns: columns.map((key) => ({ key, label: key })),
+          };
+          metadataJson = {
+            columns,
+          };
+        }
+
+        const res = await fetch(`/api/artifacts/${artifactId}/items`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            artifactType: directType,
+            sourceId: directSourceId,
+            sqlText,
+            name,
+            description: directDescription.trim() || null,
+            configJson,
+            metadataJson,
+            displayJson: titleOverride ? { title: titleOverride } : null,
+          }),
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(payload?.error || 'Failed to create block');
+
+        setIsAddOpen(false);
+        setTitleOverride('');
+        setDirectName('');
+        setDirectDescription('');
+        setDirectSqlText('');
+        await refresh();
+        return;
+      }
+
+      if (!selectedArtifactId) return;
       const res = await fetch(`/api/artifacts/${artifactId}/items`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -306,7 +410,10 @@ export default function ArtifactDetailPage() {
 
   function openEditBlock(itemId: string) {
     const block = blocks[itemId];
-    if (!block) return;
+    if (!block) {
+      setError('Block data is still loading. Try again in a moment.');
+      return;
+    }
     const config = block.version?.configJson || {};
     const firstRow = block.rows[0] || {};
     const keys = Object.keys(firstRow);
@@ -504,14 +611,36 @@ export default function ArtifactDetailPage() {
                   const config = block?.version?.configJson || {};
                   return (
                     <div key={item.id} className="rounded-lg border bg-card shadow-sm overflow-hidden">
-                      <div className="artifact-drag-handle flex items-center justify-between border-b bg-muted/40 px-3 py-2">
+                      <div className="flex items-center justify-between border-b bg-muted/40 px-3 py-2">
                         <div className="text-sm font-medium truncate">{title}</div>
                         <div className="flex items-center gap-1">
+                          <div className="artifact-drag-handle text-slate-400 hover:text-slate-700 cursor-move px-1" title="Drag block">
+                            <GripVertical className="h-3.5 w-3.5" />
+                          </div>
                           <Badge variant="outline" className="text-[10px]">{type}</Badge>
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEditBlock(item.id)}>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            disabled={!block}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditBlock(item.id);
+                            }}
+                          >
                             <Settings className="h-3.5 w-3.5" />
                           </Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => removeBlock(item.id)}>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeBlock(item.id);
+                            }}
+                          >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
@@ -658,28 +787,127 @@ export default function ArtifactDetailPage() {
             <DialogTitle>Add Block To Dashboard</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="space-y-1">
-              <Label>Artifact</Label>
-              <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                value={selectedArtifactId}
-                onChange={(e) => setSelectedArtifactId(e.target.value)}
-              >
-                <option value="">Select artifact</option>
-                {allArtifacts
-                  .filter((a) => ['table', 'chart', 'kpi'].includes(a.type))
-                  .map((a) => (
-                    <option key={a.id} value={a.id}>{a.name} ({a.type})</option>
-                  ))}
-              </select>
+            <div className="flex gap-2">
+              <Button type="button" variant={addMode === 'existing' ? 'default' : 'outline'} size="sm" onClick={() => setAddMode('existing')}>
+                Existing Artifact
+              </Button>
+              <Button type="button" variant={addMode === 'direct' ? 'default' : 'outline'} size="sm" onClick={() => setAddMode('direct')}>
+                Direct Create
+              </Button>
             </div>
+            {addMode === 'existing' ? (
+              <div className="space-y-1">
+                <Label>Artifact</Label>
+                <select
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  value={selectedArtifactId}
+                  onChange={(e) => setSelectedArtifactId(e.target.value)}
+                >
+                  <option value="">Select artifact</option>
+                  {allArtifacts
+                    .filter((a) => ['table', 'chart', 'kpi'].includes(a.type))
+                    .map((a) => (
+                      <option key={a.id} value={a.id}>{a.name} ({a.type})</option>
+                    ))}
+                </select>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-1">
+                  <Label>Type</Label>
+                  <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={directType} onChange={(e) => setDirectType(e.target.value as 'table' | 'chart' | 'kpi')}>
+                    <option value="chart">Chart</option>
+                    <option value="table">Table</option>
+                    <option value="kpi">KPI</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <Label>Name</Label>
+                  <Input value={directName} onChange={(e) => setDirectName(e.target.value)} placeholder="e.g., Revenue By Month" />
+                </div>
+                <div className="space-y-1">
+                  <Label>Source</Label>
+                  <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={directSourceId} onChange={(e) => setDirectSourceId(e.target.value)}>
+                    <option value="">Select source</option>
+                    {dataSources.map((ds) => (
+                      <option key={ds.id} value={ds.id}>{ds.name} ({ds.type})</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <Label>SQL</Label>
+                  <textarea
+                    className="min-h-[110px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={directSqlText}
+                    onChange={(e) => setDirectSqlText(e.target.value)}
+                    placeholder="SELECT * FROM your_table LIMIT 100"
+                  />
+                </div>
+                {directType === 'chart' ? (
+                  <>
+                    <div className="space-y-1">
+                      <Label>Chart Type</Label>
+                      <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={directChartType} onChange={(e) => setDirectChartType(e.target.value as 'bar' | 'line' | 'area' | 'pie')}>
+                        <option value="bar">Bar</option>
+                        <option value="line">Line</option>
+                        <option value="area">Area</option>
+                        <option value="pie">Pie</option>
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label>X Field</Label>
+                        <Input value={directChartXField} onChange={(e) => setDirectChartXField(e.target.value)} placeholder="month" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Y Field</Label>
+                        <Input value={directChartYField} onChange={(e) => setDirectChartYField(e.target.value)} placeholder="revenue" />
+                      </div>
+                    </div>
+                  </>
+                ) : null}
+                {directType === 'kpi' ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label>Metric Field</Label>
+                      <Input value={directMetricField} onChange={(e) => setDirectMetricField(e.target.value)} placeholder="amount" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Aggregation</Label>
+                      <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={directMetricAggregation} onChange={(e) => setDirectMetricAggregation(e.target.value as 'count' | 'sum' | 'avg' | 'min' | 'max')}>
+                        <option value="count">Count</option>
+                        <option value="sum">Sum</option>
+                        <option value="avg">Average</option>
+                        <option value="min">Min</option>
+                        <option value="max">Max</option>
+                      </select>
+                    </div>
+                  </div>
+                ) : null}
+                {directType === 'table' ? (
+                  <div className="space-y-1">
+                    <Label>Columns (comma separated, optional)</Label>
+                    <Input value={directTableColumns} onChange={(e) => setDirectTableColumns(e.target.value)} placeholder="id, name, created_at" />
+                  </div>
+                ) : null}
+                <div className="space-y-1">
+                  <Label>Description (optional)</Label>
+                  <Input value={directDescription} onChange={(e) => setDirectDescription(e.target.value)} placeholder="Optional description" />
+                </div>
+              </>
+            )}
             <div className="space-y-1">
               <Label>Title Override (optional)</Label>
               <Input value={titleOverride} onChange={(e) => setTitleOverride(e.target.value)} placeholder="Custom block title" />
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
-              <Button onClick={addBlock} disabled={!selectedArtifactId}>Add Block</Button>
+              <Button
+                onClick={addBlock}
+                disabled={addMode === 'existing' ? !selectedArtifactId : !directSourceId || !directSqlText.trim()}
+              >
+                Add Block
+              </Button>
             </div>
           </div>
         </DialogContent>
