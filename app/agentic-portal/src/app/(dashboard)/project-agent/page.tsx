@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { WorkstreamFilterBar } from '@/components/filters/WorkstreamFilterBar';
+import { Bot, MessageSquare, Settings2, Sparkles } from 'lucide-react';
 
 type SourceType = 'bigquery' | 'postgres' | 'google_sheets' | 'google_sheets_live';
 type DataFeatures = {
@@ -626,27 +627,77 @@ export default function ProjectAgentPage() {
       {!!error && <div style={{ ...section, borderColor: '#fecaca', backgroundColor: '#fef2f2', color: '#991b1b' }}>{error}</div>}
 
       <div style={section}>
-        <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Project Agents</div>
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16, fontWeight: 700 }}>
+            <Sparkles size={16} color="#0f766e" />
+            Project Agents
+          </div>
+          <div style={{ marginTop: 4, color: '#64748b', fontSize: 12 }}>
+            Select an agent to open chat or configure runtime behavior.
+          </div>
+        </div>
         {createdAgents.length === 0 ? (
           <div style={{ border: '1px dashed #cbd5e1', borderRadius: 10, padding: 14, color: '#64748b', fontSize: 13 }}>
             No agents created for this project scope yet.
           </div>
         ) : (
-        <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
+        <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))' }}>
           {createdAgents.map((project) => {
             const hasAgent = !!project.hasAgent;
             return (
-              <div key={project.id} style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: 12, backgroundColor: '#fff', minHeight: 128, display: 'flex', flexDirection: 'column' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 14 }}>{project.agentName || `${project.name} Agent`}</div>
-                    <div style={{ marginTop: 4, fontSize: 12, color: '#64748b' }}>Project: {project.name}</div>
+              <div
+                key={project.id}
+                style={{
+                  border: '1px solid #dbe7ef',
+                  borderRadius: 14,
+                  padding: 14,
+                  background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
+                  minHeight: 168,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  boxShadow: '0 8px 22px rgba(2, 6, 23, 0.06)',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div
+                        style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: 8,
+                          backgroundColor: '#ecfeff',
+                          border: '1px solid #99f6e4',
+                          display: 'grid',
+                          placeItems: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Bot size={14} color="#0f766e" />
+                      </div>
+                      <div style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {project.agentName || `${project.name} Agent`}
+                      </div>
+                    </div>
+                    <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 999, backgroundColor: '#eef2ff', color: '#4338ca' }}>
+                        Project: {project.name}
+                      </span>
+                      <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 999, backgroundColor: '#f1f5f9', color: '#334155' }}>
+                        Model: {project.defaultModel || 'Default'}
+                      </span>
+                    </div>
                   </div>
                   <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 999, backgroundColor: '#dcfce7', color: '#166534' }}>
                     Active
                   </span>
                 </div>
-                <div style={{ display: 'flex', gap: 8, marginTop: 'auto', paddingTop: 12 }}>
+                <div style={{ marginTop: 10, color: '#64748b', fontSize: 12, lineHeight: 1.4 }}>
+                  {(project.instructions || '').trim()
+                    ? (project.instructions || '').slice(0, 120) + ((project.instructions || '').length > 120 ? '...' : '')
+                    : 'No custom instructions yet.'}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 'auto', paddingTop: 14 }}>
                   <button
                     style={btn(hasAgent ? '#0f766e' : '#94a3b8')}
                     disabled={!hasAgent}
@@ -654,7 +705,10 @@ export default function ProjectAgentPage() {
                       router.push(`/project-agent/chat?projectId=${encodeURIComponent(project.id)}`);
                     }}
                   >
-                    Chat
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <MessageSquare size={13} />
+                      Chat
+                    </span>
                   </button>
                   <button
                     style={btn('#334155')}
@@ -664,7 +718,10 @@ export default function ProjectAgentPage() {
                       setTimeout(() => jumpToSection('project-agent-settings'), 120);
                     }}
                   >
-                    Configure
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <Settings2 size={13} />
+                      Configure
+                    </span>
                   </button>
                 </div>
               </div>
