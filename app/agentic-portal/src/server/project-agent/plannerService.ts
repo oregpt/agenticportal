@@ -93,6 +93,11 @@ export interface Phase2Result {
   rationale: string;
 }
 
+export interface Phase2NormalizationResult {
+  plan: Phase2Result;
+  notes: string[];
+}
+
 export interface SafetyResult {
   issues: string[];
   warnings: string[];
@@ -160,6 +165,19 @@ function normalizeOperator(input: unknown): FilterOperator {
 
 function toArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
+}
+
+function isNumericLike(value: unknown): boolean {
+  if (typeof value === 'number') return Number.isFinite(value);
+  if (typeof value !== 'string') return false;
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  return /^-?\d+(\.\d+)?$/.test(trimmed);
+}
+
+function toNumeric(value: string | number): number {
+  if (typeof value === 'number') return value;
+  return Number(value.trim());
 }
 
 export class NL2SQLPlannerService {
@@ -387,6 +405,73 @@ export class NL2SQLPlannerService {
     };
   }
 
+  normalizePlan(input: { schema: PlannerSchemaContext; plan: Phase2Result }): Phase2NormalizationResult {
+    const fieldMap = new Map(input.schema.fields.map((f) => [f.column, f]));
+    const notes: string[] = [];
+    const plan: Phase2Result = JSON.parse(JSON.stringify(input.plan));
+
+    plan.select = [...new Set(plan.select.filter((col) => fieldMap.has(col)))];
+    plan.groupBy = [...new Set(plan.groupBy.filter((col) => fieldMap.has(col)))];
+    plan.orderBy = plan.orderBy.filter((o) => fieldMap.has(o.column));
+
+    const numericCompareOps = new Set<FilterOperator>(['>', '<', '>=', '<=']);
+    plan.filters = plan.filters
+      .filter((f) => fieldMap.has(f.column))
+      .map((f) => {
+        const field = fieldMap.get(f.column)!;
+        const normalized = { ...f };
+        if (field.type === 'number' && typeof normalized.value === 'string' && isNumericLike(normalized.value)) {
+          normalized.value = toNumeric(normalized.value);
+          normalized.valueType = 'number';
+          notes.push(`Coerced numeric filter literal for ${f.column}.`);
+        }
+        return normalized;
+      })
+      .filter((f) => {
+        const field = fieldMap.get(f.column)!;
+        if (numericCompareOps.has(f.operator) && field.type === 'number' && typeof f.value === 'string' && !isNumericLike(f.value)) {
+          notes.push(`Dropped invalid numeric comparison on ${f.column} (${String(f.value)}).`);
+          return false;
+        }
+        return true;
+      });
+
+    if (plan.aggregations.length > 0) {
+      const missingGroupBy = plan.select.filter((col) => !plan.groupBy.includes(col));
+      if (missingGroupBy.length > 0) {
+        plan.groupBy = [...new Set([...plan.groupBy, ...missingGroupBy])];
+        notes.push(`Added missing GROUP BY columns: ${missingGroupBy.join(', ')}.`);
+      }
+      const orderByBefore = plan.orderBy.length;
+      plan.orderBy = plan.orderBy.filter((o) => plan.groupBy.includes(o.column));
+      if (plan.orderBy.length !== orderByBefore) {
+        notes.push('Dropped ORDER BY columns that are not grouped during aggregation.');
+      }
+    }
+
+    if (plan.window) {
+      if (plan.aggregations.length > 0) {
+        plan.window = null;
+        notes.push('Dropped window function because aggregation was also present.');
+      } else if (!plan.window.orderBy?.column || !fieldMap.has(plan.window.orderBy.column)) {
+        const dateField =
+          input.schema.fields.find((f) => f.type === 'date' || f.type === 'datetime')?.column ||
+          plan.select[0] ||
+          plan.groupBy[0] ||
+          '';
+        if (dateField && fieldMap.has(dateField)) {
+          plan.window.orderBy = { column: dateField, direction: 'ASC' };
+          notes.push(`Added default window ORDER BY on ${dateField}.`);
+        } else {
+          plan.window = null;
+          notes.push('Dropped window function due to missing valid ORDER BY column.');
+        }
+      }
+    }
+
+    return { plan, notes };
+  }
+
   generateSQL(input: { schema: PlannerSchemaContext; plan: Phase2Result; safety: SafetyResult }): string {
     const sourceType = input.schema.sourceType;
     const tableExpr = isBigQueryFamily(sourceType) ? `\`${input.schema.tableName}\`` : `"${input.schema.tableName}"`;
@@ -398,7 +483,10 @@ export class NL2SQLPlannerService {
     for (const agg of input.plan.aggregations) {
       const columnExpr = agg.column === '*' ? '*' : quoteIdentifier(sourceType, agg.column);
       const casted = input.safety.numericCastColumns.includes(agg.column) ? `CAST(${columnExpr} AS ${castNumericType})` : columnExpr;
-      const nullSafe = input.safety.nullSafeColumns.includes(agg.column) ? `COALESCE(${casted}, 0)` : casted;
+      const nullSafe =
+        input.safety.nullSafeColumns.includes(agg.column) && (agg.function === 'SUM' || agg.function === 'AVG')
+          ? `COALESCE(${casted}, 0)`
+          : casted;
       let expr = '';
       switch (agg.function) {
         case 'COUNT_DISTINCT':
@@ -416,7 +504,7 @@ export class NL2SQLPlannerService {
 
     if (input.plan.window) {
       const w = input.plan.window;
-      const orderExpr = w.orderBy ? `${quoteIdentifier(sourceType, w.orderBy.column)} ${w.orderBy.direction}` : '';
+      const orderExpr = w.orderBy ? `ORDER BY ${quoteIdentifier(sourceType, w.orderBy.column)} ${w.orderBy.direction}` : '';
       const partitionExpr = w.partitionBy.length
         ? `PARTITION BY ${w.partitionBy.map((c) => quoteIdentifier(sourceType, c)).join(', ')}`
         : '';
@@ -435,6 +523,15 @@ export class NL2SQLPlannerService {
     if (!selectParts.length) selectParts.push('*');
 
     const whereParts: string[] = [];
+    const isRawSqlFunctionExpr = (value: string): boolean => {
+      const trimmed = value.trim();
+      return /^(DATE_SUB|DATE_ADD|TIMESTAMP_SUB|TIMESTAMP_ADD|CURRENT_DATE|CURRENT_TIMESTAMP)\s*\(/i.test(trimmed);
+    };
+    const formatValue = (value: string | number): string => {
+      if (typeof value === 'number') return String(value);
+      if (isRawSqlFunctionExpr(value)) return value.trim();
+      return `'${escapeString(String(value))}'`;
+    };
     for (const cond of input.plan.filters) {
       const col = quoteIdentifier(sourceType, cond.column);
       const op = cond.operator;
@@ -445,7 +542,7 @@ export class NL2SQLPlannerService {
       if (op === 'IN' || op === 'NOT IN') {
         const vals = Array.isArray(cond.value) ? cond.value : [];
         if (!vals.length) continue;
-        const formatted = vals.map((v) => (typeof v === 'number' ? String(v) : `'${escapeString(String(v))}'`)).join(', ');
+        const formatted = vals.map((v) => formatValue(typeof v === 'number' ? v : String(v))).join(', ');
         whereParts.push(`${col} ${op} (${formatted})`);
         continue;
       }
@@ -453,14 +550,14 @@ export class NL2SQLPlannerService {
         const vals = Array.isArray(cond.value) ? cond.value : [];
         if (vals.length !== 2) continue;
         const [a, b] = vals;
-        const left = typeof a === 'number' ? String(a) : `'${escapeString(String(a))}'`;
-        const right = typeof b === 'number' ? String(b) : `'${escapeString(String(b))}'`;
+        const left = formatValue(typeof a === 'number' ? a : String(a));
+        const right = formatValue(typeof b === 'number' ? b : String(b));
         whereParts.push(`${col} BETWEEN ${left} AND ${right}`);
         continue;
       }
       const value = cond.value;
       if (value === undefined || value === null) continue;
-      const formatted = typeof value === 'number' ? String(value) : `'${escapeString(String(value))}'`;
+      const formatted = formatValue(typeof value === 'number' ? value : String(value));
       whereParts.push(`${col} ${op} ${formatted}`);
     }
 
