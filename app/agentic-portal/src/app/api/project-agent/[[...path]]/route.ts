@@ -339,14 +339,18 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ p
     }
 
     if (seg1 === 'conversations' && seg2) {
-      const { projectId, title } = body;
-      if (!projectId || !title) return badRequest('projectId and title are required');
+      const { projectId, title, isPinned } = body;
+      if (!projectId) return badRequest('projectId is required');
+      if (title === undefined && typeof isPinned !== 'boolean') {
+        return badRequest('Provide title and/or isPinned');
+      }
       const conversation = await updateProjectConversationTitle({
         conversationId: seg2,
         projectId: String(projectId),
         organizationId: user.organizationId!,
         userId: user.id,
-        title: String(title),
+        title: title === undefined ? undefined : String(title),
+        isPinned: typeof isPinned === 'boolean' ? isPinned : undefined,
       });
       if (!conversation) return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
       return NextResponse.json({ conversation });

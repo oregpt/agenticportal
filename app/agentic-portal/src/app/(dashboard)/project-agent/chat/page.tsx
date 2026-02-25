@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { WorkstreamFilterBar } from '@/components/filters/WorkstreamFilterBar';
-import { ChevronDown, Loader2, MessageSquare, Plus, Send, Terminal, Trash2, Zap } from 'lucide-react';
+import { ChevronDown, Loader2, MessageSquare, Pencil, Plus, Search, Send, Star, Terminal, Trash2, Zap } from 'lucide-react';
 
 type SourceType = 'bigquery' | 'postgres' | 'google_sheets' | 'google_sheets_live';
 type Project = { id: string; name: string; hasAgent?: boolean };
@@ -42,6 +42,7 @@ type ConversationSummary = {
   updatedAt: string;
   lastMessageAt?: string | null;
   messageCount?: number;
+  isPinned?: number;
 };
 type DeepToolPlan = {
   mode: 'none' | 'confirm' | 'read';
@@ -93,6 +94,7 @@ export default function ProjectAgentChatPage() {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [selectedConversationId, setSelectedConversationId] = useState('');
   const [loadingConversationId, setLoadingConversationId] = useState('');
+  const [conversationSearch, setConversationSearch] = useState('');
   const [chatSourceId, setChatSourceId] = useState('');
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -114,6 +116,11 @@ export default function ProjectAgentChatPage() {
 
   const enabledSources = useMemo(() => sources.filter((s) => s.status !== 'disabled'), [sources]);
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
+  const filteredConversations = useMemo(() => {
+    const query = conversationSearch.trim().toLowerCase();
+    if (!query) return conversations;
+    return conversations.filter((row) => String(row.title || '').toLowerCase().includes(query));
+  }, [conversations, conversationSearch]);
   const selectableMessageIds = useMemo(
     () => messages.filter((m) => m.role === 'assistant' && !!m.dataRun?.trust?.sql).map((m) => m.id),
     [messages]
@@ -548,6 +555,57 @@ export default function ProjectAgentChatPage() {
     }
   }
 
+  async function patchConversation(conversationId: string, patch: { title?: string; isPinned?: boolean }) {
+    if (!selectedProjectId) return;
+    await api(`/api/project-agent/conversations/${encodeURIComponent(conversationId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        projectId: selectedProjectId,
+        ...patch,
+      }),
+    });
+    setConversations((prev) =>
+      prev.map((row) =>
+        row.id === conversationId
+          ? {
+              ...row,
+              ...(patch.title !== undefined ? { title: patch.title } : {}),
+              ...(patch.isPinned !== undefined ? { isPinned: patch.isPinned ? 1 : 0 } : {}),
+              updatedAt: new Date().toISOString(),
+            }
+          : row
+      )
+    );
+  }
+
+  async function renameConversation(conversationId: string, currentTitle: string) {
+    const nextTitle = window.prompt('Rename conversation', currentTitle || 'Conversation');
+    if (nextTitle == null) return;
+    const trimmed = nextTitle.trim();
+    if (!trimmed) return;
+    try {
+      await patchConversation(conversationId, { title: trimmed });
+    } catch (e: any) {
+      setError(e?.message || 'Failed to rename conversation');
+    }
+  }
+
+  async function togglePinnedConversation(conversationId: string, currentPinned: boolean) {
+    try {
+      await patchConversation(conversationId, { isPinned: !currentPinned });
+      setConversations((prev) =>
+        [...prev].sort((a, b) => {
+          const aPinned = a.id === conversationId ? !currentPinned : Number(a.isPinned || 0) === 1;
+          const bPinned = Number(b.isPinned || 0) === 1;
+          if (aPinned !== bPinned) return aPinned ? -1 : 1;
+          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+        })
+      );
+    } catch (e: any) {
+      setError(e?.message || 'Failed to update pin');
+    }
+  }
+
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <WorkstreamFilterBar
@@ -593,11 +651,23 @@ export default function ProjectAgentChatPage() {
                 <Plus className="h-3.5 w-3.5 mr-1" /> New
               </Button>
             </div>
+            <div className="p-2 border-b border-border">
+              <div className="relative">
+                <Search className="h-3.5 w-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={conversationSearch}
+                  onChange={(e) => setConversationSearch(e.target.value)}
+                  placeholder="Search conversations..."
+                  className="w-full h-8 rounded-md border border-input bg-background pl-8 pr-2 text-xs"
+                />
+              </div>
+            </div>
             <div className="max-h-[72vh] overflow-y-auto p-2 space-y-1">
-              {conversations.length === 0 ? (
+              {filteredConversations.length === 0 ? (
                 <p className="px-2 py-4 text-xs text-muted-foreground">No conversations yet.</p>
               ) : (
-                conversations.map((conversation) => (
+                filteredConversations.map((conversation) => (
                   <div
                     key={conversation.id}
                     role="button"
@@ -624,6 +694,28 @@ export default function ProjectAgentChatPage() {
                             : ''}
                         </p>
                       </div>
+                      <button
+                        type="button"
+                        className={`text-muted-foreground hover:text-amber-600 ${Number(conversation.isPinned || 0) === 1 ? 'text-amber-500' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void togglePinnedConversation(conversation.id, Number(conversation.isPinned || 0) === 1);
+                        }}
+                        title={Number(conversation.isPinned || 0) === 1 ? 'Unfavorite conversation' : 'Favorite conversation'}
+                      >
+                        <Star className={`h-3.5 w-3.5 ${Number(conversation.isPinned || 0) === 1 ? 'fill-current' : ''}`} />
+                      </button>
+                      <button
+                        type="button"
+                        className="text-muted-foreground hover:text-foreground"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void renameConversation(conversation.id, conversation.title || '');
+                        }}
+                        title="Rename conversation"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
                       <button
                         type="button"
                         className="text-muted-foreground hover:text-red-600"

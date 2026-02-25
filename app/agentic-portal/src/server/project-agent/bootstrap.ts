@@ -115,11 +115,13 @@ async function bootstrap(): Promise<void> {
       organization_id VARCHAR(64) NOT NULL,
       user_id VARCHAR(64) NOT NULL,
       title VARCHAR(255) NOT NULL,
+      is_pinned INTEGER NOT NULL DEFAULT 0,
       last_message_at TIMESTAMP,
       created_at TIMESTAMP DEFAULT NOW() NOT NULL,
       updated_at TIMESTAMP DEFAULT NOW() NOT NULL
     )
   `);
+  await db.execute(sql`ALTER TABLE project_agent_chat_sessions ADD COLUMN IF NOT EXISTS is_pinned INTEGER NOT NULL DEFAULT 0`).catch(() => {});
 
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS project_agent_chat_messages (

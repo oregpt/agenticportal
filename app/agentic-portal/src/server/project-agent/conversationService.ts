@@ -22,7 +22,7 @@ export async function listProjectConversations(input: {
         eq(schema.projectAgentChatSessions.userId, input.userId),
       ),
     )
-    .orderBy(desc(schema.projectAgentChatSessions.updatedAt))
+    .orderBy(desc(schema.projectAgentChatSessions.isPinned), desc(schema.projectAgentChatSessions.updatedAt))
     .limit(Math.max(1, Math.min(Number(input.limit || 100), 200)));
 
   const withCounts = await Promise.all(
@@ -57,6 +57,7 @@ export async function createProjectConversation(input: {
       organizationId: input.organizationId,
       userId: input.userId,
       title: String(input.title || 'New conversation').slice(0, 255),
+      isPinned: 0,
       lastMessageAt: null,
       createdAt: now,
       updatedAt: now,
@@ -149,13 +150,15 @@ export async function updateProjectConversationTitle(input: {
   projectId: string;
   organizationId: string;
   userId: string;
-  title: string;
+  title?: string;
+  isPinned?: boolean;
 }) {
   await ensureProjectAgentTables();
   const [row] = await db
     .update(schema.projectAgentChatSessions)
     .set({
-      title: String(input.title || 'Conversation').slice(0, 255),
+      title: input.title === undefined ? undefined : String(input.title || 'Conversation').slice(0, 255),
+      isPinned: input.isPinned === undefined ? undefined : input.isPinned ? 1 : 0,
       updatedAt: new Date(),
     })
     .where(

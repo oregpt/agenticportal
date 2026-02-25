@@ -385,6 +385,7 @@ export const projectAgentChatSessions = pgTable('project_agent_chat_sessions', {
   organizationId: varchar('organization_id', { length: 64 }).notNull(),
   userId: varchar('user_id', { length: 64 }).notNull(),
   title: varchar('title', { length: 255 }).notNull(),
+  isPinned: integer('is_pinned').notNull().default(0),
   lastMessageAt: timestamp('last_message_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
