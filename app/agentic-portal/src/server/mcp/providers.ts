@@ -1,4 +1,4 @@
-export type McpProviderId = 'tres_finance' | 'hubspot';
+export type McpProviderId = 'tres_finance' | 'hubspot' | 'ccview';
 
 export interface McpCredentialField {
   key: string;
@@ -51,6 +51,22 @@ export const MCP_PROVIDER_DEFINITIONS: Record<McpProviderId, McpProviderDefiniti
       { label: 'List Deals', prompt: 'Show all open deals and their stages' },
       { label: 'List Tickets', prompt: 'Show all open support tickets' },
       { label: 'Create Task', prompt: 'Create a follow-up task for a contact' },
+    ],
+  },
+  ccview: {
+    id: 'ccview',
+    serverName: 'ccview',
+    name: 'CCView',
+    description: 'Canton network explorer for transfers, governance, validators, rewards, and parties.',
+    credentialFields: [
+      { key: 'apiKey', label: 'CCView API Key', required: true, placeholder: 'X-API-Key' },
+    ],
+    quickCommands: [
+      { label: 'Network Stats', prompt: 'Show Canton network stats and latest key metrics.' },
+      { label: 'Recent Transfers', prompt: 'List recent token transfers with top counterparties.' },
+      { label: 'Active Governance', prompt: 'Show active governance proposals and status.' },
+      { label: 'Validator Summary', prompt: 'Summarize validator counts and performance trends.' },
+      { label: 'Rewards Overview', prompt: 'Show rewards statistics and top beneficiaries.' },
     ],
   },
 };
