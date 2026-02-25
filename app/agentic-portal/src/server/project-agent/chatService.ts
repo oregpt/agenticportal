@@ -613,6 +613,8 @@ export async function runProjectAgentChat(input: {
       extraGuidance: [plannerGuidance, `Phase 2 template:\n${phase2PromptGuidance}`].filter(Boolean).join('\n\n'),
     });
     if (!userRequestedLimit(message)) phase2.limit = null;
+    let normalized = planner.normalizePlan({ schema: plannerSchema, plan: phase2 });
+    phase2 = normalized.plan;
 
     let safety = planner.validateSafety({ schema: plannerSchema, plan: phase2 });
     if (safety.issues.length > 0) {
@@ -624,6 +626,8 @@ export async function runProjectAgentChat(input: {
         executionError: `Safety issues: ${safety.issues.join(' | ')}`,
       });
       if (!userRequestedLimit(message)) phase2.limit = null;
+      normalized = planner.normalizePlan({ schema: plannerSchema, plan: phase2 });
+      phase2 = normalized.plan;
       safety = planner.validateSafety({ schema: plannerSchema, plan: phase2 });
     }
 
@@ -655,6 +659,8 @@ export async function runProjectAgentChat(input: {
         executionError: `Phase3 review corrections: ${reviewIssues || 'Review requested query-plan correction'}`,
       });
       if (!userRequestedLimit(message)) phase2.limit = null;
+      normalized = planner.normalizePlan({ schema: plannerSchema, plan: phase2 });
+      phase2 = normalized.plan;
       safety = planner.validateSafety({ schema: plannerSchema, plan: phase2 });
       sql = planner.generateSQL({ schema: plannerSchema, plan: phase2, safety });
       phase3 = await planner.phase3({
@@ -707,6 +713,7 @@ export async function runProjectAgentChat(input: {
       `Table selection rationale: ${tablePick.reasoning}`,
       `Phase1 intent: ${phase1.intent.objective} (${phase1.intent.queryType})`,
       `Phase2 rationale: ${phase2.rationale || 'n/a'}`,
+      normalized.notes.length ? `Phase2b normalization: ${normalized.notes.join(' | ')}` : '',
       safety.warnings.length ? `Safety warnings: ${safety.warnings.join(' | ')}` : '',
       phase3.issues.length ? `Phase3 issues: ${phase3.issues.join(' | ')}` : '',
       phase3.fixes.length ? `Phase3 fixes: ${phase3.fixes.join(' | ')}` : '',
