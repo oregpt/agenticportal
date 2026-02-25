@@ -372,11 +372,7 @@ export default function DeliveryPage() {
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading deliveries...
         </div>
-      ) : !selectedWorkstreamId ? (
-        <Card>
-          <CardContent className="py-8 text-sm text-muted-foreground">Select a project to manage deliveries.</CardContent>
-        </Card>
-      ) : artifacts.length === 0 ? (
+      ) : selectedWorkstreamId && artifacts.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-sm text-muted-foreground">
             This project has no artifacts yet. Create artifacts first, then configure delivery.
@@ -385,7 +381,9 @@ export default function DeliveryPage() {
       ) : channels.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-sm text-muted-foreground">
-            No deliveries configured for this project.
+            {selectedWorkstreamId
+              ? 'No deliveries configured for this project.'
+              : 'No deliveries configured yet.'}
           </CardContent>
         </Card>
       ) : (
