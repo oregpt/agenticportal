@@ -33,6 +33,7 @@ type ArtifactOption = { id: string; name: string; type: string; projectId: strin
 type ChannelType = 'email' | 'slack' | 'teams';
 type DeliveryMode = 'on_demand' | 'scheduled';
 type Frequency = 'daily' | 'weekly' | 'monthly';
+type McpDeliveryMode = 'snapshot' | 'regenerate';
 
 type DeliveryChannel = {
   id: string;
@@ -65,6 +66,10 @@ type DeliveryChannel = {
     teams?: {
       webhookUrl?: string;
     };
+    mcp?: {
+      mode?: McpDeliveryMode;
+      fallbackToSnapshotOnFailure?: boolean;
+    };
     messageTemplate?: string;
   } | null;
 };
@@ -89,6 +94,8 @@ type FormState = {
   slackChannel: string;
   teamsWebhookUrl: string;
   messageTemplate: string;
+  mcpMode: McpDeliveryMode;
+  mcpFallbackToSnapshotOnFailure: boolean;
 };
 
 const DEFAULT_FORM: FormState = {
@@ -110,6 +117,8 @@ const DEFAULT_FORM: FormState = {
   slackChannel: '',
   teamsWebhookUrl: '',
   messageTemplate: '',
+  mcpMode: 'snapshot',
+  mcpFallbackToSnapshotOnFailure: false,
 };
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -213,6 +222,8 @@ export default function DeliveryPage() {
       slackChannel: channel.configJson?.slack?.channel || '',
       teamsWebhookUrl: channel.configJson?.teams?.webhookUrl || '',
       messageTemplate: channel.configJson?.messageTemplate || '',
+      mcpMode: channel.configJson?.mcp?.mode === 'regenerate' ? 'regenerate' : 'snapshot',
+      mcpFallbackToSnapshotOnFailure: Boolean(channel.configJson?.mcp?.fallbackToSnapshotOnFailure),
     });
     setShowSlackAdvanced(Boolean(channel.configJson?.slack?.webhookUrl));
     setIsDialogOpen(true);
@@ -235,6 +246,10 @@ export default function DeliveryPage() {
       },
       teams: {
         webhookUrl: form.teamsWebhookUrl.trim() || undefined,
+      },
+      mcp: {
+        mode: form.mcpMode,
+        fallbackToSnapshotOnFailure: form.mcpFallbackToSnapshotOnFailure,
       },
       messageTemplate: form.messageTemplate.trim() || undefined,
     };
@@ -421,6 +436,9 @@ export default function DeliveryPage() {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{channel.deliveryMode === 'scheduled' ? 'Scheduled' : 'On demand'}</Badge>
+                        <div className="mt-1 text-[11px] text-muted-foreground">
+                          MCP: {channel.configJson?.mcp?.mode === 'regenerate' ? 'regenerate before deliver' : 'deliver last snapshot'}
+                        </div>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {channel.deliveryMode === 'scheduled'
@@ -533,6 +551,36 @@ export default function DeliveryPage() {
                   ))}
                 </select>
               </div>
+            </div>
+
+            <div className="space-y-3 p-3 border rounded-lg">
+              <div className="grid gap-2">
+                <Label>MCP Artifact Data Behavior</Label>
+                <Select
+                  value={form.mcpMode}
+                  onValueChange={(value) => setForm((prev) => ({ ...prev, mcpMode: value as McpDeliveryMode }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="snapshot">Deliver stored snapshot (deterministic)</SelectItem>
+                    <SelectItem value="regenerate">Regenerate then deliver (fresh external data)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  This setting is used for MCP-backed artifacts. Non-MCP artifacts always run deterministically before delivery.
+                </p>
+              </div>
+              {form.mcpMode === 'regenerate' ? (
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={form.mcpFallbackToSnapshotOnFailure}
+                    onCheckedChange={(value) => setForm((prev) => ({ ...prev, mcpFallbackToSnapshotOnFailure: value }))}
+                  />
+                  <span className="text-sm text-muted-foreground">If regenerate fails, deliver latest successful snapshot</span>
+                </div>
+              ) : null}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

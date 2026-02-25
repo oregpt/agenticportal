@@ -26,6 +26,7 @@ export {
   runArtifact,
   listArtifactRuns,
   getArtifactRunById,
+  getLatestSuccessfulArtifactRun,
 } from './runService';
 export {
   ARTIFACT_TYPE_REGISTRY,
