@@ -2,12 +2,13 @@ import { and, asc, eq, lte } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { db, schema } from '@/lib/db';
 import { ensureProjectAgentTables } from '@/server/project-agent/bootstrap';
-import { getArtifactById, runArtifact } from '@/server/artifacts';
+import { getArtifactById, getLatestSuccessfulArtifactRun, runArtifact } from '@/server/artifacts';
 
 export type DeliveryChannelType = 'email' | 'slack' | 'teams';
 export type DeliveryMode = 'on_demand' | 'scheduled';
 export type DeliveryFrequency = 'daily' | 'weekly' | 'monthly';
 export type DeliveryTrigger = 'manual' | 'scheduled' | 'api';
+export type McpDataDeliveryMode = 'snapshot' | 'regenerate';
 
 type DeliveryConfig = {
   email?: {
@@ -22,6 +23,10 @@ type DeliveryConfig = {
   };
   teams?: {
     webhookUrl?: string;
+  };
+  mcp?: {
+    mode?: McpDataDeliveryMode;
+    fallbackToSnapshotOnFailure?: boolean;
   };
   messageTemplate?: string;
 };
@@ -258,6 +263,10 @@ export async function runDeliveryChannelNow(input: {
 
   const artifactBundle = await getArtifactById(channel.artifactId, channel.organizationId);
   if (!artifactBundle) throw new Error('Artifact not found for channel');
+  const isMcpArtifact = await isMcpBackedArtifact({
+    organizationId: channel.organizationId,
+    querySpecId: artifactBundle.latestVersion?.querySpecId || null,
+  });
 
   const run = await createDeliveryRun({
     channelId: channel.id,
@@ -268,25 +277,29 @@ export async function runDeliveryChannelNow(input: {
   });
 
   try {
-    const artifactRunResult = await runArtifact({
+    const deliveryConfig = ((channel.configJson as DeliveryConfig | null) || {}) as DeliveryConfig;
+    const mode = resolveMcpDeliveryMode({
+      config: deliveryConfig,
+      isMcpArtifact,
+    });
+    const artifactRunResult = await resolveArtifactRunForDelivery({
       organizationId: channel.organizationId,
       artifactId: channel.artifactId,
-      triggerType: 'delivery',
+      mode,
+      fallbackToSnapshotOnFailure: Boolean(deliveryConfig.mcp?.fallbackToSnapshotOnFailure),
     });
-
-    if (artifactRunResult.run.status !== 'succeeded') {
-      throw new Error(artifactRunResult.run.errorText || 'Artifact run failed before delivery');
-    }
 
     const payload = buildDeliveryPayload({
       artifactName: artifactBundle.artifact.name,
       run: artifactRunResult.run,
-      messageTemplate: ((channel.configJson as DeliveryConfig | null)?.messageTemplate || '').trim() || undefined,
+      messageTemplate: (deliveryConfig.messageTemplate || '').trim() || undefined,
+      modeUsed: artifactRunResult.modeUsed,
+      isMcpArtifact,
     });
 
     const response = await dispatchDelivery({
       channelType: channel.channelType as DeliveryChannelType,
-      config: (channel.configJson as DeliveryConfig | null) || {},
+      config: deliveryConfig,
       payload,
     });
 
@@ -428,6 +441,13 @@ function sanitizeDeliveryConfig(raw: DeliveryConfig | null): DeliveryConfig | nu
     };
   }
 
+  if (raw.mcp) {
+    next.mcp = {
+      mode: raw.mcp.mode === 'regenerate' ? 'regenerate' : 'snapshot',
+      fallbackToSnapshotOnFailure: Boolean(raw.mcp.fallbackToSnapshotOnFailure),
+    };
+  }
+
   const template = String(raw.messageTemplate || '').trim();
   if (template) next.messageTemplate = template;
 
@@ -504,6 +524,8 @@ function buildDeliveryPayload(input: {
     sqlTextSnapshot?: string | null;
   };
   messageTemplate?: string;
+  modeUsed?: McpDataDeliveryMode | 'standard';
+  isMcpArtifact?: boolean;
 }) {
   const rows = Array.isArray(input.run.resultSampleJson)
     ? (input.run.resultSampleJson as Array<Record<string, unknown>>)
@@ -515,11 +537,95 @@ function buildDeliveryPayload(input: {
     artifactRunId: input.run.id,
     startedAt: new Date(input.run.startedAt).toISOString(),
     summary: input.messageTemplate || defaultSummary,
+    modeUsed: input.modeUsed || 'standard',
+    isMcpArtifact: Boolean(input.isMcpArtifact),
     rowCount: Number((input.run.resultMetaJson as any)?.rowCount || rows.length || 0),
     columns: inferColumns(rows),
     sql: input.run.sqlTextSnapshot || null,
     rows,
   };
+}
+
+async function isMcpBackedArtifact(input: {
+  organizationId: string;
+  querySpecId: string | null;
+}): Promise<boolean> {
+  if (!input.querySpecId) return false;
+  const [row] = await db
+    .select({
+      sourceType: schema.dataSources.type,
+    })
+    .from(schema.querySpecs)
+    .innerJoin(schema.dataSources, and(
+      eq(schema.dataSources.id, schema.querySpecs.sourceId),
+      eq(schema.dataSources.organizationId, schema.querySpecs.organizationId),
+    ))
+    .where(
+      and(
+        eq(schema.querySpecs.id, input.querySpecId),
+        eq(schema.querySpecs.organizationId, input.organizationId),
+      ),
+    )
+    .limit(1);
+  return String(row?.sourceType || '') === 'mcp_server';
+}
+
+function resolveMcpDeliveryMode(input: {
+  config: DeliveryConfig;
+  isMcpArtifact: boolean;
+}): McpDataDeliveryMode | 'standard' {
+  if (!input.isMcpArtifact) return 'standard';
+  return input.config.mcp?.mode === 'regenerate' ? 'regenerate' : 'snapshot';
+}
+
+async function resolveArtifactRunForDelivery(input: {
+  organizationId: string;
+  artifactId: string;
+  mode: McpDataDeliveryMode | 'standard';
+  fallbackToSnapshotOnFailure: boolean;
+}): Promise<{
+  run: {
+    id: string;
+    status: string;
+    startedAt: Date | string;
+    resultMetaJson?: unknown;
+    resultSampleJson?: unknown;
+    sqlTextSnapshot?: string | null;
+    errorText?: string | null;
+  };
+  modeUsed: McpDataDeliveryMode | 'standard';
+}> {
+  if (input.mode === 'snapshot') {
+    const latest = await getLatestSuccessfulArtifactRun({
+      organizationId: input.organizationId,
+      artifactId: input.artifactId,
+    });
+    if (!latest) {
+      throw new Error('No successful snapshot found. Run regenerate first to create a delivery snapshot.');
+    }
+    return { run: latest, modeUsed: 'snapshot' };
+  }
+
+  try {
+    const artifactRunResult = await runArtifact({
+      organizationId: input.organizationId,
+      artifactId: input.artifactId,
+      triggerType: 'delivery',
+    });
+    if (artifactRunResult.run.status !== 'succeeded') {
+      throw new Error(artifactRunResult.run.errorText || 'Artifact run failed before delivery');
+    }
+    return { run: artifactRunResult.run, modeUsed: input.mode };
+  } catch (error: any) {
+    if (input.mode === 'regenerate' && input.fallbackToSnapshotOnFailure) {
+      const latest = await getLatestSuccessfulArtifactRun({
+        organizationId: input.organizationId,
+        artifactId: input.artifactId,
+      });
+      if (latest) return { run: latest, modeUsed: 'snapshot' };
+    }
+    throw error;
+  }
 }
 
 function inferColumns(rows: Array<Record<string, unknown>>): string[] {

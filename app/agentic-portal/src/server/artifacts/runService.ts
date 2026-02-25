@@ -208,3 +208,23 @@ export async function getArtifactRunById(id: string, organizationId: string) {
     .limit(1);
   return row || null;
 }
+
+export async function getLatestSuccessfulArtifactRun(input: {
+  organizationId: string;
+  artifactId: string;
+}) {
+  await ensureProjectAgentTables();
+  const [row] = await db
+    .select()
+    .from(schema.artifactRuns)
+    .where(
+      and(
+        eq(schema.artifactRuns.organizationId, input.organizationId),
+        eq(schema.artifactRuns.artifactId, input.artifactId),
+        eq(schema.artifactRuns.status, 'succeeded'),
+      ),
+    )
+    .orderBy(desc(schema.artifactRuns.startedAt))
+    .limit(1);
+  return row || null;
+}
