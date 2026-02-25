@@ -16,3 +16,4 @@ import './adapters/postgres';
 import './adapters/bigquery';
 import './adapters/google-sheets';
 import './adapters/google-sheets-live';
+import './adapters/mcp-server';

@@ -10,9 +10,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { WorkstreamFilterBar } from '@/components/filters/WorkstreamFilterBar';
 import { ChevronDown, Loader2, MessageSquare, Pencil, Plus, Search, Send, Star, Terminal, Trash2, Zap } from 'lucide-react';
 
-type SourceType = 'bigquery' | 'postgres' | 'google_sheets' | 'google_sheets_live';
+type SourceType = 'bigquery' | 'postgres' | 'google_sheets' | 'google_sheets_live' | 'mcp_server';
 type Project = { id: string; name: string; hasAgent?: boolean };
-type DataSource = { id: string; name: string; type: SourceType; status: string };
+type DataSource = { id: string; name: string; type: SourceType; status: string; mcpProvider?: string | null };
 type DashboardOption = { id: string; name: string };
 type Workflow = { id: string; name: string; enabled: number };
 type DataRunInfo = {
@@ -112,9 +112,17 @@ export default function ProjectAgentChatPage() {
   const [actionMode, setActionMode] = useState<'add-table' | 'add-chart' | 'add-kpi' | null>(null);
   const [actionTargetMessageIds, setActionTargetMessageIds] = useState<string[]>([]);
   const [selectedDashboardId, setSelectedDashboardId] = useState<string>('');
+  const [mcpQuickCommands, setMcpQuickCommands] = useState<Record<string, Array<{ label: string; prompt: string }>>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const enabledSources = useMemo(() => sources.filter((s) => s.status !== 'disabled'), [sources]);
+  const selectedSource = useMemo(() => enabledSources.find((s) => s.id === chatSourceId) || null, [enabledSources, chatSourceId]);
+  const quickCommands = useMemo(() => {
+    if (selectedSource?.type === 'mcp_server' && selectedSource.mcpProvider) {
+      return mcpQuickCommands[selectedSource.mcpProvider] || DATA_AGENT_COMMANDS;
+    }
+    return DATA_AGENT_COMMANDS;
+  }, [selectedSource, mcpQuickCommands]);
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
   const filteredConversations = useMemo(() => {
     const query = conversationSearch.trim().toLowerCase();
@@ -133,6 +141,24 @@ export default function ProjectAgentChatPage() {
   useEffect(() => {
     setSelectedMessageIds((prev) => prev.filter((id) => selectableMessageIds.includes(id)));
   }, [selectableMessageIds]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const payload = await api('/api/datasources/mcp-providers');
+        const providers = Array.isArray(payload.providers) ? payload.providers : [];
+        const next: Record<string, Array<{ label: string; prompt: string }>> = {};
+        for (const provider of providers) {
+          const providerId = String(provider.id || '');
+          if (!providerId) continue;
+          next[providerId] = Array.isArray(provider.quickCommands) ? provider.quickCommands : [];
+        }
+        setMcpQuickCommands(next);
+      } catch {
+        setMcpQuickCommands({});
+      }
+    })();
+  }, []);
 
   function setChatRoute(projectId: string, conversationId?: string) {
     const query = conversationId
@@ -976,7 +1002,7 @@ export default function ProjectAgentChatPage() {
               {showDataCommands ? (
                 <div className="absolute left-0 bottom-14 z-20 w-[430px] max-w-[95vw] rounded-lg border border-border bg-background shadow-lg">
                   <div className="px-3 py-2 text-xs font-semibold text-muted-foreground border-b border-border">Commands</div>
-                  {DATA_AGENT_COMMANDS.map((cmd) => (
+                  {quickCommands.map((cmd) => (
                     <div key={cmd.label} className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border last:border-b-0">
                       <div className="min-w-0">
                         <p className="text-sm font-medium">{cmd.label}</p>

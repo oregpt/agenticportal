@@ -9,7 +9,7 @@
  * Future: MySQL, Snowflake, Redshift, Databricks, etc.
  */
 
-export type DataSourceType = 'postgres' | 'bigquery' | 'google_sheets' | 'google_sheets_live' | 'csv';
+export type DataSourceType = 'postgres' | 'bigquery' | 'google_sheets' | 'google_sheets_live' | 'csv' | 'mcp_server';
 
 export interface ColumnSchema {
   name: string;
@@ -96,10 +96,17 @@ export interface GoogleSheetsConfig extends BaseDataSourceConfig {
   refreshToken: string; // Encrypted
 }
 
+export interface McpServerConfig extends BaseDataSourceConfig {
+  type: 'mcp_server';
+  provider: string;
+  credentials: Record<string, string>;
+}
+
 export type DataSourceConfig =
   | PostgresConfig
   | BigQueryConfig
-  | GoogleSheetsConfig;
+  | GoogleSheetsConfig
+  | McpServerConfig;
 
 /**
  * The adapter interface that all data sources must implement.

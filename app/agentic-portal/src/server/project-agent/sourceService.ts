@@ -2,6 +2,8 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { db, schema } from '@/lib/db';
 import { createDataSourceAdapter } from '@/lib/datasources';
 import type { DataSourceConfig, DataSourceSchema } from '@/lib/datasources';
+import { buildMcpSchemaCache, testMcpSourceConfig } from '@/server/mcp/testing';
+import { isMcpProviderId } from '@/server/mcp/providers';
 import type {
   ProjectAgentDataSource,
   ProjectAgentDataSourceConnectionTest,
@@ -13,7 +15,7 @@ import { ensureProjectAgentTables } from './bootstrap';
 import { getDataSourceIdsForWorkstream } from '@/server/datasource-assignments';
 
 function isProjectSourceType(type: string): type is ProjectAgentSourceType {
-  return type === 'postgres' || type === 'bigquery' || type === 'google_sheets' || type === 'google_sheets_live';
+  return type === 'postgres' || type === 'bigquery' || type === 'google_sheets' || type === 'google_sheets_live' || type === 'mcp_server';
 }
 
 function toAdapterConfig(row: typeof schema.dataSources.$inferSelect): DataSourceConfig {
@@ -215,6 +217,22 @@ export async function testSavedProjectSource(input: {
   const source = await getProjectDataSourceById(input.projectId, input.organizationId, input.sourceId);
   if (!source) throw new Error('Data source not found');
 
+  if (source.type === 'mcp_server') {
+    const config = (source.config || {}) as Record<string, unknown>;
+    const provider = String(config.provider || '').trim();
+    const credentials = (config.credentials || {}) as Record<string, string>;
+    if (!isMcpProviderId(provider)) {
+      return { success: false, latencyMs: 0, error: 'Unsupported MCP provider in source config' };
+    }
+    const result = await testMcpSourceConfig({ provider, credentials });
+    return {
+      success: result.success,
+      latencyMs: 0,
+      message: result.message,
+      error: result.error,
+    };
+  }
+
   const started = Date.now();
   const adapter = await createDataSourceAdapter({
     id: source.id,
@@ -253,6 +271,40 @@ export async function introspectSavedProjectSource(input: {
 }): Promise<{ schema: ProjectAgentDataSourceSchema; inferredNotes: string }> {
   const source = await getProjectDataSourceById(input.projectId, input.organizationId, input.sourceId);
   if (!source) throw new Error('Data source not found');
+
+  if (source.type === 'mcp_server') {
+    const config = (source.config || {}) as Record<string, unknown>;
+    const provider = String(config.provider || '').trim();
+    if (!isMcpProviderId(provider)) throw new Error('Unsupported MCP provider in source config');
+    const payload = await buildMcpSchemaCache(provider);
+    const schemaPayload: ProjectAgentDataSourceSchema = {
+      tables: payload.tables.map((table) => ({
+        name: table.name,
+        columns: table.columns.map((column) => ({
+          name: column.name,
+          type: column.type,
+          nullable: column.nullable,
+        })),
+      })),
+      lastRefreshed: new Date().toISOString(),
+    };
+    const inferredNotes = [
+      `Source: ${source.name} (mcp_server/${provider})`,
+      'Available MCP actions:',
+      ...payload.tools.slice(0, 80).map((tool) => `- ${tool.name}: ${tool.description}`),
+    ].join('\n');
+    const now = new Date();
+    await db
+      .update(schema.projectAgentSourceMeta)
+      .set({
+        status: 'active',
+        inferredNotes,
+        lastSyncedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(schema.projectAgentSourceMeta.sourceId, source.id));
+    return { schema: schemaPayload, inferredNotes };
+  }
 
   const adapter = await createDataSourceAdapter({
     id: source.id,

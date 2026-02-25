@@ -1,4 +1,4 @@
-export type ProjectAgentSourceType = 'bigquery' | 'postgres' | 'google_sheets' | 'google_sheets_live';
+export type ProjectAgentSourceType = 'bigquery' | 'postgres' | 'google_sheets' | 'google_sheets_live' | 'mcp_server';
 
 export interface ProjectAgentFeatureState {
   dataQueryRuns: boolean;

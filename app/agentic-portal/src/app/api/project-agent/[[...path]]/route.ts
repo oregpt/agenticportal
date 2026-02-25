@@ -57,6 +57,24 @@ function notFound() {
   return NextResponse.json({ error: 'Not found' }, { status: 404 });
 }
 
+function serializeProjectSource(source: any) {
+  const config = (source?.config || {}) as Record<string, unknown>;
+  return {
+    id: source.id,
+    organizationId: source.organizationId,
+    projectId: source.projectId,
+    name: source.name,
+    type: source.type,
+    status: source.status,
+    userNotes: source.userNotes || '',
+    inferredNotes: source.inferredNotes || '',
+    schemaCache: source.schemaCache || null,
+    lastSyncedAt: source.lastSyncedAt || null,
+    updatedAt: source.updatedAt,
+    mcpProvider: source.type === 'mcp_server' ? String(config.provider || '') : null,
+  };
+}
+
 async function getOrgUser() {
   const user = await getCurrentUser();
   if (!user?.organizationId) return null;
@@ -107,7 +125,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ pat
     if (seg1 === 'sources') {
       if (!projectId) return badRequest('projectId is required');
       const sources = await listProjectDataSources(projectId, user.organizationId!);
-      return NextResponse.json({ sources });
+      return NextResponse.json({ sources: sources.map(serializeProjectSource) });
     }
 
     if (seg1 === 'annotations') {

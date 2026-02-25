@@ -18,7 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { WorkstreamFilterBar } from '@/components/filters/WorkstreamFilterBar';
 import { MultiSelectDropdown } from '@/components/filters/MultiSelectDropdown';
 import { FilterPresetManager } from '@/components/filters/FilterPresetManager';
-import { Plus, CheckCircle2, XCircle, RefreshCw, Loader2, Database, Table2, Zap, Trash2, AlertTriangle, BarChart3 } from 'lucide-react';
+import { Plus, CheckCircle2, XCircle, RefreshCw, Loader2, Database, Table2, Zap, Trash2, AlertTriangle, BarChart3, PlugZap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -33,7 +33,22 @@ const DATA_SOURCE_TYPES = [
   { id: 'postgres', name: 'PostgreSQL', icon: Database, description: 'Connect to PostgreSQL databases' },
   { id: 'bigquery', name: 'BigQuery', icon: BarChart3, description: 'Connect to Google BigQuery' },
   { id: 'google_sheets_live', name: 'Google Sheets', icon: Table2, description: 'Query Google Sheets with SQL (via BigQuery)' },
+  { id: 'mcp_server', name: 'MCP Server', icon: PlugZap, description: 'Connect external MCP tools as a project data source' },
 ];
+
+interface McpProviderField {
+  key: string;
+  label: string;
+  required: boolean;
+  placeholder?: string;
+}
+
+interface McpProviderOption {
+  id: string;
+  name: string;
+  description: string;
+  credentialFields: McpProviderField[];
+}
 
 interface DataSource {
   id: string;
@@ -117,6 +132,11 @@ function DataSourcesPageContent() {
     sheetName: 'Sheet1',
     hasHeader: true,
   });
+  const [mcpEnabled, setMcpEnabled] = useState(false);
+  const [mcpProviders, setMcpProviders] = useState<McpProviderOption[]>([]);
+  const [mcpName, setMcpName] = useState('');
+  const [mcpProvider, setMcpProvider] = useState('');
+  const [mcpCredentials, setMcpCredentials] = useState<Record<string, string>>({});
   const [serviceAccountEmail, setServiceAccountEmail] = useState<string | null>(null);
   const [platformProjectId, setPlatformProjectId] = useState<string | null>(null);
   const [platformCredsConfigured, setPlatformCredsConfigured] = useState<boolean>(false);
@@ -135,11 +155,13 @@ function DataSourcesPageContent() {
     .split(',')
     .map((value) => value.trim())
     .filter(Boolean);
+  const availableSourceTypes = DATA_SOURCE_TYPES.filter((type) => type.id !== 'mcp_server' || mcpEnabled);
 
   useEffect(() => {
     fetchDataSources();
     fetchWorkstreams();
     fetchServiceAccountEmail();
+    fetchMcpProviders();
     
     // Handle OAuth callback params
     const success = searchParams.get('success');
@@ -192,6 +214,24 @@ function DataSourcesPageContent() {
     }
   }
 
+  async function fetchMcpProviders() {
+    try {
+      const res = await fetch('/api/datasources/mcp-providers');
+      if (!res.ok) return;
+      const data = await res.json();
+      setMcpEnabled(Boolean(data.enabled));
+      const providers = Array.isArray(data.providers) ? data.providers : [];
+      setMcpProviders(providers);
+      if (providers.length > 0 && !mcpProvider) {
+        setMcpProvider(String(providers[0].id || ''));
+      }
+    } catch (error) {
+      console.error('Failed to fetch MCP providers:', error);
+      setMcpEnabled(false);
+      setMcpProviders([]);
+    }
+  }
+
   function updateFilterParam(key: string, value?: string) {
     const next = new URLSearchParams(searchParams.toString());
     if (!value || value === 'all') {
@@ -220,6 +260,11 @@ function DataSourcesPageContent() {
     setSelectedType(null);
     setTestResult(null);
     setNewDataSourceWorkstreamIds(selectedWorkstreamId ? [selectedWorkstreamId] : []);
+    setMcpName('');
+    setMcpCredentials({});
+    if (mcpProviders.length > 0) {
+      setMcpProvider(String(mcpProviders[0]?.id || ''));
+    }
     setIsAddDialogOpen(true);
   }
 
@@ -380,6 +425,11 @@ function DataSourcesPageContent() {
           database: postgresForm.database,
           username: postgresForm.username,
           password: postgresForm.password,
+        };
+      } else if (type === 'mcp_server') {
+        config = {
+          provider: mcpProvider,
+          credentials: mcpCredentials,
         };
       }
 
@@ -613,6 +663,88 @@ function DataSourcesPageContent() {
     }
   }
 
+  async function handleMcpSubmit() {
+    if (!mcpEnabled) {
+      toast({
+        title: 'MCP disabled',
+        description: 'MCP Server sources are disabled for this organization.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!mcpName.trim() || !mcpProvider) {
+      toast({
+        title: 'Missing fields',
+        description: 'Please provide a source name and provider.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const providerMeta = mcpProviders.find((provider) => provider.id === mcpProvider);
+    if (!providerMeta) {
+      toast({
+        title: 'Provider unavailable',
+        description: 'Selected MCP provider is not enabled for this organization.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const missing = providerMeta.credentialFields
+      .filter((field) => field.required)
+      .filter((field) => !String(mcpCredentials[field.key] || '').trim())
+      .map((field) => field.label);
+    if (missing.length > 0) {
+      toast({
+        title: 'Missing credentials',
+        description: `Required fields: ${missing.join(', ')}`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch('/api/datasources', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: mcpName.trim(),
+          type: 'mcp_server',
+          workstreamIds: newDataSourceWorkstreamIds,
+          config: {
+            provider: mcpProvider,
+            credentials: mcpCredentials,
+          },
+        }),
+      });
+      if (res.ok) {
+        toast({ title: 'Success', description: 'MCP data source created successfully' });
+        setIsAddDialogOpen(false);
+        setSelectedType(null);
+        setMcpName('');
+        setMcpCredentials({});
+        fetchDataSources();
+      } else {
+        const payload = await res.json().catch(() => ({}));
+        toast({
+          title: 'Error',
+          description: payload.error || 'Failed to create MCP data source',
+          variant: 'destructive',
+        });
+      }
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'Failed to create MCP data source',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   function getTypeIcon(type: string) {
     const typeConfig = DATA_SOURCE_TYPES.find((t) => t.id === type);
     return typeConfig?.icon || Database;
@@ -664,12 +796,20 @@ function DataSourcesPageContent() {
                   New here? Start with PostgreSQL for the quickest setup.
                 </p>
                 <div className="grid gap-3 py-4">
-                  {DATA_SOURCE_TYPES.map((type) => {
+                  {availableSourceTypes.map((type) => {
                     const Icon = type.icon;
                     return (
                       <button
                         key={type.id}
-                        onClick={() => { setSelectedType(type.id); setTestResult(null); }}
+                        onClick={() => {
+                          setSelectedType(type.id);
+                          setTestResult(null);
+                          if (type.id === 'mcp_server' && mcpProviders.length > 0) {
+                            const firstProvider = String(mcpProviders[0]?.id || '');
+                            setMcpProvider(firstProvider);
+                            setMcpCredentials({});
+                          }
+                        }}
                         className="flex items-center gap-4 p-4 rounded-xl border border-border hover:border-primary/30 hover:bg-primary/5 transition-all text-left"
                       >
                         <div className="rounded-lg bg-primary/10 p-2">
@@ -966,6 +1106,105 @@ function DataSourcesPageContent() {
                   </Button>
                 </div>
               </>
+            ) : selectedType === 'mcp_server' ? (
+              <>
+                <DialogHeader>
+                  <DialogTitle>Connect MCP Server</DialogTitle>
+                  <DialogDescription>Create a source-backed MCP integration for this project.</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  {!mcpEnabled ? (
+                    <Alert variant="destructive">
+                      <AlertDescription>
+                        MCP Server data sources are disabled for this organization. Ask a platform admin to enable them.
+                      </AlertDescription>
+                    </Alert>
+                  ) : null}
+                  {mcpEnabled && mcpProviders.length === 0 ? (
+                    <Alert variant="destructive">
+                      <AlertDescription>
+                        No MCP providers are enabled for this organization.
+                      </AlertDescription>
+                    </Alert>
+                  ) : null}
+                  <div className="space-y-2">
+                    <Label>Display Name</Label>
+                    <Input
+                      placeholder="Finance MCP Source"
+                      value={mcpName}
+                      onChange={(e) => setMcpName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Provider</Label>
+                    <select
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      value={mcpProvider}
+                      onChange={(e) => {
+                        setMcpProvider(e.target.value);
+                        setMcpCredentials({});
+                      }}
+                    >
+                      {mcpProviders.map((provider) => (
+                        <option key={provider.id} value={provider.id}>
+                          {provider.name}
+                        </option>
+                      ))}
+                    </select>
+                    {mcpProviders.find((provider) => provider.id === mcpProvider)?.description ? (
+                      <p className="text-xs text-muted-foreground">
+                        {mcpProviders.find((provider) => provider.id === mcpProvider)?.description}
+                      </p>
+                    ) : null}
+                  </div>
+                  {(mcpProviders.find((provider) => provider.id === mcpProvider)?.credentialFields || []).map((field) => (
+                    <div className="space-y-2" key={field.key}>
+                      <Label>
+                        {field.label}
+                        {field.required ? ' *' : ''}
+                      </Label>
+                      <Input
+                        type={field.key.toLowerCase().includes('secret') || field.key.toLowerCase().includes('token') ? 'password' : 'text'}
+                        placeholder={field.placeholder || field.label}
+                        value={mcpCredentials[field.key] || ''}
+                        onChange={(e) =>
+                          setMcpCredentials((prev) => ({
+                            ...prev,
+                            [field.key]: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  ))}
+                  {renderProjectAssignmentPicker()}
+                  {testResult && (
+                    <Alert variant={testResult.success ? 'default' : 'destructive'} className={testResult.success ? 'border-green-500 bg-green-50' : ''}>
+                      <AlertDescription className="flex items-center gap-2">
+                        {testResult.success ? (
+                          <><CheckCircle2 className="w-4 h-4 text-green-600" /> {testResult.message}</>
+                        ) : (
+                          <><XCircle className="w-4 h-4" /> {testResult.error}</>
+                        )}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={() => { setSelectedType(null); setTestResult(null); }} className="flex-1">
+                    Back
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleTestConnection('mcp_server')}
+                    disabled={isTesting || !mcpEnabled || !mcpProvider}
+                  >
+                    {isTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Zap className="w-4 h-4 mr-1" /> Test</>}
+                  </Button>
+                  <Button onClick={handleMcpSubmit} disabled={isSubmitting || !mcpEnabled} className="flex-1 bg-primary hover:bg-primary/90">
+                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Connect'}
+                  </Button>
+                </div>
+              </>
             ) : (
               <>
                 <DialogHeader>
@@ -991,7 +1230,7 @@ function DataSourcesPageContent() {
             <div className="w-full md:w-64">
               <MultiSelectDropdown
                 label="Data Source Type"
-                options={DATA_SOURCE_TYPES.map((type) => ({ value: type.id, label: type.name }))}
+                options={availableSourceTypes.map((type) => ({ value: type.id, label: type.name }))}
                 selectedValues={selectedSourceTypes}
                 onChange={(values) => updateMultiFilterParam('sourceTypes', values)}
                 emptyLabel="All types"

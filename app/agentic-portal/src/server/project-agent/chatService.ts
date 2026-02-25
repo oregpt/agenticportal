@@ -1,6 +1,7 @@
 import { getProviderForModel } from '@/server/llm';
 import { createDataSourceAdapter } from '@/lib/datasources';
 import type { DataSourceConfig, QueryResult } from '@/lib/datasources';
+import type { LLMMessage, Tool } from '@/server/llm/types';
 import { NL2SQLPlannerService, inferFieldType, type PlannerField, type PlannerSchemaContext } from './plannerService';
 import { applyTemplate, getProjectAgentPromptTemplates } from './promptService';
 import { getProjectAgentFeatures, getProjectAgentGlobalNotes } from './projectAgentService';
@@ -8,6 +9,8 @@ import { createProjectDataQueryRun } from './queryRunService';
 import { listEnabledProjectMemoryRulesForChat } from './memoryRuleService';
 import { getProjectDataSourceById, listProjectDataSources } from './sourceService';
 import type { ProjectAgentDataSource } from './types';
+import { getPortalMcpOrchestrator } from '@/server/mcp/runtime';
+import { getMcpProviderDefinition, isMcpProviderId } from '@/server/mcp/providers';
 
 const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
 
@@ -147,6 +150,145 @@ async function runWithAdapter(source: ProjectAgentDataSource, sqlText: string): 
   }
 }
 
+function getMcpProviderId(source: ProjectAgentDataSource): string {
+  const config = (source.config || {}) as Record<string, unknown>;
+  return String(config.provider || '').trim();
+}
+
+async function runProjectAgentMcpChat(input: {
+  projectId: string;
+  organizationId: string;
+  source: ProjectAgentDataSource;
+  message: string;
+  model: string;
+  memoryRulesText: string;
+  globalNotesText: string;
+  sourceNotesText: string;
+}) {
+  const providerId = getMcpProviderId(input.source);
+  if (!isMcpProviderId(providerId)) {
+    throw new Error('Unsupported MCP provider configured for selected source');
+  }
+  const providerDef = getMcpProviderDefinition(providerId);
+  if (!providerDef) throw new Error('MCP provider metadata is unavailable');
+
+  const llm = getProviderForModel(input.model);
+  const orchestrator = await getPortalMcpOrchestrator();
+  const server = orchestrator.serverRegistry.getServer(providerDef.serverName);
+  if (!server) throw new Error(`MCP server "${providerDef.serverName}" is not registered`);
+  const serverTools = await server.listTools();
+  if (!serverTools.length) throw new Error('No MCP tools available for selected source');
+
+  const tool: Tool = {
+    name: `mcp__${providerDef.serverName}`,
+    description: `[MCP: ${providerDef.name}] Execute one action from this source.`,
+    serverName: providerDef.serverName,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: {
+          type: 'string',
+          description: `Action name for ${providerDef.name}`,
+          enum: serverTools.map((t) => t.name),
+        },
+        params: {
+          type: 'object',
+          description: 'Action parameters object',
+        },
+      },
+      required: ['action'],
+    },
+  };
+
+  const messages: LLMMessage[] = [
+    {
+      role: 'system',
+      content: [
+        'You are a project data agent using MCP tools.',
+        `Selected source: ${input.source.name} (${providerDef.name})`,
+        'Use only available tool actions. Prefer read/list actions unless user asks for a mutation.',
+        input.memoryRulesText,
+        input.globalNotesText,
+        input.sourceNotesText,
+      ]
+        .filter(Boolean)
+        .join('\n\n'),
+    },
+    { role: 'user', content: input.message },
+  ];
+
+  const toolsUsed: string[] = [];
+  let finalText = '';
+  for (let i = 0; i < 8; i += 1) {
+    const generated = await llm.generateWithTools(messages, {
+      model: input.model,
+      agentId: input.projectId,
+      maxTokens: 1600,
+      tools: [tool],
+    });
+
+    if (generated.type === 'text') {
+      finalText = String(generated.text || '').trim();
+      break;
+    }
+
+    const toolCalls = generated.toolCalls || [];
+    if (!toolCalls.length) {
+      finalText = String(generated.text || '').trim();
+      break;
+    }
+
+    messages.push({
+      role: 'assistant',
+      content: generated.text || '',
+      toolCalls,
+    });
+
+    for (const toolCall of toolCalls) {
+      const serverName = toolCall.name.replace(/^mcp__/, '');
+      const action = String(toolCall.input?.action || '').trim();
+      const params = (toolCall.input?.params || {}) as Record<string, unknown>;
+      if (!action) {
+        messages.push({
+          role: 'tool',
+          toolCallId: toolCall.id,
+          content: JSON.stringify({ success: false, error: 'Missing action' }),
+        });
+        continue;
+      }
+
+      const result = await orchestrator.executeAction(serverName, action, params, {
+        sourceId: input.source.id,
+        organizationId: input.organizationId,
+        projectId: input.projectId,
+      });
+      toolsUsed.push(`${serverName}.${action}`);
+      messages.push({
+        role: 'tool',
+        toolCallId: toolCall.id,
+        content: JSON.stringify(result),
+      });
+    }
+  }
+
+  if (!finalText) {
+    finalText = 'Completed MCP tool execution. Review run details for output payloads.';
+  }
+
+  const reasoning = toolsUsed.length
+    ? `MCP provider: ${providerDef.name}\nTools used:\n${toolsUsed.map((name) => `- ${name}`).join('\n')}`
+    : `MCP provider: ${providerDef.name}\nNo MCP tools were executed.`;
+
+  return {
+    answer: finalText,
+    sqlText: `MCP::${providerDef.serverName}::${toolsUsed.join(',') || 'none'}`,
+    rowCount: toolsUsed.length,
+    sampleRows: toolsUsed.map((toolName) => ({ tool: toolName })),
+    reasoning,
+    confidence: toolsUsed.length ? 0.9 : 0.5,
+  };
+}
+
 export async function runProjectAgentChat(input: {
   projectId: string;
   organizationId: string;
@@ -182,6 +324,76 @@ export async function runProjectAgentChat(input: {
   const globalNotes = features.dataAnnotations ? await getProjectAgentGlobalNotes(input.projectId, input.organizationId) : '';
   const sourceUserNotes = features.dataAnnotations ? String(source.userNotes || '').trim() : '';
   const sourceInferredNotes = features.dataAnnotations ? String(source.inferredNotes || '').trim() : '';
+
+  if (source.type === 'mcp_server') {
+    const memoryRulesText = memoryRules.length
+      ? `Memory rules:\n${memoryRules.map((rule: any) => `- [${rule.name}] ${rule.ruleText}`).join('\n')}`
+      : '';
+    const globalNotesText = globalNotes ? `Cross-source guidance:\n${globalNotes}` : '';
+    const sourceNotesText = [
+      sourceUserNotes ? `Source notes:\n${sourceUserNotes}` : '',
+      sourceInferredNotes ? `Inferred notes:\n${sourceInferredNotes}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+
+    const mcpResult = await runProjectAgentMcpChat({
+      projectId: input.projectId,
+      organizationId: input.organizationId,
+      source,
+      message,
+      model,
+      memoryRulesText,
+      globalNotesText,
+      sourceNotesText,
+    });
+
+    let runId: string | null = null;
+    if (features.dataQueryRuns) {
+      runId = await createProjectDataQueryRun({
+        projectId: input.projectId,
+        organizationId: input.organizationId,
+        sourceId: source.id,
+        message,
+        sqlText: mcpResult.sqlText,
+        rowCount: mcpResult.rowCount,
+        confidence: mcpResult.confidence,
+        reasoning: mcpResult.reasoning,
+        answer: mcpResult.answer,
+        resultSample: mcpResult.sampleRows,
+        runType: input.workflowRunId ? 'workflow' : 'chat',
+        workflowId: input.workflowId,
+        workflowRunId: input.workflowRunId,
+      });
+    }
+
+    return {
+      projectId: input.projectId,
+      runId,
+      source: {
+        id: source.id,
+        name: source.name,
+        type: source.type,
+      },
+      answer: mcpResult.answer,
+      artifactActions: {
+        canSaveTable: false,
+        canCreateChart: false,
+        canCreateKpi: false,
+        canAddToDashboard: false,
+        canSaveSql: false,
+      },
+      querySpecDraft: null,
+      trust: {
+        sql: mcpResult.sqlText,
+        rowCount: mcpResult.rowCount,
+        sampleRows: mcpResult.sampleRows,
+        model,
+        reasoning: mcpResult.reasoning,
+        confidence: mcpResult.confidence,
+      },
+    };
+  }
 
   const schemaPack = schemaFromSource(source);
   if (!schemaPack.schemaTables.length) {

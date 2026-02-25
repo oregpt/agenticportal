@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { WorkstreamFilterBar } from '@/components/filters/WorkstreamFilterBar';
 import { Bot, MessageSquare, Settings2, Sparkles } from 'lucide-react';
 
-type SourceType = 'bigquery' | 'postgres' | 'google_sheets' | 'google_sheets_live';
+type SourceType = 'bigquery' | 'postgres' | 'google_sheets' | 'google_sheets_live' | 'mcp_server';
 type DataFeatures = {
   dataQueryRuns: boolean;
   dataMemoryRules: boolean;

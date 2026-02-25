@@ -6,6 +6,9 @@ import { randomUUID } from 'crypto';
 import { getCurrentUser } from '@/lib/auth';
 import type { DataSourceConfig } from '@/lib/datasources';
 import { loadPlatformGcpCredentials } from '@/lib/gcpCredentials';
+import { getMcpProviderDefinition, isMcpProviderId, validateMcpCredentials } from '@/server/mcp/providers';
+import { normalizeOrgMcpSettings } from '@/server/mcp/orgSettings';
+import { buildMcpSchemaCache, testMcpSourceConfig } from '@/server/mcp/testing';
 import {
   ensureDataSourceAssignmentTable,
   getAssignedWorkstreamIdsForSources,
@@ -131,6 +134,96 @@ export async function POST(request: NextRequest) {
     const orgSettings = (orgRow?.settings || {}) as Record<string, unknown>;
     const googleSheetsExecutionMode: GoogleSheetsExecutionMode =
       orgSettings.googleSheetsExecutionMode === 'duckdb_memory' ? 'duckdb_memory' : 'bigquery_external';
+    const orgMcp = normalizeOrgMcpSettings(orgSettings);
+
+    if (type === 'mcp_server') {
+      if (!orgMcp.enableMcpDataSources) {
+        return NextResponse.json(
+          { error: 'MCP Server data sources are disabled for this organization.' },
+          { status: 403 }
+        );
+      }
+
+      const mcpConfig = (config || {}) as Record<string, unknown>;
+      const provider = String(mcpConfig.provider || '').trim();
+      if (!isMcpProviderId(provider)) {
+        return NextResponse.json({ error: 'Invalid MCP provider selected.' }, { status: 400 });
+      }
+      if (!orgMcp.enabledMcpProviders.includes(provider)) {
+        return NextResponse.json(
+          { error: `MCP provider "${provider}" is not enabled for this organization.` },
+          { status: 403 }
+        );
+      }
+
+      const providerDef = getMcpProviderDefinition(provider);
+      if (!providerDef) {
+        return NextResponse.json({ error: 'MCP provider metadata not found.' }, { status: 400 });
+      }
+
+      const credentialsRaw = (mcpConfig.credentials || {}) as Record<string, unknown>;
+      const validation = validateMcpCredentials(provider, credentialsRaw);
+      if (!validation.valid) {
+        return NextResponse.json(
+          { error: `Missing required credentials: ${validation.missing.join(', ')}` },
+          { status: 400 }
+        );
+      }
+
+      const credentials = Object.fromEntries(
+        Object.entries(credentialsRaw).map(([key, value]) => [key, String(value ?? '')])
+      ) as Record<string, string>;
+
+      const test = await testMcpSourceConfig({ provider, credentials });
+      if (!test.success) {
+        return NextResponse.json({ error: test.error || 'MCP connection test failed' }, { status: 400 });
+      }
+
+      const schemaPayload = await buildMcpSchemaCache(provider);
+      const id = randomUUID();
+      const now = new Date();
+
+      const [inserted] = await db
+        .insert(schema.dataSources)
+        .values({
+          id,
+          organizationId: orgId,
+          workstreamId: requestedWorkstreamIds[0] || null,
+          name,
+          type: 'mcp_server',
+          config: {
+            provider,
+            credentials,
+            providerName: providerDef.name,
+          },
+          schemaCache: {
+            tables: schemaPayload.tables,
+            tools: schemaPayload.tools,
+            provider,
+          },
+          lastSyncedAt: now,
+          createdBy: userId,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
+
+      await replaceDataSourceAssignments({
+        organizationId: orgId,
+        dataSourceId: inserted.id,
+        workstreamIds: requestedWorkstreamIds,
+      });
+
+      return NextResponse.json({
+        dataSource: {
+          id: inserted.id,
+          name: inserted.name,
+          type: inserted.type,
+          assignedWorkstreamIds: requestedWorkstreamIds,
+          createdAt: inserted.createdAt,
+        },
+      });
+    }
 
     // Special handling for Google Sheets Live (BigQuery external tables)
     if (type === 'google_sheets_live') {
