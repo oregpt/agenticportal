@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Play, Plus, Settings, Trash2, GripVertical } from 'lucide-react';
+import { GripVertical, Loader2, Plus, RefreshCw, Settings, Trash2 } from 'lucide-react';
 import {
   Area,
   AreaChart,
@@ -476,7 +476,7 @@ export default function ArtifactDetailPage() {
     }
   }
 
-  async function runNow() {
+  async function refreshArtifact() {
     if (!artifactId) return;
     setIsRunning(true);
     try {
@@ -758,9 +758,9 @@ export default function ArtifactDetailPage() {
               Add Artifact
             </Button>
           ) : null}
-          <Button onClick={runNow} disabled={isRunning}>
-            {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
-            Run
+          <Button onClick={refreshArtifact} disabled={isRunning}>
+            {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+            Refresh
           </Button>
         </div>
       </div>

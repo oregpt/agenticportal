@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Loader2, Play, PlusCircle, Search, Trash2 } from 'lucide-react';
+import { Loader2, PlusCircle, Search, Trash2 } from 'lucide-react';
 
 type ArtifactType = 'table' | 'chart' | 'dashboard' | 'kpi';
 type WorkstreamOption = { id: string; name: string };
@@ -44,7 +44,6 @@ function ArtifactsPageContent() {
   const [selectedWorkstreamId, setSelectedWorkstreamId] = useState('');
   const [selectedType, setSelectedType] = useState<ArtifactType | 'all'>('all');
   const [isLoading, setIsLoading] = useState(true);
-  const [runningId, setRunningId] = useState('');
   const [deletingId, setDeletingId] = useState('');
   const [searchText, setSearchText] = useState('');
   const [error, setError] = useState('');
@@ -102,20 +101,6 @@ function ArtifactsPageContent() {
   const handleWorkstreamChange = (value: string | undefined) => {
     setSelectedWorkstreamId(value || '');
   };
-
-  async function runArtifact(artifactId: string) {
-    try {
-      setRunningId(artifactId);
-      const res = await fetch(`/api/artifacts/${artifactId}/run`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ triggerType: 'manual' }) });
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(payload?.error || 'Failed to run artifact');
-      router.push('/artifact-runs');
-    } catch (e: any) {
-      setError(e?.message || 'Failed to run artifact');
-    } finally {
-      setRunningId('');
-    }
-  }
 
   async function deleteArtifactRow(artifact: Artifact) {
     const ok = window.confirm(`Delete artifact "${artifact.name}"? This cannot be undone.`);
@@ -204,9 +189,6 @@ function ArtifactsPageContent() {
                 <div className="col-span-2 flex items-center justify-end gap-2">
                   <Button size="sm" variant="outline" asChild>
                     <Link href={`/artifacts/${artifact.id}`}>Open</Link>
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => runArtifact(artifact.id)} disabled={runningId === artifact.id}>
-                    {runningId === artifact.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
                   </Button>
                   <Button
                     size="sm"

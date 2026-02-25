@@ -232,9 +232,14 @@ export default function ProjectDetailPage() {
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold">Sources</h2>
-              <Button size="sm" variant="outline" asChild>
-                <Link href={`/datasources?workstreamId=${encodeURIComponent(workstreamId)}`}>Add</Link>
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button size="sm" asChild>
+                  <Link href={`/datasources?workstreamId=${encodeURIComponent(workstreamId)}`}>Create</Link>
+                </Button>
+                <Button size="sm" variant="outline" asChild>
+                  <Link href={`/datasources?workstreamId=${encodeURIComponent(workstreamId)}`}>Assign Existing</Link>
+                </Button>
+              </div>
             </div>
             {sources.length === 0 ? <p className="text-xs text-muted-foreground">No sources assigned.</p> : null}
             <div className="space-y-2">

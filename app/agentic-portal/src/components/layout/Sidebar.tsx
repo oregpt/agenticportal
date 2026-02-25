@@ -42,8 +42,8 @@ const aiNavigation: NavItem[] = [
 ];
 
 const utilityNavigation: NavItem[] = [
-  { name: 'Artifacts', href: '/artifacts', icon: Boxes },
   { name: 'Data Sources', href: '/datasources', icon: Database },
+  { name: 'Artifacts', href: '/artifacts', icon: Boxes },
   { name: 'Run History', href: '/artifact-runs', icon: History },
   { name: 'Delivery', href: '/delivery', icon: SendHorizontal },
 ];
