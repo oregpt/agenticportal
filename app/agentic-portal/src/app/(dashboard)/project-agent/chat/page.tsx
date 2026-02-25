@@ -82,6 +82,39 @@ function conversationLabelDate(value?: string | null): string {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
+function toCsvCell(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function escapeCsv(value: string): string {
+  const needsQuotes = /[",\n\r]/.test(value);
+  if (!needsQuotes) return value;
+  return `"${value.replace(/"/g, '""')}"`;
+}
+
+function buildCsvFromRows(rows: Array<Record<string, unknown>>): string {
+  if (!rows.length) return '';
+  const columns = Array.from(
+    new Set(
+      rows.flatMap((row) => Object.keys(row || {}))
+    )
+  );
+  if (!columns.length) return '';
+
+  const header = columns.map((column) => escapeCsv(column)).join(',');
+  const lines = rows.map((row) =>
+    columns.map((column) => escapeCsv(toCsvCell((row || {})[column]))).join(',')
+  );
+  return [header, ...lines].join('\n');
+}
+
 export default function ProjectAgentChatPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -529,6 +562,41 @@ export default function ProjectAgentChatPage() {
     }
   }
 
+  function downloadCsvFromMessage(messageId: string) {
+    const message = messages.find((m) => m.id === messageId);
+    const rows = Array.isArray(message?.dataRun?.trust?.sampleRows)
+      ? (message?.dataRun?.trust?.sampleRows as Array<Record<string, unknown>>)
+      : [];
+    if (!rows.length) {
+      setError('No tabular rows available to export for this message.');
+      return;
+    }
+
+    const csv = buildCsvFromRows(rows);
+    if (!csv) {
+      setError('Unable to build CSV for this message.');
+      return;
+    }
+
+    const sourcePart = (message?.dataRun?.source?.name || 'source').replace(/[^a-z0-9-_]+/gi, '_').slice(0, 48);
+    const fileName = `${sourcePart || 'source'}-${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  function runCsvForMessages(messageIds: string[]) {
+    for (const messageId of messageIds) {
+      downloadCsvFromMessage(messageId);
+    }
+  }
+
   async function runActionForMessages(
     mode: 'save-sql' | 'add-table' | 'add-chart' | 'add-kpi',
     messageIds: string[],
@@ -872,6 +940,14 @@ export default function ProjectAgentChatPage() {
                                   Add Metric
                                 </Button>
                               ) : null}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => downloadCsvFromMessage(m.id)}
+                                disabled={!Array.isArray(m.dataRun.trust.sampleRows) || m.dataRun.trust.sampleRows.length === 0}
+                              >
+                                Download CSV
+                              </Button>
                             </div>
                           </div>
                         ) : null}
@@ -938,6 +1014,14 @@ export default function ProjectAgentChatPage() {
                 onClick={() => openActionDialog('add-kpi', selectedMessageIds)}
               >
                 Add Metric
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={selectedMessageIds.length === 0}
+                onClick={() => runCsvForMessages(selectedMessageIds)}
+              >
+                Download CSV
               </Button>
               {selectedMessageIds.length > 0 ? (
                 <Button
