@@ -33,19 +33,19 @@ export function getSectionFromPath(pathname: string): NavSection {
 }
 
 const coreNavigation: NavItem[] = [
-  { name: 'All Projects', href: '/workstreams', icon: Workflow },
-  { name: 'Dashboards', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Projects View', href: '/workstreams', icon: Workflow },
 ];
 
-const aiNavigation: NavItem[] = [
+const manageNavigation: NavItem[] = [
   { name: 'Project Agent', href: '/project-agent', icon: Bot },
+  { name: 'Data Sources', href: '/datasources', icon: Database },
+  { name: 'Dashboards', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Delivery', href: '/delivery', icon: SendHorizontal },
 ];
 
-const utilityNavigation: NavItem[] = [
-  { name: 'Data Sources', href: '/datasources', icon: Database },
-  { name: 'Artifacts', href: '/artifacts', icon: Boxes },
+const otherNavigation: NavItem[] = [
+  { name: 'Artifacts List', href: '/artifacts', icon: Boxes },
   { name: 'Run History', href: '/artifact-runs', icon: History },
-  { name: 'Delivery', href: '/delivery', icon: SendHorizontal },
 ];
 
 const orgNavigation: NavItem[] = [
@@ -103,8 +103,8 @@ export function Sidebar({ section }: SidebarProps) {
     section === 'pipeline'
       ? [
           { title: '', items: coreNavigation },
-          { title: 'AI Tools', items: aiNavigation },
-          { title: 'Utilities', items: utilityNavigation },
+          { title: 'Manage', items: manageNavigation },
+          { title: 'Other', items: otherNavigation },
         ]
       : section === 'organization'
         ? [{ title: 'Organization', items: orgNavigation }]

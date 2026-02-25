@@ -9,6 +9,7 @@ import {
   Database, 
   Table2, 
   LayoutDashboard,
+  Bot,
   ChevronRight,
   Calendar,
   Layers,
@@ -30,6 +31,7 @@ interface WorkstreamStats {
   dataSources: number;
   dashboards: number;
   artifacts: number;
+  projectAgents: number;
 }
 
 interface Workstream {
@@ -277,6 +279,12 @@ export default function WorkstreamsPage() {
                     <Table2 className="w-4 h-4 text-amber-500" />
                     <span className="text-amber-600 dark:text-amber-400 font-medium">{ws.stats.artifacts}</span>
                     <span className="text-amber-500/60">artifacts</span>
+                  </div>
+
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-sm">
+                    <Bot className="w-4 h-4 text-emerald-500" />
+                    <span className="text-emerald-600 dark:text-emerald-400 font-medium">{ws.stats.projectAgents}</span>
+                    <span className="text-emerald-500/60">agents</span>
                   </div>
 
                   <Button

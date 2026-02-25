@@ -71,12 +71,22 @@ export async function GET(request: NextRequest) {
                 AND ${schema.artifacts.status} = 'active'`
           );
 
+        // Count project agents configured for this project
+        const [projectAgentCount] = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(schema.projectAgents)
+          .where(
+            sql`${schema.projectAgents.organizationId} = ${orgId}
+                AND ${schema.projectAgents.projectId} = ${ws.id}`
+          );
+
         return {
           ...ws,
           stats: {
             dataSources: dataSourceIds.length,
             dashboards: Number(dashboardCount?.count || 0),
             artifacts: Number(artifactCount?.count || 0),
+            projectAgents: Number(projectAgentCount?.count || 0),
           }
         };
       })
@@ -131,7 +141,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       workstream: {
         ...workstream,
-        stats: { dataSources: 0, dashboards: 0, artifacts: 0 }
+        stats: { dataSources: 0, dashboards: 0, artifacts: 0, projectAgents: 0 }
       }
     }, { status: 201 });
   } catch (error) {
