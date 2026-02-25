@@ -7,6 +7,8 @@ import { getCurrentUser, canAccessPlatformAdmin } from '@/lib/auth';
 import { db, schema } from '@/lib/db';
 import { sql, eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
+import { mergeOrgMcpSettings, normalizeOrgMcpSettings } from '@/server/mcp/orgSettings';
+import { isMcpProviderId } from '@/server/mcp/providers';
 
 export async function GET() {
   const user = await getCurrentUser();
@@ -54,6 +56,7 @@ export async function GET() {
       ...org,
       userCount: userCountMap.get(org.id) || 0,
       dataSourceCount: dsCountMap.get(org.id) || 0,
+      mcpSettings: normalizeOrgMcpSettings(org.settings || {}),
     }));
     
     return NextResponse.json({ organizations: orgsWithCounts });
@@ -102,5 +105,58 @@ export async function POST(request: NextRequest) {
       { error: 'Failed to create organization' },
       { status: 500 }
     );
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  const user = await getCurrentUser();
+  if (!canAccessPlatformAdmin(user)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  }
+
+  try {
+    const body = await request.json();
+    const organizationId = String(body.organizationId || '').trim();
+    if (!organizationId) {
+      return NextResponse.json({ error: 'organizationId is required' }, { status: 400 });
+    }
+
+    const [currentOrg] = await db
+      .select()
+      .from(schema.organizations)
+      .where(eq(schema.organizations.id, organizationId))
+      .limit(1);
+    if (!currentOrg) {
+      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+    }
+
+    const enabledMcpProviders = Array.isArray(body.enabledMcpProviders)
+      ? body.enabledMcpProviders
+          .map((value: unknown) => String(value || '').trim())
+          .filter((value: string) => isMcpProviderId(value))
+      : undefined;
+
+    const nextSettings = mergeOrgMcpSettings((currentOrg.settings || {}) as Record<string, unknown>, {
+      enableMcpDataSources:
+        typeof body.enableMcpDataSources === 'boolean' ? body.enableMcpDataSources : undefined,
+      enabledMcpProviders: enabledMcpProviders as any,
+    });
+
+    await db
+      .update(schema.organizations)
+      .set({
+        settings: nextSettings,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.organizations.id, organizationId));
+
+    return NextResponse.json({
+      success: true,
+      organizationId,
+      mcpSettings: normalizeOrgMcpSettings(nextSettings),
+    });
+  } catch (error) {
+    console.error('[admin/organizations] PATCH error:', error);
+    return NextResponse.json({ error: 'Failed to update organization settings' }, { status: 500 });
   }
 }

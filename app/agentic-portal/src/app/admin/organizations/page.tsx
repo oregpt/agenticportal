@@ -26,12 +26,23 @@ import { Label } from '@/components/ui/label';
 import { Plus, Search, MoreHorizontal, Users, Database } from 'lucide-react';
 import Link from 'next/link';
 
+type McpProviderId = 'tres_finance' | 'hubspot';
+
+const MCP_PROVIDER_OPTIONS: Array<{ id: McpProviderId; label: string }> = [
+  { id: 'tres_finance', label: 'Tres Finance' },
+  { id: 'hubspot', label: 'HubSpot' },
+];
+
 interface Organization {
   id: string;
   name: string;
   slug: string;
   userCount?: number;
   dataSourceCount?: number;
+  mcpSettings?: {
+    enableMcpDataSources: boolean;
+    enabledMcpProviders: McpProviderId[];
+  };
   createdAt: string;
 }
 
@@ -42,6 +53,10 @@ export default function OrganizationsPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newOrgName, setNewOrgName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [mcpEditOrg, setMcpEditOrg] = useState<Organization | null>(null);
+  const [mcpEnabled, setMcpEnabled] = useState(false);
+  const [mcpProviders, setMcpProviders] = useState<McpProviderId[]>([]);
+  const [savingMcp, setSavingMcp] = useState(false);
 
   useEffect(() => {
     fetchOrganizations();
@@ -81,6 +96,38 @@ export default function OrganizationsPage() {
       console.error('Failed to create organization:', error);
     } finally {
       setIsCreating(false);
+    }
+  }
+
+  function openMcpDialog(org: Organization) {
+    setMcpEditOrg(org);
+    setMcpEnabled(Boolean(org.mcpSettings?.enableMcpDataSources));
+    setMcpProviders((org.mcpSettings?.enabledMcpProviders || []) as McpProviderId[]);
+  }
+
+  async function saveMcpSettings() {
+    if (!mcpEditOrg) return;
+    setSavingMcp(true);
+    try {
+      const res = await fetch('/api/admin/organizations', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationId: mcpEditOrg.id,
+          enableMcpDataSources: mcpEnabled,
+          enabledMcpProviders: mcpProviders,
+        }),
+      });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(payload.error || 'Failed to save MCP settings');
+      }
+      setMcpEditOrg(null);
+      fetchOrganizations();
+    } catch (error) {
+      console.error('Failed to save MCP settings:', error);
+    } finally {
+      setSavingMcp(false);
     }
   }
 
@@ -165,6 +212,7 @@ export default function OrganizationsPage() {
                   <TableHead>Slug</TableHead>
                   <TableHead>Users</TableHead>
                   <TableHead>Data Sources</TableHead>
+                  <TableHead>MCP</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
@@ -192,11 +240,23 @@ export default function OrganizationsPage() {
                         {org.dataSourceCount || 0}
                       </div>
                     </TableCell>
+                    <TableCell>
+                      {org.mcpSettings?.enableMcpDataSources ? (
+                        <div className="flex flex-col gap-1">
+                          <Badge variant="default">Enabled</Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {(org.mcpSettings.enabledMcpProviders || []).join(', ') || 'No providers'}
+                          </span>
+                        </div>
+                      ) : (
+                        <Badge variant="secondary">Disabled</Badge>
+                      )}
+                    </TableCell>
                     <TableCell className="text-muted-foreground">
                       {new Date(org.createdAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="icon">
+                      <Button variant="ghost" size="icon" onClick={() => openMcpDialog(org)}>
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </TableCell>
@@ -207,6 +267,53 @@ export default function OrganizationsPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={Boolean(mcpEditOrg)} onOpenChange={(open) => !open && setMcpEditOrg(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>MCP Data Source Settings</DialogTitle>
+            <DialogDescription>
+              {mcpEditOrg ? `Configure MCP availability for ${mcpEditOrg.name}` : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="mcp-enabled">Enable MCP Server Data Sources</Label>
+              <input
+                id="mcp-enabled"
+                type="checkbox"
+                checked={mcpEnabled}
+                onChange={(e) => setMcpEnabled(e.target.checked)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Allowed MCP Providers</Label>
+              {MCP_PROVIDER_OPTIONS.map((provider) => (
+                <label key={provider.id} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={mcpProviders.includes(provider.id)}
+                    onChange={(e) =>
+                      setMcpProviders((prev) =>
+                        e.target.checked ? Array.from(new Set([...prev, provider.id])) : prev.filter((id) => id !== provider.id)
+                      )
+                    }
+                  />
+                  {provider.label}
+                </label>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMcpEditOrg(null)} disabled={savingMcp}>
+              Cancel
+            </Button>
+            <Button onClick={saveMcpSettings} disabled={savingMcp}>
+              {savingMcp ? 'Saving...' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

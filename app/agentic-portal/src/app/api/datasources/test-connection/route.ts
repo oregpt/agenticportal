@@ -7,6 +7,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { BigQuery } from '@google-cloud/bigquery';
+import { isMcpProviderId } from '@/server/mcp/providers';
+import { testMcpSourceConfig } from '@/server/mcp/testing';
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,6 +24,8 @@ export async function POST(request: NextRequest) {
         return testBigQueryConnection(config);
       case 'postgres':
         return testPostgresConnection(config);
+      case 'mcp_server':
+        return testMcpConnection(config);
       default:
         return NextResponse.json(
           { error: `Test connection not supported for type: ${type}` },
@@ -38,6 +42,19 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+async function testMcpConnection(config: { provider: string; credentials?: Record<string, string> }) {
+  const provider = String(config?.provider || '').trim();
+  const credentials = (config?.credentials || {}) as Record<string, string>;
+  if (!isMcpProviderId(provider)) {
+    return NextResponse.json({ success: false, error: 'Invalid MCP provider' }, { status: 400 });
+  }
+  const result = await testMcpSourceConfig({ provider, credentials });
+  if (!result.success) {
+    return NextResponse.json({ success: false, error: result.error || 'MCP connection failed' }, { status: 400 });
+  }
+  return NextResponse.json({ success: true, message: result.message || 'Connected successfully' });
 }
 
 async function testBigQueryConnection(config: {
