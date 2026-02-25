@@ -104,7 +104,7 @@ export interface Phase3Result {
   approved: boolean;
   confidence: number;
   issues: string[];
-  correctedSQL?: string;
+  fixes: string[];
   explanation: string;
 }
 
@@ -499,8 +499,8 @@ export class NL2SQLPlannerService {
       input.extraGuidance ? `Guidance:\n${input.extraGuidance}` : '',
       '',
       'Return JSON:',
-      '{"approved":true,"confidence":0.0,"issues":["..."],"correctedSQL":"","explanation":"..."}',
-      'If approved=true, correctedSQL may be empty.',
+      '{"approved":true,"confidence":0.0,"issues":["..."],"fixes":["..."],"explanation":"..."}',
+      'Do not generate replacement SQL. Provide concrete fix instructions in fixes[].',
     ].filter(Boolean).join('\n');
 
     const raw = await this.provider.generate(
@@ -516,7 +516,7 @@ export class NL2SQLPlannerService {
       approved: !!parsed.approved,
       confidence: Number.isFinite(Number(parsed.confidence)) ? Number(parsed.confidence) : 0.5,
       issues: toArray<string>(parsed.issues).map((s) => String(s)),
-      correctedSQL: parsed.correctedSQL ? String(parsed.correctedSQL) : undefined,
+      fixes: toArray<string>(parsed.fixes).map((s) => String(s)).filter(Boolean),
       explanation: String(parsed.explanation || ''),
     };
   }
