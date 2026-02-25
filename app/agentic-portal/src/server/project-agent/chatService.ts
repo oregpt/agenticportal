@@ -51,6 +51,73 @@ function sanitizeSql(sql: string): string {
   return cleaned;
 }
 
+function isTransientExecutionError(message: string): boolean {
+  const text = String(message || '').toLowerCase();
+  return (
+    text.includes('502') ||
+    text.includes('503') ||
+    text.includes('504') ||
+    text.includes('bad gateway') ||
+    text.includes('fetch failed') ||
+    text.includes('network') ||
+    text.includes('socket') ||
+    text.includes('econnreset') ||
+    text.includes('timed out') ||
+    text.includes('etimedout')
+  );
+}
+
+function normalizeSqlForDialect(sourceType: ProjectAgentDataSource['type'], sql: string): string {
+  let normalized = String(sql || '');
+  normalized = normalized.replace(/\bGROBY\b/gi, 'GROUP BY');
+  normalized = normalized.replace(/\bGROB\b/gi, 'GROUP BY');
+  normalized = normalized.replace(/'(\s*DATE_SUB\([^']+\))'/gi, '$1');
+
+  if (sourceType === 'bigquery' || sourceType === 'google_sheets_live') {
+    normalized = normalized.replace(/\bDATEDIFF\s*\(/gi, 'DATE_DIFF(');
+  }
+
+  return normalized;
+}
+
+function buildPreflightSql(sql: string): string {
+  return `EXPLAIN ${sql}`;
+}
+
+function buildRepairHint(message: string, sqlText?: string): string {
+  const error = String(message || '');
+  const hints: string[] = [
+    'Repair the SQL using only schema-valid columns and read-only SELECT/WITH statements.',
+    'Return plan fields that generate syntactically valid SQL for the current dialect.',
+  ];
+  const lower = error.toLowerCase();
+  if (lower.includes('only read-only select queries are allowed')) {
+    hints.push('Ensure final SQL starts with SELECT or WITH and contains no markdown, prose, or DML/DDL keywords.');
+  }
+  if (lower.includes('datediff')) {
+    hints.push('For BigQuery use DATE_DIFF(end_date, start_date, DAY), never DATEDIFF().');
+  }
+  if (lower.includes('could not cast literal "date_sub')) {
+    hints.push('Never quote SQL functions. Use DATE_SUB(...) as expression, not as string literal.');
+  }
+  if (lower.includes('neither grouped nor aggregated')) {
+    hints.push('Every non-aggregated selected column must be included in GROUP BY.');
+  }
+  if (lower.includes('no matching signature for operator /')) {
+    hints.push('Do not divide by structs/records. Divide only scalar numeric expressions.');
+  }
+  if (lower.includes('syntax error') || lower.includes('groby') || lower.includes('grob')) {
+    hints.push('Fix SQL keyword spelling and structure, especially GROUP BY/ORDER BY clauses.');
+  }
+  if (isTransientExecutionError(lower)) {
+    hints.push('Transient execution failure detected; keep logic stable and avoid unnecessary complexity.');
+  }
+  if (sqlText) {
+    hints.push(`Last attempted SQL:\n${sqlText}`);
+  }
+  return hints.join('\n');
+}
+
 function extractJson(text: string): any {
   const trimmed = text.trim();
   try {
@@ -148,6 +215,28 @@ async function runWithAdapter(source: ProjectAgentDataSource, sqlText: string): 
   } finally {
     await adapter.disconnect().catch(() => {});
   }
+}
+
+async function runWithAdapterRetry(
+  source: ProjectAgentDataSource,
+  sqlText: string,
+  maxAttempts = 2
+): Promise<{ rows: any[]; rowCount: number }> {
+  let lastError: unknown = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await runWithAdapter(source, sqlText);
+    } catch (error) {
+      lastError = error;
+      const message = error instanceof Error ? error.message : String(error);
+      if (attempt >= maxAttempts || !isTransientExecutionError(message)) {
+        throw error;
+      }
+      const delay = 400 * attempt;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error('Query execution failed');
 }
 
 function getMcpProviderId(source: ProjectAgentDataSource): string {
@@ -447,6 +536,15 @@ export async function runProjectAgentChat(input: {
     reasoning: string;
     confidence: number | null;
   }> {
+    const phase3CommonChecks = [
+      'Phase3 mandatory checks:',
+      '- Validate SQL keywords and syntax; reject malformed tokens like GROBY/GROB.',
+      '- For BigQuery dialect use DATE_DIFF(...), never DATEDIFF(...).',
+      '- Never quote SQL function expressions (e.g. DATE_SUB(...) must not be in quotes).',
+      '- All non-aggregated SELECT columns must appear in GROUP BY when aggregating.',
+      '- Division operands must be scalar numeric expressions only.',
+      '- Output only SELECT/WITH read-only SQL.',
+    ].join('\n');
     const tablePick = await selectBestTable(extraContext);
     const fieldsForTable = schemaPack.schemaFieldsByTable[tablePick.tableName] || [];
     if (!fieldsForTable.length) throw new Error('No introspected columns available for selected table');
@@ -530,12 +628,13 @@ export async function runProjectAgentChat(input: {
     }
 
     let sql = planner.generateSQL({ schema: plannerSchema, plan: phase2, safety });
-    const phase3 = await planner.phase3({
+    let phase3 = await planner.phase3({
       query: message,
       schema: plannerSchema,
       sql,
       extraGuidance: [
         plannerGuidance,
+        phase3CommonChecks,
         `Phase 3 template:\n${applyTemplate(promptTemplates.phase3ReviewPrompt, {
           question: message,
           source_name: source.name,
@@ -544,12 +643,56 @@ export async function runProjectAgentChat(input: {
         })}`,
       ].join('\n\n'),
     });
-    if (phase3.correctedSQL && phase3.correctedSQL.trim()) sql = phase3.correctedSQL.trim();
 
-    const finalSql = sanitizeSql(sql);
+    // Phase 3 is advisory only. If review fails, regenerate the plan deterministically.
+    if (!phase3.approved || phase3.issues.length > 0) {
+      const reviewIssues = [...phase3.issues, ...phase3.fixes].filter(Boolean).join(' | ');
+      phase2 = await planner.phase2({
+        query: message,
+        schema: plannerSchema,
+        phase1,
+        extraGuidance: [plannerGuidance, `Phase 2 template:\n${phase2PromptGuidance}`].filter(Boolean).join('\n\n'),
+        executionError: `Phase3 review corrections: ${reviewIssues || 'Review requested query-plan correction'}`,
+      });
+      if (!userRequestedLimit(message)) phase2.limit = null;
+      safety = planner.validateSafety({ schema: plannerSchema, plan: phase2 });
+      sql = planner.generateSQL({ schema: plannerSchema, plan: phase2, safety });
+      phase3 = await planner.phase3({
+        query: message,
+        schema: plannerSchema,
+        sql,
+        extraGuidance: [plannerGuidance, phase3CommonChecks].join('\n\n'),
+      });
+    }
+
+    const normalizedSql = normalizeSqlForDialect(source.type, sql);
+    let finalSql = '';
+    try {
+      finalSql = sanitizeSql(normalizedSql);
+    } catch (error: any) {
+      throw new ProjectAgentChatExecutionError(error?.message || 'Generated SQL was invalid', {
+        sql: normalizedSql,
+        source: { id: source.id, name: source.name, type: source.type },
+        reasoning: `SQL sanitization failed for table ${tablePick.tableName}`,
+        confidence: phase3.confidence ?? tablePick.confidence ?? null,
+      });
+    }
+
+    // Compile preflight before execution to catch syntax/dialect issues early.
+    try {
+      await runWithAdapter(source, buildPreflightSql(finalSql));
+    } catch (err: any) {
+      throw new ProjectAgentChatExecutionError(err?.message || 'SQL preflight failed', {
+        sql: finalSql,
+        source: { id: source.id, name: source.name, type: source.type },
+        reasoning: `Preflight compile failed for table ${tablePick.tableName}`,
+        confidence: phase3.confidence ?? tablePick.confidence ?? null,
+      });
+    }
+
     let result: { rows: any[]; rowCount: number };
     try {
-      result = await runWithAdapter(source, finalSql);
+      result = await runWithAdapterRetry(source, finalSql, 2);
     } catch (err: any) {
       throw new ProjectAgentChatExecutionError(err?.message || 'Query execution failed', {
         sql: finalSql,
@@ -566,6 +709,7 @@ export async function runProjectAgentChat(input: {
       `Phase2 rationale: ${phase2.rationale || 'n/a'}`,
       safety.warnings.length ? `Safety warnings: ${safety.warnings.join(' | ')}` : '',
       phase3.issues.length ? `Phase3 issues: ${phase3.issues.join(' | ')}` : '',
+      phase3.fixes.length ? `Phase3 fixes: ${phase3.fixes.join(' | ')}` : '',
       `Phase3 review: ${phase3.explanation || (phase3.approved ? 'approved' : 'needs revision')}`,
     ].filter(Boolean).join('\n');
 
@@ -584,10 +728,7 @@ export async function runProjectAgentChat(input: {
     reasoningForTrust = planned.reasoning;
     confidenceForTrust = planned.confidence;
   } catch (firstErr: any) {
-    const repairHint = [
-      'Previous SQL failed to execute. Repair the plan and regenerate SQL with strict schema adherence.',
-      `Execution error: ${firstErr?.message || 'unknown'}`,
-    ].join('\n');
+    const repairHint = buildRepairHint(firstErr?.message || 'unknown', String(firstErr?.sql || '').trim() || undefined);
     try {
       planned = await planAndExecute(repairHint);
       queryResult = planned.result;

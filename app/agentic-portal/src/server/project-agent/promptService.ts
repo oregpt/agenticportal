@@ -73,6 +73,7 @@ export const DEFAULT_PROJECT_AGENT_PROMPTS: ProjectAgentPromptTemplates = {
   phase3ReviewPrompt: [
     'Review generated SQL for correctness and faithfulness to user intent.',
     'Check metric semantics, grouping grain, filter correctness, and null/date handling.',
+    'Common failure checks: GROUP BY spelling/placement, BigQuery DATE_DIFF (not DATEDIFF), no quoted SQL functions (e.g. DATE_SUB), and no non-scalar division operands.',
     '',
     'Question: {{question}}',
     'Table: {{table_name}}',
