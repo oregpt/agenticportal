@@ -81,7 +81,7 @@ function normalizeSqlForDialect(sourceType: ProjectAgentDataSource['type'], sql:
 }
 
 function buildPreflightSql(sql: string): string {
-  return `EXPLAIN ${sql}`;
+  return `SELECT * FROM (${sql}) AS __preflight LIMIT 0`;
 }
 
 function buildRepairHint(message: string, sqlText?: string): string {
