@@ -379,6 +379,28 @@ export const projectDataWorkflowRuns = pgTable('project_data_workflow_runs', {
   completedAt: timestamp('completed_at'),
 });
 
+export const projectAgentChatSessions = pgTable('project_agent_chat_sessions', {
+  id: varchar('id', { length: 64 }).primaryKey(),
+  projectId: varchar('project_id', { length: 64 }).notNull(),
+  organizationId: varchar('organization_id', { length: 64 }).notNull(),
+  userId: varchar('user_id', { length: 64 }).notNull(),
+  title: varchar('title', { length: 255 }).notNull(),
+  lastMessageAt: timestamp('last_message_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const projectAgentChatMessages = pgTable('project_agent_chat_messages', {
+  id: varchar('id', { length: 64 }).primaryKey(),
+  conversationId: varchar('conversation_id', { length: 64 }).notNull(),
+  projectId: varchar('project_id', { length: 64 }).notNull(),
+  organizationId: varchar('organization_id', { length: 64 }).notNull(),
+  role: varchar('role', { length: 16 }).notNull(), // user | assistant
+  content: text('content').notNull(),
+  dataRunJson: jsonb('data_run_json'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 export const platformSettings = pgTable('ai_platform_settings', {
   key: varchar('key', { length: 128 }).primaryKey(),
   value: jsonb('value').notNull(),

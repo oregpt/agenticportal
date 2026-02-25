@@ -4,12 +4,16 @@ import { eq } from 'drizzle-orm';
 import { getCurrentUser, canAccessPlatformAdmin } from '@/lib/auth';
 import {
   applyTemplate,
+  appendProjectConversationMessages,
   createProjectAgent,
+  createProjectConversation,
   createProjectMemoryRule,
   createProjectWorkflow,
+  deleteProjectConversation,
   deleteProjectMemoryRule,
   deleteProjectWorkflow,
   executeProjectDeepTool,
+  getProjectConversation,
   getProjectAgentFeatures,
   getProjectAgentSettings,
   getProjectAgentGlobalNotes,
@@ -21,6 +25,7 @@ import {
   isProjectAgentModuleEnabled,
   isProjectFeatureEnabled,
   listProjectAgents,
+  listProjectConversations,
   listProjectDataQueryRuns,
   listProjectDataSources,
   listProjectMemoryRules,
@@ -36,6 +41,7 @@ import {
   updateProjectAgentFeatures,
   updateProjectAgentGlobalNotes,
   updateProjectAgentSettings,
+  updateProjectConversationTitle,
   updateProjectAgentPromptTemplates,
   updateProjectMemoryRule,
   updateProjectSourceNotes,
@@ -147,6 +153,27 @@ export async function GET(request: NextRequest, context: { params: Promise<{ pat
       await requireDataFeature(projectId, user.organizationId!, 'dataWorkflows');
       const workflows = await listProjectWorkflows(projectId, user.organizationId!);
       return NextResponse.json({ workflows });
+    }
+
+    if (seg1 === 'conversations') {
+      if (!projectId) return badRequest('projectId is required');
+      if (seg2) {
+        const conversation = await getProjectConversation({
+          conversationId: seg2,
+          projectId,
+          organizationId: user.organizationId!,
+          userId: user.id,
+        });
+        if (!conversation) return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
+        return NextResponse.json(conversation);
+      }
+      const conversations = await listProjectConversations({
+        projectId,
+        organizationId: user.organizationId!,
+        userId: user.id,
+        limit: Number(request.nextUrl.searchParams.get('limit') || 100),
+      });
+      return NextResponse.json({ conversations });
     }
 
     if (seg1 === 'workflow-runs') {
@@ -311,6 +338,20 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ p
       return NextResponse.json({ workflow });
     }
 
+    if (seg1 === 'conversations' && seg2) {
+      const { projectId, title } = body;
+      if (!projectId || !title) return badRequest('projectId and title are required');
+      const conversation = await updateProjectConversationTitle({
+        conversationId: seg2,
+        projectId: String(projectId),
+        organizationId: user.organizationId!,
+        userId: user.id,
+        title: String(title),
+      });
+      if (!conversation) return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
+      return NextResponse.json({ conversation });
+    }
+
     return notFound();
   } catch (err: any) {
     return NextResponse.json({ error: err?.message || 'Request failed' }, { status: 400 });
@@ -338,6 +379,17 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
     if (seg1 === 'workflows' && seg2) {
       await requireDataFeature(projectId, user.organizationId!, 'dataWorkflows');
       const result = await deleteProjectWorkflow(projectId, user.organizationId!, seg2);
+      return NextResponse.json(result);
+    }
+
+    if (seg1 === 'conversations' && seg2) {
+      const result = await deleteProjectConversation({
+        conversationId: seg2,
+        projectId,
+        organizationId: user.organizationId!,
+        userId: user.id,
+      });
+      if (!result) return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
       return NextResponse.json(result);
     }
 
@@ -418,6 +470,38 @@ export async function POST(request: NextRequest, context: { params: Promise<{ pa
         }
         return NextResponse.json(response, { status: 400 });
       }
+    }
+
+    if (seg1 === 'conversations' && !seg2) {
+      const { projectId, title } = body as { projectId: string; title?: string };
+      if (!projectId) return badRequest('projectId is required');
+      const conversation = await createProjectConversation({
+        projectId,
+        organizationId: user.organizationId!,
+        userId: user.id,
+        title: String(title || 'New conversation'),
+      });
+      return NextResponse.json({ conversation });
+    }
+
+    if (seg1 === 'conversations' && seg2 && seg3 === 'messages') {
+      const { projectId, messages } = body as {
+        projectId: string;
+        messages: Array<{ role: 'user' | 'assistant'; content: string; dataRunJson?: Record<string, unknown> }>;
+      };
+      if (!projectId || !Array.isArray(messages)) return badRequest('projectId and messages are required');
+      const conversation = await appendProjectConversationMessages({
+        conversationId: seg2,
+        projectId,
+        organizationId: user.organizationId!,
+        userId: user.id,
+        messages: messages.map((m) => ({
+          role: m.role === 'assistant' ? 'assistant' : 'user',
+          content: String(m.content || ''),
+          dataRunJson: m.dataRunJson || null,
+        })),
+      });
+      return NextResponse.json(conversation);
     }
 
     if (seg1 === 'create') {

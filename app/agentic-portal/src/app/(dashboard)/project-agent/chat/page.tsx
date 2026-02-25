@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { WorkstreamFilterBar } from '@/components/filters/WorkstreamFilterBar';
-import { ChevronDown, Loader2, Send, Terminal, Zap } from 'lucide-react';
+import { ChevronDown, Loader2, MessageSquare, Plus, Send, Terminal, Trash2, Zap } from 'lucide-react';
 
 type SourceType = 'bigquery' | 'postgres' | 'google_sheets' | 'google_sheets_live';
 type Project = { id: string; name: string; hasAgent?: boolean };
@@ -36,6 +36,13 @@ type DataRunInfo = {
   querySpecDraft?: { name?: string; projectId?: string; sourceId?: string; sqlText?: string; metadataJson?: Record<string, unknown> };
 };
 type Message = { id: string; role: 'user' | 'assistant'; content: string; dataRun?: DataRunInfo };
+type ConversationSummary = {
+  id: string;
+  title: string;
+  updatedAt: string;
+  lastMessageAt?: string | null;
+  messageCount?: number;
+};
 type DeepToolPlan = {
   mode: 'none' | 'confirm' | 'read';
   action: 'create_workflow' | 'create_memory_rule' | 'list_workflows' | 'list_memory_rules' | 'list_workflow_runs' | 'none';
@@ -67,6 +74,13 @@ function nextMessageId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+function conversationLabelDate(value?: string | null): string {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
 export default function ProjectAgentChatPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -76,6 +90,9 @@ export default function ProjectAgentChatPage() {
   const [sources, setSources] = useState<DataSource[]>([]);
   const [dashboardOptions, setDashboardOptions] = useState<DashboardOption[]>([]);
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [selectedConversationId, setSelectedConversationId] = useState('');
+  const [loadingConversationId, setLoadingConversationId] = useState('');
   const [chatSourceId, setChatSourceId] = useState('');
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -110,8 +127,101 @@ export default function ProjectAgentChatPage() {
     setSelectedMessageIds((prev) => prev.filter((id) => selectableMessageIds.includes(id)));
   }, [selectableMessageIds]);
 
-  function pushMessage(message: Omit<Message, 'id'>) {
-    setMessages((prev) => [...prev, { id: nextMessageId(), ...message }]);
+  function setChatRoute(projectId: string, conversationId?: string) {
+    const query = conversationId
+      ? `?projectId=${encodeURIComponent(projectId)}&conversationId=${encodeURIComponent(conversationId)}`
+      : `?projectId=${encodeURIComponent(projectId)}`;
+    router.replace(`/project-agent/chat${query}`, { scroll: false });
+  }
+
+  async function loadConversations(projectId: string, preferredConversationId?: string) {
+    const res = await api(`/api/project-agent/conversations?projectId=${encodeURIComponent(projectId)}`);
+    const list = (res.conversations || []) as ConversationSummary[];
+    setConversations(list);
+    const targetConversationId =
+      (preferredConversationId && list.find((row) => row.id === preferredConversationId)?.id) || list[0]?.id || '';
+    if (targetConversationId) {
+      await selectConversation(projectId, targetConversationId);
+    } else {
+      setSelectedConversationId('');
+      setMessages([]);
+      setChatRoute(projectId);
+    }
+  }
+
+  async function selectConversation(projectId: string, conversationId: string) {
+    if (!projectId || !conversationId) return;
+    try {
+      setLoadingConversationId(conversationId);
+      const payload = await api(
+        `/api/project-agent/conversations/${encodeURIComponent(conversationId)}?projectId=${encodeURIComponent(projectId)}`
+      );
+      setSelectedConversationId(conversationId);
+      setMessages(
+        (payload.messages || []).map((message: any) => ({
+          id: String(message.id || nextMessageId()),
+          role: message.role === 'assistant' ? 'assistant' : 'user',
+          content: String(message.content || ''),
+          dataRun: message.dataRunJson || undefined,
+        }))
+      );
+      setSelectedMessageIds([]);
+      setExpandedDataRuns({});
+      setChatRoute(projectId, conversationId);
+    } catch (e: any) {
+      setError(e?.message || 'Failed to load conversation');
+    } finally {
+      setLoadingConversationId('');
+    }
+  }
+
+  async function createConversation(projectId: string, title: string) {
+    const payload = await api('/api/project-agent/conversations', {
+      method: 'POST',
+      body: JSON.stringify({
+        projectId,
+        title: String(title || 'New conversation').slice(0, 120),
+      }),
+    });
+    const conversation = payload.conversation as ConversationSummary;
+    setConversations((prev) => [conversation, ...prev.filter((row) => row.id !== conversation.id)]);
+    setSelectedConversationId(conversation.id);
+    setMessages([]);
+    setSelectedMessageIds([]);
+    setExpandedDataRuns({});
+    setChatRoute(projectId, conversation.id);
+    return conversation.id;
+  }
+
+  async function ensureConversation(projectId: string, seedPrompt: string) {
+    if (selectedConversationId) return selectedConversationId;
+    return createConversation(projectId, seedPrompt);
+  }
+
+  async function persistConversationMessages(
+    projectId: string,
+    conversationId: string,
+    entries: Array<{ role: 'user' | 'assistant'; content: string; dataRun?: DataRunInfo }>
+  ) {
+    if (!conversationId || !entries.length) return;
+    await api(`/api/project-agent/conversations/${encodeURIComponent(conversationId)}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({
+        projectId,
+        messages: entries.map((entry) => ({
+          role: entry.role,
+          content: entry.content,
+          dataRunJson: entry.dataRun || null,
+        })),
+      }),
+    });
+    setConversations((prev) =>
+      prev.map((row) =>
+        row.id === conversationId
+          ? { ...row, updatedAt: new Date().toISOString(), lastMessageAt: new Date().toISOString() }
+          : row
+      )
+    );
   }
 
   function toggleDataRun(messageId: string) {
@@ -144,6 +254,7 @@ export default function ProjectAgentChatPage() {
         prev.map((msg) => (msg.id === id ? { ...msg, content: `${msg.content}${chunk}` } : msg))
       );
     }
+    return { id, role: 'assistant' as const, content: String(content || ''), dataRun };
   }
 
   async function refreshProjectContext(projectId: string) {
@@ -169,13 +280,17 @@ export default function ProjectAgentChatPage() {
         const list: Project[] = p.projects || [];
         setProjects(list);
         const fromUrl = searchParams.get('projectId') || '';
+        const conversationFromUrl = searchParams.get('conversationId') || '';
         const initial =
           (fromUrl && list.find((proj) => proj.id === fromUrl)?.id) ||
           list.find((proj) => proj.hasAgent)?.id ||
           list[0]?.id ||
           '';
         setSelectedProjectId(initial);
-        if (initial) await refreshProjectContext(initial);
+        if (initial) {
+          await refreshProjectContext(initial);
+          await loadConversations(initial, conversationFromUrl);
+        }
       } catch (e: any) {
         setError(e?.message || 'Failed to load project agent chat');
       }
@@ -191,7 +306,10 @@ export default function ProjectAgentChatPage() {
     setShowDataCommands(false);
     setShowDataWorkflows(false);
     setActiveTools([]);
-    pushMessage({ role: 'user', content: prompt });
+    const conversationId = await ensureConversation(selectedProjectId, prompt);
+    const userMessage: Message = { id: nextMessageId(), role: 'user', content: prompt };
+    setMessages((prev) => [...prev, userMessage]);
+    await persistConversationMessages(selectedProjectId, conversationId, [{ role: 'user', content: prompt }]);
     try {
       const plan = (await api('/api/project-agent/deep-tools/plan', {
         method: 'POST',
@@ -199,7 +317,9 @@ export default function ProjectAgentChatPage() {
       })) as DeepToolPlan;
       if (plan.mode === 'confirm') {
         setPendingPlan(plan);
-        pushMessage({ role: 'assistant', content: plan.summary || 'Action requires confirmation.' });
+        const content = plan.summary || 'Action requires confirmation.';
+        setMessages((prev) => [...prev, { id: nextMessageId(), role: 'assistant', content }]);
+        await persistConversationMessages(selectedProjectId, conversationId, [{ role: 'assistant', content }]);
         return;
       }
       if (plan.mode === 'read' && plan.action !== 'none') {
@@ -208,7 +328,8 @@ export default function ProjectAgentChatPage() {
           method: 'POST',
           body: JSON.stringify({ projectId: selectedProjectId, action: plan.action, payload: plan.payload || {} }),
         });
-        await streamAssistantMessage(readResult.message || 'Done.');
+        const assistant = await streamAssistantMessage(readResult.message || 'Done.');
+        await persistConversationMessages(selectedProjectId, conversationId, [{ role: 'assistant', content: assistant.content }]);
         return;
       }
 
@@ -217,13 +338,17 @@ export default function ProjectAgentChatPage() {
         method: 'POST',
         body: JSON.stringify({ projectId: selectedProjectId, sourceId: chatSourceId, message: prompt }),
       });
-      await streamAssistantMessage(data.answer || 'No response.', data);
+      const assistant = await streamAssistantMessage(data.answer || 'No response.', data);
+      await persistConversationMessages(selectedProjectId, conversationId, [
+        { role: 'assistant', content: assistant.content, dataRun: data as DataRunInfo },
+      ]);
     } catch (e: any) {
       const msg = e?.message || 'Failed to send message';
       const payload = e?.payload || {};
       setError(msg);
       if (payload?.trust?.sql) {
-        pushMessage({
+        const assistantMessage: Message = {
+          id: nextMessageId(),
           role: 'assistant',
           content: `Error: ${msg}`,
           dataRun: {
@@ -253,9 +378,15 @@ export default function ProjectAgentChatPage() {
             },
             querySpecDraft: payload?.querySpecDraft || undefined,
           },
-        });
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+        await persistConversationMessages(selectedProjectId, conversationId, [
+          { role: 'assistant', content: assistantMessage.content, dataRun: assistantMessage.dataRun },
+        ]);
       } else {
-        pushMessage({ role: 'assistant', content: `Error: ${msg}` });
+        const content = `Error: ${msg}`;
+        setMessages((prev) => [...prev, { id: nextMessageId(), role: 'assistant', content }]);
+        await persistConversationMessages(selectedProjectId, conversationId, [{ role: 'assistant', content }]);
       }
     } finally {
       setActiveTools([]);
@@ -267,16 +398,16 @@ export default function ProjectAgentChatPage() {
     if (!selectedProjectId || runningWorkflowId) return;
     setRunningWorkflowId(workflow.id);
     setShowDataWorkflows(false);
-    pushMessage({ role: 'user', content: `Run workflow: ${workflow.name}` });
+    setMessages((prev) => [...prev, { id: nextMessageId(), role: 'user', content: `Run workflow: ${workflow.name}` }]);
     try {
       await api(`/api/project-agent/workflows/${workflow.id}/run`, {
         method: 'POST',
         body: JSON.stringify({ projectId: selectedProjectId }),
       });
-      pushMessage({ role: 'assistant', content: `Workflow "${workflow.name}" started.` });
+      setMessages((prev) => [...prev, { id: nextMessageId(), role: 'assistant', content: `Workflow "${workflow.name}" started.` }]);
     } catch (e: any) {
       const msg = e?.message || 'Failed to run workflow';
-      pushMessage({ role: 'assistant', content: `Error: ${msg}` });
+      setMessages((prev) => [...prev, { id: nextMessageId(), role: 'assistant', content: `Error: ${msg}` }]);
     } finally {
       setRunningWorkflowId('');
     }
@@ -294,7 +425,7 @@ export default function ProjectAgentChatPage() {
         }),
       });
       setPendingPlan(null);
-      pushMessage({ role: 'assistant', content: res.message || 'Action completed.' });
+      setMessages((prev) => [...prev, { id: nextMessageId(), role: 'assistant', content: res.message || 'Action completed.' }]);
       await refreshProjectContext(selectedProjectId);
     } catch (e: any) {
       setError(e?.message || 'Failed to execute action');
@@ -347,12 +478,16 @@ export default function ProjectAgentChatPage() {
         }),
       });
       if (mode === 'save-sql') {
-        pushMessage({ role: 'assistant', content: 'Saved SQL query spec.' });
+        setMessages((prev) => [...prev, { id: nextMessageId(), role: 'assistant', content: 'Saved SQL query spec.' }]);
       } else {
-        pushMessage({
-          role: 'assistant',
-          content: `Added ${mode.replace('add-', '')} block to dashboard ${res.dashboardArtifactId || ''}.`,
-        });
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: nextMessageId(),
+            role: 'assistant',
+            content: `Added ${mode.replace('add-', '')} block to dashboard ${res.dashboardArtifactId || ''}.`,
+          },
+        ]);
       }
     } catch (e: any) {
       setError(e?.message || `Failed to ${mode}`);
@@ -380,6 +515,39 @@ export default function ProjectAgentChatPage() {
     setSelectedMessageIds([]);
   }
 
+  async function handleNewConversation() {
+    if (!selectedProjectId) return;
+    try {
+      await createConversation(selectedProjectId, 'New conversation');
+    } catch (e: any) {
+      setError(e?.message || 'Failed to create conversation');
+    }
+  }
+
+  async function handleDeleteConversation(conversationId: string) {
+    if (!selectedProjectId) return;
+    const confirmed = window.confirm('Delete this conversation?');
+    if (!confirmed) return;
+    try {
+      const nextCandidateId = conversations.find((row) => row.id !== conversationId)?.id || '';
+      await api(`/api/project-agent/conversations/${encodeURIComponent(conversationId)}?projectId=${encodeURIComponent(selectedProjectId)}`, {
+        method: 'DELETE',
+      });
+      setConversations((prev) => prev.filter((row) => row.id !== conversationId));
+      if (selectedConversationId === conversationId) {
+        if (nextCandidateId) {
+          await selectConversation(selectedProjectId, nextCandidateId);
+        } else {
+          setSelectedConversationId('');
+          setMessages([]);
+          setChatRoute(selectedProjectId);
+        }
+      }
+    } catch (e: any) {
+      setError(e?.message || 'Failed to delete conversation');
+    }
+  }
+
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <WorkstreamFilterBar
@@ -389,9 +557,13 @@ export default function ProjectAgentChatPage() {
           const next = value || projects[0]?.id || '';
           setSelectedProjectId(next);
           setMessages([]);
+          setConversations([]);
+          setSelectedConversationId('');
           if (next) {
-            router.replace(`/project-agent/chat?projectId=${encodeURIComponent(next)}`, { scroll: false });
-            refreshProjectContext(next).catch(() => {});
+            setChatRoute(next);
+            refreshProjectContext(next)
+              .then(() => loadConversations(next))
+              .catch(() => {});
           }
         }}
         pageLabel="Project Agent Chat"
@@ -413,11 +585,73 @@ export default function ProjectAgentChatPage() {
           </div>
         </Card>
       ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-4">
+          <Card className="overflow-hidden">
+            <div className="border-b border-border p-3 flex items-center justify-between">
+              <p className="text-sm font-semibold">Conversations</p>
+              <Button size="sm" variant="outline" onClick={() => void handleNewConversation()}>
+                <Plus className="h-3.5 w-3.5 mr-1" /> New
+              </Button>
+            </div>
+            <div className="max-h-[72vh] overflow-y-auto p-2 space-y-1">
+              {conversations.length === 0 ? (
+                <p className="px-2 py-4 text-xs text-muted-foreground">No conversations yet.</p>
+              ) : (
+                conversations.map((conversation) => (
+                  <div
+                    key={conversation.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => void selectConversation(selectedProjectId, conversation.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        void selectConversation(selectedProjectId, conversation.id);
+                      }
+                    }}
+                    className={`w-full text-left rounded-md border p-2 transition-colors ${
+                      selectedConversationId === conversation.id ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2">
+                      <MessageSquare className="h-3.5 w-3.5 mt-0.5 text-muted-foreground" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{conversation.title || 'Conversation'}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {conversation.messageCount || 0} message{Number(conversation.messageCount || 0) === 1 ? '' : 's'}
+                          {conversationLabelDate(conversation.lastMessageAt || conversation.updatedAt)
+                            ? ` • ${conversationLabelDate(conversation.lastMessageAt || conversation.updatedAt)}`
+                            : ''}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className="text-muted-foreground hover:text-red-600"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleDeleteConversation(conversation.id);
+                        }}
+                        title="Delete conversation"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </Card>
         <Card className="p-0 overflow-hidden">
           <div className="border-b border-border p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="text-sm">
               <p className="font-semibold text-foreground">{selectedProject?.name || 'Project'} Chat</p>
-              <p className="text-muted-foreground text-xs">Full chat page for project agent runtime.</p>
+              <p className="text-muted-foreground text-xs">
+                {loadingConversationId
+                  ? 'Loading conversation...'
+                  : selectedConversationId
+                    ? 'Conversation loaded from history.'
+                    : 'New conversation (messages save after first send).'}
+              </p>
             </div>
             <div className="flex flex-col gap-2 md:flex-row md:items-center">
               <select
@@ -727,6 +961,7 @@ export default function ProjectAgentChatPage() {
             {error ? <p className="mt-2 text-sm text-red-600">{error}</p> : null}
           </div>
         </Card>
+        </div>
       )}
     </div>
   );

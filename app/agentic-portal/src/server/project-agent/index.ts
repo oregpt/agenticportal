@@ -19,6 +19,14 @@ export {
   introspectSavedProjectSource,
 } from './sourceService';
 export { runProjectAgentChat } from './chatService';
+export {
+  listProjectConversations,
+  createProjectConversation,
+  getProjectConversation,
+  appendProjectConversationMessages,
+  updateProjectConversationTitle,
+  deleteProjectConversation,
+} from './conversationService';
 export { createProjectDataQueryRun, listProjectDataQueryRuns, getProjectDataQueryRun } from './queryRunService';
 export {
   listProjectMemoryRules,

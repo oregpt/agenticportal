@@ -109,6 +109,32 @@ async function bootstrap(): Promise<void> {
   `);
 
   await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS project_agent_chat_sessions (
+      id VARCHAR(64) PRIMARY KEY,
+      project_id VARCHAR(64) NOT NULL,
+      organization_id VARCHAR(64) NOT NULL,
+      user_id VARCHAR(64) NOT NULL,
+      title VARCHAR(255) NOT NULL,
+      last_message_at TIMESTAMP,
+      created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+      updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+    )
+  `);
+
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS project_agent_chat_messages (
+      id VARCHAR(64) PRIMARY KEY,
+      conversation_id VARCHAR(64) NOT NULL,
+      project_id VARCHAR(64) NOT NULL,
+      organization_id VARCHAR(64) NOT NULL,
+      role VARCHAR(16) NOT NULL,
+      content TEXT NOT NULL,
+      data_run_json JSONB,
+      created_at TIMESTAMP DEFAULT NOW() NOT NULL
+    )
+  `);
+
+  await db.execute(sql`
     CREATE TABLE IF NOT EXISTS ai_platform_settings (
       key VARCHAR(128) PRIMARY KEY,
       value JSONB NOT NULL,
@@ -252,6 +278,8 @@ async function bootstrap(): Promise<void> {
     'CREATE INDEX IF NOT EXISTS idx_dashboard_items_dashboard ON dashboard_items(dashboard_artifact_id, created_at ASC)',
     'CREATE INDEX IF NOT EXISTS idx_artifact_runs_artifact_started ON artifact_runs(artifact_id, started_at DESC)',
     'CREATE INDEX IF NOT EXISTS idx_artifact_runs_org_project ON artifact_runs(organization_id, project_id, started_at DESC)',
+    'CREATE INDEX IF NOT EXISTS idx_pa_chat_sessions_project_user ON project_agent_chat_sessions(project_id, organization_id, user_id, updated_at DESC)',
+    'CREATE INDEX IF NOT EXISTS idx_pa_chat_messages_conversation_created ON project_agent_chat_messages(conversation_id, created_at ASC)',
     'CREATE INDEX IF NOT EXISTS idx_delivery_channels_org_project ON delivery_channels(organization_id, project_id, updated_at DESC)',
     'CREATE INDEX IF NOT EXISTS idx_delivery_channels_next_run ON delivery_channels(next_run_at) WHERE is_enabled = 1 AND delivery_mode = \'scheduled\'',
     'CREATE INDEX IF NOT EXISTS idx_delivery_runs_channel_started ON delivery_runs(channel_id, started_at DESC)',
