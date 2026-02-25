@@ -523,23 +523,17 @@ export default function DeliveryPage() {
               </div>
               <div className="grid gap-2">
                 <Label>Target Artifact</Label>
-                <Select
+                <select
                   value={form.artifactId}
-                  onValueChange={(value) => setForm((prev) => ({ ...prev, artifactId: value }))}
+                  onChange={(event) => setForm((prev) => ({ ...prev, artifactId: event.target.value }))}
+                  className="h-10 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm"
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select artifact" />
-                  </SelectTrigger>
-                  <SelectContent className="max-w-[min(78vw,52rem)]">
-                    {artifacts.map((artifact) => (
-                      <SelectItem key={artifact.id} value={artifact.id} className="max-w-[min(74vw,48rem)]">
-                        <span className="block truncate">
-                          {artifact.name} ({artifact.type})
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  {artifacts.map((artifact) => (
+                    <option key={artifact.id} value={artifact.id} title={`${artifact.name} (${artifact.type})`}>
+                      {artifact.name.length > 72 ? `${artifact.name.slice(0, 69)}...` : artifact.name} ({artifact.type})
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
