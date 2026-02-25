@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   Loader2,
   PlusCircle,
+  SendHorizontal,
   Table2,
   Trash2,
   Sparkles,
@@ -37,6 +38,14 @@ type Workstream = {
   description?: string | null;
 };
 
+type DeliveryChannel = {
+  id: string;
+  name: string;
+  channelType: 'email' | 'slack' | 'teams';
+  deliveryMode: 'on_demand' | 'scheduled';
+  isEnabled: boolean;
+};
+
 function artifactTypeLabel(node: PipelineNode): string {
   const metadataType = String(node.metadata?.displayType || node.metadata?.artifactType || '').toLowerCase();
   if (metadataType === 'kpi' || metadataType === 'metric') return 'Metric';
@@ -53,6 +62,7 @@ export default function ProjectDetailPage() {
 
   const [workstream, setWorkstream] = useState<Workstream | null>(null);
   const [nodes, setNodes] = useState<PipelineNode[]>([]);
+  const [deliveries, setDeliveries] = useState<DeliveryChannel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreatingDashboard, setIsCreatingDashboard] = useState(false);
   const [deletingId, setDeletingId] = useState('');
@@ -63,15 +73,21 @@ export default function ProjectDetailPage() {
     try {
       setIsLoading(true);
       setError('');
-      const res = await fetch(`/api/workstreams/${workstreamId}`);
-      const payload = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(payload?.error || 'Failed to load project');
-      setWorkstream(payload.workstream || null);
-      setNodes(payload.nodes || []);
+      const [projectRes, deliveryRes] = await Promise.all([
+        fetch(`/api/workstreams/${workstreamId}`),
+        fetch(`/api/delivery/channels?projectId=${encodeURIComponent(workstreamId)}`),
+      ]);
+      const projectPayload = await projectRes.json().catch(() => ({}));
+      const deliveryPayload = await deliveryRes.json().catch(() => ({}));
+      if (!projectRes.ok) throw new Error(projectPayload?.error || 'Failed to load project');
+      setWorkstream(projectPayload.workstream || null);
+      setNodes(projectPayload.nodes || []);
+      setDeliveries(deliveryRes.ok ? (deliveryPayload.channels || []) : []);
     } catch (e: any) {
       setError(e?.message || 'Failed to load project');
       setWorkstream(null);
       setNodes([]);
+      setDeliveries([]);
     } finally {
       setIsLoading(false);
     }
@@ -220,6 +236,10 @@ export default function ProjectDetailPage() {
           <div className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5">
             <Table2 className="h-4 w-4 text-amber-500" /> Artifacts <Badge variant="secondary">{artifacts.length}</Badge>
           </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <div className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5">
+            <SendHorizontal className="h-4 w-4 text-cyan-600" /> Data Delivery <Badge variant="secondary">{deliveries.length}</Badge>
+          </div>
           <div className="ml-auto inline-flex items-center gap-2 rounded-md border px-3 py-1.5 bg-muted/30">
             <Sparkles className="h-4 w-4 text-emerald-600" /> Project Agent
             <Badge variant={projectAgent ? 'default' : 'outline'}>{projectAgent ? 'Configured' : 'Not Created'}</Badge>
@@ -227,7 +247,7 @@ export default function ProjectDetailPage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-4">
         <Card>
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center justify-between">
@@ -363,6 +383,38 @@ export default function ProjectDetailPage() {
                   </div>
                 );
               })}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold">Data Delivery</h2>
+              <Button size="sm" variant="outline" asChild>
+                <Link href={`/delivery?workstreamId=${encodeURIComponent(workstreamId)}`}>Create</Link>
+              </Button>
+            </div>
+            {deliveries.length === 0 ? <p className="text-xs text-muted-foreground">No delivery channels yet.</p> : null}
+            <div className="space-y-2 max-h-[60vh] overflow-auto pr-1">
+              {deliveries.map((delivery) => (
+                <div key={delivery.id} className="rounded-md border p-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium truncate">{delivery.name}</p>
+                    <Badge variant={delivery.isEnabled ? 'default' : 'secondary'}>
+                      {delivery.isEnabled ? 'Enabled' : 'Paused'}
+                    </Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {delivery.channelType} • {delivery.deliveryMode === 'scheduled' ? 'scheduled' : 'on demand'}
+                  </p>
+                  <div className="mt-2 flex items-center justify-end gap-2">
+                    <Button size="sm" variant="outline" asChild>
+                      <Link href={`/delivery?workstreamId=${encodeURIComponent(workstreamId)}`}>Open</Link>
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>

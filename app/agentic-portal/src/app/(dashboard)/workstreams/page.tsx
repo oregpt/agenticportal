@@ -10,6 +10,7 @@ import {
   Table2, 
   LayoutDashboard,
   Bot,
+  SendHorizontal,
   ChevronRight,
   Calendar,
   Layers,
@@ -32,6 +33,7 @@ interface WorkstreamStats {
   dashboards: number;
   artifacts: number;
   projectAgents: number;
+  deliveries: number;
 }
 
 interface Workstream {
@@ -285,6 +287,12 @@ export default function WorkstreamsPage() {
                     <Bot className="w-4 h-4 text-emerald-500" />
                     <span className="text-emerald-600 dark:text-emerald-400 font-medium">{ws.stats.projectAgents}</span>
                     <span className="text-emerald-500/60">agents</span>
+                  </div>
+
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/20 rounded-lg text-sm">
+                    <SendHorizontal className="w-4 h-4 text-cyan-600" />
+                    <span className="text-cyan-700 dark:text-cyan-300 font-medium">{ws.stats.deliveries}</span>
+                    <span className="text-cyan-600/70">deliveries</span>
                   </div>
 
                   <Button

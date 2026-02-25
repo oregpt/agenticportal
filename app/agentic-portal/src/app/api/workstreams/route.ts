@@ -80,6 +80,15 @@ export async function GET(request: NextRequest) {
                 AND ${schema.projectAgents.projectId} = ${ws.id}`
           );
 
+        // Count data deliveries configured for this project
+        const [deliveryCount] = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(schema.deliveryChannels)
+          .where(
+            sql`${schema.deliveryChannels.organizationId} = ${orgId}
+                AND ${schema.deliveryChannels.projectId} = ${ws.id}`
+          );
+
         return {
           ...ws,
           stats: {
@@ -87,6 +96,7 @@ export async function GET(request: NextRequest) {
             dashboards: Number(dashboardCount?.count || 0),
             artifacts: Number(artifactCount?.count || 0),
             projectAgents: Number(projectAgentCount?.count || 0),
+            deliveries: Number(deliveryCount?.count || 0),
           }
         };
       })
@@ -141,7 +151,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       workstream: {
         ...workstream,
-        stats: { dataSources: 0, dashboards: 0, artifacts: 0, projectAgents: 0 }
+        stats: { dataSources: 0, dashboards: 0, artifacts: 0, projectAgents: 0, deliveries: 0 }
       }
     }, { status: 201 });
   } catch (error) {

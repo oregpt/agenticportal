@@ -37,10 +37,10 @@ const coreNavigation: NavItem[] = [
 ];
 
 const manageNavigation: NavItem[] = [
-  { name: 'Project Agent', href: '/project-agent', icon: Bot },
+  { name: 'Project Agents', href: '/project-agent', icon: Bot },
   { name: 'Data Sources', href: '/datasources', icon: Database },
   { name: 'Dashboards', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Delivery', href: '/delivery', icon: SendHorizontal },
+  { name: 'Data Delivery', href: '/delivery', icon: SendHorizontal },
 ];
 
 const otherNavigation: NavItem[] = [
@@ -86,12 +86,12 @@ function getPipelinePageMeta(pathname: string): { label: string; description: st
   if (pathname.startsWith('/dashboard')) return { label: 'Dashboards', description: 'Primary workspace for dashboard management by project.' };
   if (pathname.startsWith('/artifacts')) return { label: 'Artifacts', description: 'Dashboard blocks and outputs (manual + AI-created).' };
   if (pathname.startsWith('/artifact-runs')) return { label: 'Run History', description: 'Execution history and diagnostics for artifacts.' };
-  if (pathname.startsWith('/delivery')) return { label: 'Delivery', description: 'Configure schedules and distribution for generated artifacts.' };
+  if (pathname.startsWith('/delivery')) return { label: 'Data Delivery', description: 'Configure schedules and distribution for generated artifacts.' };
   if (pathname.startsWith('/views')) return { label: 'Views', description: 'Legacy route redirected to Artifacts.' };
   if (pathname.startsWith('/dashboards')) return { label: 'Dashboards', description: 'Legacy route redirected to Dashboard workspace.' };
   if (pathname.startsWith('/outputs')) return { label: 'Outputs', description: 'Legacy route redirected to Artifacts.' };
   if (pathname.startsWith('/relationship-explorer')) return { label: 'Relationships', description: 'Legacy route redirected to Projects.' };
-  if (pathname.startsWith('/project-agent')) return { label: 'Project Agent', description: 'Configure and use the project-scoped data agent.' };
+  if (pathname.startsWith('/project-agent')) return { label: 'Project Agents', description: 'Configure and use project-scoped data agents.' };
   return { label: 'Projects', description: 'Create projects, then dashboards, then artifacts.' };
 }
 
