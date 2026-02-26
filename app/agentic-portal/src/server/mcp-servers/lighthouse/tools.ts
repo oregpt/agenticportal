@@ -36,6 +36,14 @@ export const tools: ToolDef[] = [
     handler: async (client) => client.listGovernance(),
   },
   {
+    name: 'party_balance',
+    description: 'Get CC token balance for a party',
+    inputSchema: z.object({
+      id: z.string().describe('Party ID'),
+    }),
+    handler: async (client, args) => client.getPartyBalance(args.id),
+  },
+  {
     name: 'governance_stats',
     description: 'Get governance statistics',
     inputSchema: z.object({}),

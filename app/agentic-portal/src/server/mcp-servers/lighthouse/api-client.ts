@@ -74,6 +74,10 @@ export class LighthouseClient {
     return this.request('/governance');
   }
 
+  async getPartyBalance(id: string): Promise<any> {
+    return this.request(`/parties/${encodeURIComponent(id)}/balance`);
+  }
+
   async getGovernanceStats(): Promise<any> {
     return this.request('/governance/stats');
   }
