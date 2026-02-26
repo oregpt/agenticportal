@@ -466,11 +466,11 @@ export async function runProjectAgentChat(input: {
       },
       answer: mcpResult.answer,
       artifactActions: {
-        canSaveTable: false,
+        canSaveTable: true,
         canCreateChart: false,
         canCreateKpi: false,
-        canAddToDashboard: false,
-        canSaveSql: false,
+        canAddToDashboard: true,
+        canSaveSql: true,
       },
       querySpecDraft: null,
       trust: {
