@@ -79,6 +79,7 @@ export const MCP_PROVIDER_DEFINITIONS: Record<McpProviderId, McpProviderDefiniti
     ],
     quickCommands: [
       { label: 'Network Stats', prompt: 'Show overall Canton network statistics from Lighthouse.' },
+      { label: 'Party Balance', prompt: 'Get the current balance for party ID <PARTY_ID> and explain it.' },
       { label: 'Recent Transfers', prompt: 'List recent transfers with pagination defaults.' },
       { label: 'Validators', prompt: 'List validators and summarize key details.' },
       { label: 'Governance Stats', prompt: 'Get governance statistics and summarize trends.' },

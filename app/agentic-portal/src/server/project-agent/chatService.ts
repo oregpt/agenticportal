@@ -244,6 +244,33 @@ function getMcpProviderId(source: ProjectAgentDataSource): string {
   return String(config.provider || '').trim();
 }
 
+function toMcpCsvRows(toolName: string, payload: unknown): Array<Record<string, unknown>> {
+  const normalizeRow = (value: unknown): Record<string, unknown> => {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return { tool: toolName, ...(value as Record<string, unknown>) };
+    }
+    return { tool: toolName, value };
+  };
+
+  if (Array.isArray(payload)) {
+    return payload.map((entry) => normalizeRow(entry));
+  }
+
+  if (payload && typeof payload === 'object') {
+    const obj = payload as Record<string, unknown>;
+    const listKeys = ['rows', 'items', 'results', 'data', 'transactions', 'transfers', 'validators', 'records'];
+    for (const key of listKeys) {
+      const candidate = obj[key];
+      if (Array.isArray(candidate)) {
+        return candidate.map((entry) => normalizeRow(entry));
+      }
+    }
+    return [normalizeRow(obj)];
+  }
+
+  return payload === undefined ? [] : [normalizeRow(payload)];
+}
+
 async function runProjectAgentMcpChat(input: {
   projectId: string;
   organizationId: string;
@@ -307,6 +334,7 @@ async function runProjectAgentMcpChat(input: {
   ];
 
   const toolsUsed: string[] = [];
+  const sampleRows: Array<Record<string, unknown>> = [];
   let finalText = '';
   for (let i = 0; i < 8; i += 1) {
     const generated = await llm.generateWithTools(messages, {
@@ -351,7 +379,9 @@ async function runProjectAgentMcpChat(input: {
         organizationId: input.organizationId,
         projectId: input.projectId,
       });
-      toolsUsed.push(`${serverName}.${action}`);
+      const toolName = `${serverName}.${action}`;
+      toolsUsed.push(toolName);
+      sampleRows.push(...toMcpCsvRows(toolName, result.data).slice(0, 200));
       messages.push({
         role: 'tool',
         toolCallId: toolCall.id,
@@ -371,8 +401,8 @@ async function runProjectAgentMcpChat(input: {
   return {
     answer: finalText,
     sqlText: `MCP::${providerDef.serverName}::${toolsUsed.join(',') || 'none'}`,
-    rowCount: toolsUsed.length,
-    sampleRows: toolsUsed.map((toolName) => ({ tool: toolName })),
+    rowCount: sampleRows.length || toolsUsed.length,
+    sampleRows: sampleRows.slice(0, 200),
     reasoning,
     confidence: toolsUsed.length ? 0.9 : 0.5,
   };
@@ -470,7 +500,7 @@ export async function runProjectAgentChat(input: {
         canCreateChart: false,
         canCreateKpi: false,
         canAddToDashboard: true,
-        canSaveSql: true,
+        canSaveSql: false,
       },
       querySpecDraft: null,
       trust: {
