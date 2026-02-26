@@ -4,6 +4,7 @@ import { db, schema } from '@/lib/db';
 import { createDataSourceAdapter } from '@/lib/datasources';
 import type { DataSourceConfig } from '@/lib/datasources';
 import { ensureProjectAgentTables } from '@/server/project-agent/bootstrap';
+import { getPortalMcpOrchestrator } from '@/server/mcp/runtime';
 import { getArtifactById, getLatestArtifactVersion, listDashboardItems } from './artifactService';
 
 async function createRun(input: {
@@ -75,6 +76,45 @@ async function executeQuerySpec(input: {
     .limit(1);
   if (!source) throw new Error('Source not found for query spec');
 
+  if (source.type === 'mcp_server') {
+    const mcpSqlText = String(input.sqlTextOverride || spec.sqlText || '').trim();
+    if (!mcpSqlText.toUpperCase().startsWith('MCP::')) {
+      throw new Error('Invalid MCP query spec format');
+    }
+    const parsed = parseMcpQuerySpec(mcpSqlText);
+    if (!parsed.serverName) {
+      throw new Error('MCP query spec is missing server name');
+    }
+    if (!parsed.actions.length) {
+      throw new Error('MCP query spec has no executable actions');
+    }
+
+    const orchestrator = await getPortalMcpOrchestrator();
+    const rows: Array<Record<string, unknown>> = [];
+    for (const actionName of parsed.actions) {
+      const response = await orchestrator.executeAction(parsed.serverName, actionName, {}, {
+        sourceId: source.id,
+        organizationId: source.organizationId,
+        projectId: spec.projectId,
+      });
+      rows.push({
+        server: parsed.serverName,
+        action: actionName,
+        success: response.success,
+        error: response.error || null,
+        data: response.data ?? null,
+      });
+    }
+
+    return {
+      sqlText: mcpSqlText,
+      rowCount: rows.length,
+      rows,
+      columns: rows.length ? Object.keys(rows[0] || {}).map((name) => ({ name, type: 'json' })) : [],
+      source: { id: source.id, name: source.name, type: source.type },
+    };
+  }
+
   const adapter = await createDataSourceAdapter({
     id: source.id,
     organizationId: source.organizationId,
@@ -99,6 +139,22 @@ async function executeQuerySpec(input: {
   } finally {
     await adapter.disconnect().catch(() => {});
   }
+}
+
+function parseMcpQuerySpec(sqlText: string): { serverName: string; actions: string[] } {
+  const parts = String(sqlText || '').split('::');
+  const serverName = String(parts[1] || '').trim();
+  const actionsPart = String(parts[2] || '').trim();
+  const actions = actionsPart
+    .split(',')
+    .map((entry) => String(entry || '').trim())
+    .filter(Boolean)
+    .map((entry) => {
+      const dot = entry.indexOf('.');
+      return dot >= 0 ? entry.slice(dot + 1).trim() : entry;
+    })
+    .filter((entry) => entry !== 'none');
+  return { serverName, actions };
 }
 
 export async function runArtifact(input: {
