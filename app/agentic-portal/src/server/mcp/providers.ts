@@ -1,4 +1,4 @@
-export type McpProviderId = 'tres_finance' | 'hubspot' | 'ccview';
+export type McpProviderId = 'tres_finance' | 'hubspot' | 'ccview' | 'lighthouse';
 
 export interface McpCredentialField {
   key: string;
@@ -67,6 +67,22 @@ export const MCP_PROVIDER_DEFINITIONS: Record<McpProviderId, McpProviderDefiniti
       { label: 'Active Governance', prompt: 'Show active governance proposals and status.' },
       { label: 'Validator Summary', prompt: 'Summarize validator counts and performance trends.' },
       { label: 'Rewards Overview', prompt: 'Show rewards statistics and top beneficiaries.' },
+    ],
+  },
+  lighthouse: {
+    id: 'lighthouse',
+    serverName: 'lighthouse',
+    name: 'Lighthouse',
+    description: 'Canton network explorer with public API endpoints for transfers, validators, governance, and stats.',
+    credentialFields: [
+      { key: 'baseUrl', label: 'Custom Base URL (optional)', required: false, placeholder: 'https://lighthouse.cantonloop.com/api' },
+    ],
+    quickCommands: [
+      { label: 'Network Stats', prompt: 'Show overall Canton network statistics from Lighthouse.' },
+      { label: 'Recent Transfers', prompt: 'List recent transfers with pagination defaults.' },
+      { label: 'Validators', prompt: 'List validators and summarize key details.' },
+      { label: 'Governance Stats', prompt: 'Get governance statistics and summarize trends.' },
+      { label: 'Recent Transactions', prompt: 'List recent transactions and highlight notable activity.' },
     ],
   },
 };
