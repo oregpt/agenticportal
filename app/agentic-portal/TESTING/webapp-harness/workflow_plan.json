@@ -1,0 +1,4688 @@
+{
+  "generated_at_utc": "2026-02-26T15:31:59.157965Z",
+  "summary": {
+    "total_endpoints": 90,
+    "core_chain_length": 29,
+    "branch_count": 1
+  },
+  "endpoints": [
+    {
+      "endpoint_id": "ep_0001",
+      "method": "DELETE",
+      "path": "/api/artifacts/:id",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\artifacts\\[id]\\route.ts",
+      "source_line": 40,
+      "category": "Utility/Read-Only",
+      "required_keys": [
+        "id",
+        "artifactId"
+      ],
+      "produced_keys": [],
+      "side_effects": [
+        "mutates_data"
+      ],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0002",
+      "method": "DELETE",
+      "path": "/api/artifacts/:id/items/:itemId",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\artifacts\\[id]\\items\\[itemId]\\route.ts",
+      "source_line": 26,
+      "category": "Utility/Read-Only",
+      "required_keys": [
+        "id",
+        "itemId"
+      ],
+      "produced_keys": [],
+      "side_effects": [
+        "mutates_data"
+      ],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0003",
+      "method": "DELETE",
+      "path": "/api/dashboards/:id",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\dashboards\\[id]\\route.ts",
+      "source_line": 34,
+      "category": "Utility/Read-Only",
+      "required_keys": [
+        "id",
+        "dashboardId"
+      ],
+      "produced_keys": [],
+      "side_effects": [
+        "mutates_data"
+      ],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0004",
+      "method": "DELETE",
+      "path": "/api/datasources/:id",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\datasources\\[id]\\route.ts",
+      "source_line": 117,
+      "category": "Bulk Operation",
+      "required_keys": [
+        "id",
+        "datasourceId"
+      ],
+      "produced_keys": [],
+      "side_effects": [
+        "mutates_data"
+      ],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0005",
+      "method": "DELETE",
+      "path": "/api/delivery/channels/:id",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\delivery\\channels\\[id]\\route.ts",
+      "source_line": 85,
+      "category": "Utility/Read-Only",
+      "required_keys": [
+        "id",
+        "channelId"
+      ],
+      "produced_keys": [],
+      "side_effects": [
+        "mutates_data"
+      ],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0006",
+      "method": "DELETE",
+      "path": "/api/outputs/:id",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\outputs\\[id]\\route.ts",
+      "source_line": 50,
+      "category": "Utility/Read-Only",
+      "required_keys": [
+        "id",
+        "outputId"
+      ],
+      "produced_keys": [],
+      "side_effects": [
+        "mutates_data"
+      ],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0007",
+      "method": "DELETE",
+      "path": "/api/project-agent/::...path",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\project-agent\\[[...path]]\\route.ts",
+      "source_line": 383,
+      "category": "Bulk Operation",
+      "required_keys": [],
+      "produced_keys": [],
+      "side_effects": [
+        "mutates_data"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0008",
+      "method": "DELETE",
+      "path": "/api/views/:id",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\views\\[id]\\route.ts",
+      "source_line": 80,
+      "category": "Auth Token Producer",
+      "required_keys": [
+        "id",
+        "viewId"
+      ],
+      "produced_keys": [
+        "token"
+      ],
+      "side_effects": [
+        "mutates_data"
+      ],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0009",
+      "method": "DELETE",
+      "path": "/api/widgets/:id",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\widgets\\[id]\\route.ts",
+      "source_line": 86,
+      "category": "Utility/Read-Only",
+      "required_keys": [
+        "id",
+        "widgetId"
+      ],
+      "produced_keys": [],
+      "side_effects": [
+        "mutates_data"
+      ],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0010",
+      "method": "DELETE",
+      "path": "/api/workstreams/:id",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\workstreams\\[id]\\route.ts",
+      "source_line": 338,
+      "category": "Bulk Operation",
+      "required_keys": [
+        "id",
+        "workstreamId"
+      ],
+      "produced_keys": [],
+      "side_effects": [
+        "mutates_data"
+      ],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0011",
+      "method": "GET",
+      "path": "/api/admin/datasources",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\admin\\datasources\\route.ts",
+      "source_line": 10,
+      "category": "Utility/Read-Only",
+      "required_keys": [],
+      "produced_keys": [],
+      "side_effects": [],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0012",
+      "method": "GET",
+      "path": "/api/admin/organizations",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\admin\\organizations\\route.ts",
+      "source_line": 13,
+      "category": "Nested/Complex Body",
+      "required_keys": [],
+      "produced_keys": [],
+      "side_effects": [],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0013",
+      "method": "GET",
+      "path": "/api/admin/stats",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\admin\\stats\\route.ts",
+      "source_line": 10,
+      "category": "Auth Token Producer",
+      "required_keys": [],
+      "produced_keys": [],
+      "side_effects": [],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0014",
+      "method": "GET",
+      "path": "/api/admin/users",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\admin\\users\\route.ts",
+      "source_line": 10,
+      "category": "Utility/Read-Only",
+      "required_keys": [],
+      "produced_keys": [],
+      "side_effects": [],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0015",
+      "method": "GET",
+      "path": "/api/artifact-runs",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\artifact-runs\\route.ts",
+      "source_line": 5,
+      "category": "Utility/Read-Only",
+      "required_keys": [],
+      "produced_keys": [
+        "analysisId",
+        "jobId"
+      ],
+      "side_effects": [],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0016",
+      "method": "GET",
+      "path": "/api/artifact-runs/:id",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\artifact-runs\\[id]\\route.ts",
+      "source_line": 5,
+      "category": "Utility/Read-Only",
+      "required_keys": [
+        "id",
+        "artifact-runId"
+      ],
+      "produced_keys": [
+        "id",
+        "artifact-runId",
+        "analysisId",
+        "jobId"
+      ],
+      "side_effects": [],
+      "dependencies": [
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0017",
+      "method": "GET",
+      "path": "/api/artifacts",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\artifacts\\route.ts",
+      "source_line": 10,
+      "category": "Utility/Read-Only",
+      "required_keys": [],
+      "produced_keys": [],
+      "side_effects": [],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0018",
+      "method": "GET",
+      "path": "/api/artifacts/:id",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\artifacts\\[id]\\route.ts",
+      "source_line": 5,
+      "category": "Utility/Read-Only",
+      "required_keys": [
+        "id",
+        "artifactId"
+      ],
+      "produced_keys": [
+        "id",
+        "artifactId"
+      ],
+      "side_effects": [],
+      "dependencies": [
+        "ep_0016",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0019",
+      "method": "GET",
+      "path": "/api/artifacts/:id/items",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\artifacts\\[id]\\items\\route.ts",
+      "source_line": 5,
+      "category": "Utility/Read-Only",
+      "required_keys": [
+        "id",
+        "itemId"
+      ],
+      "produced_keys": [
+        "id",
+        "itemId"
+      ],
+      "side_effects": [],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0020",
+      "method": "GET",
+      "path": "/api/artifacts/:id/versions",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\artifacts\\[id]\\versions\\route.ts",
+      "source_line": 5,
+      "category": "Utility/Read-Only",
+      "required_keys": [
+        "id",
+        "versionId"
+      ],
+      "produced_keys": [
+        "id",
+        "versionId"
+      ],
+      "side_effects": [],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0021",
+      "method": "GET",
+      "path": "/api/auth/google/callback",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\auth\\google\\callback\\route.ts",
+      "source_line": 23,
+      "category": "Auth Token Producer",
+      "required_keys": [],
+      "produced_keys": [],
+      "side_effects": [],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0022",
+      "method": "GET",
+      "path": "/api/auth/google/start",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\auth\\google\\start\\route.ts",
+      "source_line": 13,
+      "category": "Utility/Read-Only",
+      "required_keys": [],
+      "produced_keys": [],
+      "side_effects": [],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0023",
+      "method": "GET",
+      "path": "/api/auth/me",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\auth\\me\\route.ts",
+      "source_line": 8,
+      "category": "Utility/Read-Only",
+      "required_keys": [],
+      "produced_keys": [],
+      "side_effects": [],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0024",
+      "method": "GET",
+      "path": "/api/auth/organizations",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\auth\\organizations\\route.ts",
+      "source_line": 4,
+      "category": "Utility/Read-Only",
+      "required_keys": [],
+      "produced_keys": [],
+      "side_effects": [],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0025",
+      "method": "GET",
+      "path": "/api/dashboards",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\dashboards\\route.ts",
+      "source_line": 19,
+      "category": "Utility/Read-Only",
+      "required_keys": [],
+      "produced_keys": [],
+      "side_effects": [],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0026",
+      "method": "GET",
+      "path": "/api/dashboards/:id",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\dashboards\\[id]\\route.ts",
+      "source_line": 5,
+      "category": "Utility/Read-Only",
+      "required_keys": [
+        "id",
+        "dashboardId"
+      ],
+      "produced_keys": [
+        "id",
+        "dashboardId"
+      ],
+      "side_effects": [],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0027",
+      "method": "GET",
+      "path": "/api/datasources",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\datasources\\route.ts",
+      "source_line": 44,
+      "category": "Bulk Operation",
+      "required_keys": [],
+      "produced_keys": [],
+      "side_effects": [],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0028",
+      "method": "GET",
+      "path": "/api/datasources/:id",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\datasources\\[id]\\route.ts",
+      "source_line": 11,
+      "category": "Bulk Operation",
+      "required_keys": [
+        "id",
+        "datasourceId"
+      ],
+      "produced_keys": [
+        "id",
+        "datasourceId"
+      ],
+      "side_effects": [],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0029",
+      "method": "GET",
+      "path": "/api/datasources/:id/schema",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\datasources\\[id]\\schema\\route.ts",
+      "source_line": 18,
+      "category": "Bulk Operation",
+      "required_keys": [
+        "id",
+        "schemaId"
+      ],
+      "produced_keys": [
+        "id",
+        "schemaId"
+      ],
+      "side_effects": [],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0030",
+      "method": "GET",
+      "path": "/api/datasources/mcp-providers",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\datasources\\mcp-providers\\route.ts",
+      "source_line": 8,
+      "category": "Utility/Read-Only",
+      "required_keys": [],
+      "produced_keys": [],
+      "side_effects": [],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0031",
+      "method": "GET",
+      "path": "/api/delivery/channels",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\delivery\\channels\\route.ts",
+      "source_line": 20,
+      "category": "Utility/Read-Only",
+      "required_keys": [],
+      "produced_keys": [],
+      "side_effects": [],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0032",
+      "method": "GET",
+      "path": "/api/delivery/channels/:id",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\delivery\\channels\\[id]\\route.ts",
+      "source_line": 24,
+      "category": "Utility/Read-Only",
+      "required_keys": [
+        "id",
+        "channelId"
+      ],
+      "produced_keys": [
+        "id",
+        "channelId"
+      ],
+      "side_effects": [],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0033",
+      "method": "GET",
+      "path": "/api/google-sheets-live/service-account",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\google-sheets-live\\service-account\\route.ts",
+      "source_line": 11,
+      "category": "Utility/Read-Only",
+      "required_keys": [],
+      "produced_keys": [],
+      "side_effects": [],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0034",
+      "method": "GET",
+      "path": "/api/org/members",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\org\\members\\route.ts",
+      "source_line": 10,
+      "category": "Utility/Read-Only",
+      "required_keys": [],
+      "produced_keys": [],
+      "side_effects": [],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0035",
+      "method": "GET",
+      "path": "/api/org/settings",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\org\\settings\\route.ts",
+      "source_line": 12,
+      "category": "Utility/Read-Only",
+      "required_keys": [],
+      "produced_keys": [],
+      "side_effects": [],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0036",
+      "method": "GET",
+      "path": "/api/org/stats",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\org\\stats\\route.ts",
+      "source_line": 10,
+      "category": "Auth Token Producer",
+      "required_keys": [],
+      "produced_keys": [],
+      "side_effects": [],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0037",
+      "method": "GET",
+      "path": "/api/outputs",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\outputs\\route.ts",
+      "source_line": 19,
+      "category": "Utility/Read-Only",
+      "required_keys": [],
+      "produced_keys": [],
+      "side_effects": [],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0038",
+      "method": "GET",
+      "path": "/api/outputs/:id",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\outputs\\[id]\\route.ts",
+      "source_line": 17,
+      "category": "Utility/Read-Only",
+      "required_keys": [
+        "id",
+        "outputId"
+      ],
+      "produced_keys": [
+        "id",
+        "outputId"
+      ],
+      "side_effects": [],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0039",
+      "method": "GET",
+      "path": "/api/project-agent/::...path",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\project-agent\\[[...path]]\\route.ts",
+      "source_line": 89,
+      "category": "Bulk Operation",
+      "required_keys": [],
+      "produced_keys": [
+        "id",
+        "project-agentId"
+      ],
+      "side_effects": [],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0040",
+      "method": "GET",
+      "path": "/api/query-specs",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\query-specs\\route.ts",
+      "source_line": 5,
+      "category": "Utility/Read-Only",
+      "required_keys": [],
+      "produced_keys": [],
+      "side_effects": [],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0041",
+      "method": "GET",
+      "path": "/api/query-specs/:id",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\query-specs\\[id]\\route.ts",
+      "source_line": 5,
+      "category": "Utility/Read-Only",
+      "required_keys": [
+        "id",
+        "query-specId"
+      ],
+      "produced_keys": [
+        "id",
+        "query-specId"
+      ],
+      "side_effects": [],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0042",
+      "method": "GET",
+      "path": "/api/views",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\views\\route.ts",
+      "source_line": 42,
+      "category": "Bulk Operation",
+      "required_keys": [],
+      "produced_keys": [
+        "token"
+      ],
+      "side_effects": [],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0043",
+      "method": "GET",
+      "path": "/api/views/:id",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\views\\[id]\\route.ts",
+      "source_line": 45,
+      "category": "Auth Token Producer",
+      "required_keys": [
+        "id",
+        "viewId"
+      ],
+      "produced_keys": [
+        "id",
+        "viewId",
+        "token"
+      ],
+      "side_effects": [],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0044",
+      "method": "GET",
+      "path": "/api/workstreams",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\workstreams\\route.ts",
+      "source_line": 35,
+      "category": "Bulk Operation",
+      "required_keys": [],
+      "produced_keys": [],
+      "side_effects": [],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0045",
+      "method": "GET",
+      "path": "/api/workstreams/:id",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\workstreams\\[id]\\route.ts",
+      "source_line": 56,
+      "category": "Bulk Operation",
+      "required_keys": [
+        "id",
+        "workstreamId"
+      ],
+      "produced_keys": [
+        "id",
+        "workstreamId"
+      ],
+      "side_effects": [],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0046",
+      "method": "PATCH",
+      "path": "/api/admin/organizations",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\admin\\organizations\\route.ts",
+      "source_line": 111,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0047",
+      "method": "PATCH",
+      "path": "/api/datasources/:id",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\datasources\\[id]\\route.ts",
+      "source_line": 57,
+      "category": "Async Trigger",
+      "required_keys": [
+        "id",
+        "datasourceId"
+      ],
+      "produced_keys": [
+        "id"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0048",
+      "method": "PATCH",
+      "path": "/api/delivery/channels/:id",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\delivery\\channels\\[id]\\route.ts",
+      "source_line": 44,
+      "category": "Async Trigger",
+      "required_keys": [
+        "id",
+        "channelId",
+        "deliveryId"
+      ],
+      "produced_keys": [
+        "id"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0049",
+      "method": "PATCH",
+      "path": "/api/outputs/:id",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\outputs\\[id]\\route.ts",
+      "source_line": 92,
+      "category": "Async Trigger",
+      "required_keys": [
+        "id",
+        "outputId"
+      ],
+      "produced_keys": [
+        "id"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0050",
+      "method": "PATCH",
+      "path": "/api/project-agent/::...path",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\project-agent\\[[...path]]\\route.ts",
+      "source_line": 322,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [
+        "id"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0051",
+      "method": "PATCH",
+      "path": "/api/widgets/:id",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\widgets\\[id]\\route.ts",
+      "source_line": 10,
+      "category": "Async Trigger",
+      "required_keys": [
+        "id",
+        "widgetId"
+      ],
+      "produced_keys": [
+        "id"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0052",
+      "method": "PATCH",
+      "path": "/api/workstreams/:id",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\workstreams\\[id]\\route.ts",
+      "source_line": 296,
+      "category": "Async Trigger",
+      "required_keys": [
+        "id",
+        "workstreamId"
+      ],
+      "produced_keys": [
+        "id"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0053",
+      "method": "POST",
+      "path": "/api/admin/organizations",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\admin\\organizations\\route.ts",
+      "source_line": 72,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [
+        "id",
+        "organizationId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0054",
+      "method": "POST",
+      "path": "/api/artifacts",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\artifacts\\route.ts",
+      "source_line": 28,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [
+        "id",
+        "artifactId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0055",
+      "method": "POST",
+      "path": "/api/artifacts/:id/items",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\artifacts\\[id]\\items\\route.ts",
+      "source_line": 18,
+      "category": "Async Trigger",
+      "required_keys": [
+        "id",
+        "itemId",
+        "artifactId"
+      ],
+      "produced_keys": [
+        "id",
+        "itemId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0056",
+      "method": "POST",
+      "path": "/api/artifacts/:id/run",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\artifacts\\[id]\\run\\route.ts",
+      "source_line": 5,
+      "category": "Async Trigger",
+      "required_keys": [
+        "id",
+        "runId",
+        "artifactId"
+      ],
+      "produced_keys": [
+        "id",
+        "runId",
+        "analysisId",
+        "jobId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0057",
+      "method": "POST",
+      "path": "/api/artifacts/:id/versions",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\artifacts\\[id]\\versions\\route.ts",
+      "source_line": 18,
+      "category": "Async Trigger",
+      "required_keys": [
+        "id",
+        "versionId",
+        "artifactId"
+      ],
+      "produced_keys": [
+        "id",
+        "versionId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0058",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\auth\\login\\route.ts",
+      "source_line": 41,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [
+        "id",
+        "loginId",
+        "token"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0059",
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\auth\\logout\\route.ts",
+      "source_line": 10,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [
+        "id",
+        "logoutId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0060",
+      "method": "POST",
+      "path": "/api/auth/register",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\auth\\register\\route.ts",
+      "source_line": 41,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [
+        "id",
+        "registerId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0061",
+      "method": "POST",
+      "path": "/api/auth/switch-organization",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\auth\\switch-organization\\route.ts",
+      "source_line": 7,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [
+        "id",
+        "switch-organizationId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0062",
+      "method": "POST",
+      "path": "/api/chat",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\chat\\route.ts",
+      "source_line": 20,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [
+        "id",
+        "chatId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0063",
+      "method": "POST",
+      "path": "/api/dashboards",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\dashboards\\route.ts",
+      "source_line": 71,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [
+        "id",
+        "dashboardId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0064",
+      "method": "POST",
+      "path": "/api/datasources",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\datasources\\route.ts",
+      "source_line": 105,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [
+        "id",
+        "datasourceId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0065",
+      "method": "POST",
+      "path": "/api/datasources/:id/query",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\datasources\\[id]\\query\\route.ts",
+      "source_line": 27,
+      "category": "Async Trigger",
+      "required_keys": [
+        "id",
+        "queryId",
+        "datasourceId"
+      ],
+      "produced_keys": [
+        "id",
+        "queryId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0066",
+      "method": "POST",
+      "path": "/api/datasources/:id/sync",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\datasources\\[id]\\sync\\route.ts",
+      "source_line": 18,
+      "category": "Async Trigger",
+      "required_keys": [
+        "id",
+        "syncId",
+        "datasourceId"
+      ],
+      "produced_keys": [
+        "id",
+        "syncId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0067",
+      "method": "POST",
+      "path": "/api/datasources/test-connection",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\datasources\\test-connection\\route.ts",
+      "source_line": 13,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [
+        "id",
+        "test-connectionId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0068",
+      "method": "POST",
+      "path": "/api/delivery/channels",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\delivery\\channels\\route.ts",
+      "source_line": 32,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [
+        "id",
+        "channelId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0069",
+      "method": "POST",
+      "path": "/api/delivery/channels/:id/run",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\delivery\\channels\\[id]\\run\\route.ts",
+      "source_line": 5,
+      "category": "Async Trigger",
+      "required_keys": [
+        "id",
+        "runId",
+        "channelId"
+      ],
+      "produced_keys": [
+        "id",
+        "runId",
+        "analysisId",
+        "jobId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0070",
+      "method": "POST",
+      "path": "/api/delivery/scheduler/run",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\delivery\\scheduler\\run\\route.ts",
+      "source_line": 5,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [
+        "id",
+        "runId",
+        "analysisId",
+        "jobId",
+        "token"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0071",
+      "method": "POST",
+      "path": "/api/demo/chat",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\demo\\chat\\route.ts",
+      "source_line": 114,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [
+        "id",
+        "chatId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0072",
+      "method": "POST",
+      "path": "/api/google-sheets-live/test-connection",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\google-sheets-live\\test-connection\\route.ts",
+      "source_line": 42,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [
+        "id",
+        "test-connectionId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0073",
+      "method": "POST",
+      "path": "/api/org/members/invite",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\org\\members\\invite\\route.ts",
+      "source_line": 11,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [
+        "id",
+        "inviteId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0074",
+      "method": "POST",
+      "path": "/api/outputs",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\outputs\\route.ts",
+      "source_line": 57,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [
+        "id",
+        "outputId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0075",
+      "method": "POST",
+      "path": "/api/outputs/:id/run",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\outputs\\[id]\\run\\route.ts",
+      "source_line": 25,
+      "category": "Async Trigger",
+      "required_keys": [
+        "id",
+        "runId",
+        "outputId"
+      ],
+      "produced_keys": [
+        "id",
+        "runId",
+        "analysisId",
+        "jobId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0076",
+      "method": "POST",
+      "path": "/api/project-agent/::...path",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\project-agent\\[[...path]]\\route.ts",
+      "source_line": 424,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [
+        "id",
+        "project-agentId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0077",
+      "method": "POST",
+      "path": "/api/project-agent/chat/add-to-dashboard",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\project-agent\\chat\\add-to-dashboard\\route.ts",
+      "source_line": 5,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [
+        "id",
+        "add-to-dashboardId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0078",
+      "method": "POST",
+      "path": "/api/project-agent/chat/create-chart",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\project-agent\\chat\\create-chart\\route.ts",
+      "source_line": 5,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [
+        "id",
+        "create-chartId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0079",
+      "method": "POST",
+      "path": "/api/project-agent/chat/create-kpi",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\project-agent\\chat\\create-kpi\\route.ts",
+      "source_line": 5,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [
+        "id",
+        "create-kpiId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0080",
+      "method": "POST",
+      "path": "/api/project-agent/chat/save-sql",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\project-agent\\chat\\save-sql\\route.ts",
+      "source_line": 5,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [
+        "id",
+        "save-sqlId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0081",
+      "method": "POST",
+      "path": "/api/project-agent/chat/save-table",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\project-agent\\chat\\save-table\\route.ts",
+      "source_line": 5,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [
+        "id",
+        "save-tableId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0082",
+      "method": "POST",
+      "path": "/api/query-specs",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\query-specs\\route.ts",
+      "source_line": 16,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [
+        "id",
+        "query-specId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0083",
+      "method": "POST",
+      "path": "/api/views",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\views\\route.ts",
+      "source_line": 87,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [
+        "id",
+        "viewId",
+        "token"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0084",
+      "method": "POST",
+      "path": "/api/widgets",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\widgets\\route.ts",
+      "source_line": 7,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [
+        "id",
+        "widgetId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0085",
+      "method": "POST",
+      "path": "/api/workstreams",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\workstreams\\route.ts",
+      "source_line": 116,
+      "category": "Async Trigger",
+      "required_keys": [],
+      "produced_keys": [
+        "id",
+        "workstreamId"
+      ],
+      "side_effects": [
+        "mutates_data",
+        "background_processing"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0086",
+      "method": "PUT",
+      "path": "/api/artifacts/:id",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\artifacts\\[id]\\route.ts",
+      "source_line": 19,
+      "category": "Dependency Producer",
+      "required_keys": [
+        "id",
+        "artifactId"
+      ],
+      "produced_keys": [
+        "id"
+      ],
+      "side_effects": [
+        "mutates_data"
+      ],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0087",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0087",
+      "method": "PUT",
+      "path": "/api/artifacts/:id/items/:itemId",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\artifacts\\[id]\\items\\[itemId]\\route.ts",
+      "source_line": 5,
+      "category": "Dependency Producer",
+      "required_keys": [
+        "id",
+        "itemId",
+        "artifactId"
+      ],
+      "produced_keys": [
+        "id"
+      ],
+      "side_effects": [
+        "mutates_data"
+      ],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0089",
+        "ep_0090"
+      ]
+    },
+    {
+      "endpoint_id": "ep_0088",
+      "method": "PUT",
+      "path": "/api/org/settings",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\org\\settings\\route.ts",
+      "source_line": 57,
+      "category": "Dependency Producer",
+      "required_keys": [],
+      "produced_keys": [],
+      "side_effects": [
+        "mutates_data"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0089",
+      "method": "PUT",
+      "path": "/api/project-agent/::...path",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\project-agent\\[[...path]]\\route.ts",
+      "source_line": 223,
+      "category": "Bulk Operation",
+      "required_keys": [],
+      "produced_keys": [
+        "id"
+      ],
+      "side_effects": [
+        "mutates_data"
+      ],
+      "dependencies": []
+    },
+    {
+      "endpoint_id": "ep_0090",
+      "method": "PUT",
+      "path": "/api/query-specs/:id",
+      "source_file": "C:\\Users\\oreph\\Documents\\AgenticLedger\\Custom Applications\\agenticportal\\app\\agentic-portal\\src\\app\\api\\query-specs\\[id]\\route.ts",
+      "source_line": 19,
+      "category": "Dependency Producer",
+      "required_keys": [
+        "id",
+        "query-specId"
+      ],
+      "produced_keys": [
+        "id"
+      ],
+      "side_effects": [
+        "mutates_data"
+      ],
+      "dependencies": [
+        "ep_0016",
+        "ep_0018",
+        "ep_0019",
+        "ep_0020",
+        "ep_0026",
+        "ep_0028",
+        "ep_0029",
+        "ep_0032",
+        "ep_0038",
+        "ep_0039",
+        "ep_0041",
+        "ep_0043",
+        "ep_0045",
+        "ep_0047",
+        "ep_0048",
+        "ep_0049",
+        "ep_0050",
+        "ep_0051",
+        "ep_0052",
+        "ep_0053",
+        "ep_0054",
+        "ep_0055",
+        "ep_0056",
+        "ep_0057",
+        "ep_0058",
+        "ep_0059",
+        "ep_0060",
+        "ep_0061",
+        "ep_0062",
+        "ep_0063",
+        "ep_0064",
+        "ep_0065",
+        "ep_0066",
+        "ep_0067",
+        "ep_0068",
+        "ep_0069",
+        "ep_0070",
+        "ep_0071",
+        "ep_0072",
+        "ep_0073",
+        "ep_0074",
+        "ep_0075",
+        "ep_0076",
+        "ep_0077",
+        "ep_0078",
+        "ep_0079",
+        "ep_0080",
+        "ep_0081",
+        "ep_0082",
+        "ep_0083",
+        "ep_0084",
+        "ep_0085",
+        "ep_0086",
+        "ep_0087",
+        "ep_0089"
+      ]
+    }
+  ],
+  "workflow": {
+    "core_chain": [
+      {
+        "endpoint_id": "ep_0050",
+        "name": "PATCH /api/project-agent/::...path",
+        "kind": "api",
+        "method": "PATCH",
+        "path": "/api/project-agent/::...path",
+        "required_keys": [],
+        "produced_keys": [
+          "id"
+        ],
+        "save_as": "id",
+        "body": {
+          "name": "E2E-{ts}"
+        }
+      },
+      {
+        "endpoint_id": "ep_0047",
+        "name": "PATCH /api/datasources/:id",
+        "kind": "api",
+        "method": "PATCH",
+        "path": "/api/datasources/:id",
+        "required_keys": [
+          "id",
+          "datasourceId"
+        ],
+        "produced_keys": [
+          "id"
+        ],
+        "save_as": "id",
+        "body": {
+          "name": "E2E-{ts}"
+        }
+      },
+      {
+        "endpoint_id": "ep_0016",
+        "name": "GET /api/artifact-runs/:id",
+        "kind": "api",
+        "method": "GET",
+        "path": "/api/artifact-runs/:id",
+        "required_keys": [
+          "id",
+          "artifact-runId"
+        ],
+        "produced_keys": [
+          "id",
+          "artifact-runId",
+          "analysisId",
+          "jobId"
+        ],
+        "save_as": "artifact-runId"
+      },
+      {
+        "endpoint_id": "ep_0018",
+        "name": "GET /api/artifacts/:id",
+        "kind": "api",
+        "method": "GET",
+        "path": "/api/artifacts/:id",
+        "required_keys": [
+          "id",
+          "artifactId"
+        ],
+        "produced_keys": [
+          "id",
+          "artifactId"
+        ],
+        "save_as": "artifactId"
+      },
+      {
+        "endpoint_id": "ep_0019",
+        "name": "GET /api/artifacts/:id/items",
+        "kind": "api",
+        "method": "GET",
+        "path": "/api/artifacts/:id/items",
+        "required_keys": [
+          "id",
+          "itemId"
+        ],
+        "produced_keys": [
+          "id",
+          "itemId"
+        ],
+        "save_as": "itemId"
+      },
+      {
+        "endpoint_id": "ep_0020",
+        "name": "GET /api/artifacts/:id/versions",
+        "kind": "api",
+        "method": "GET",
+        "path": "/api/artifacts/:id/versions",
+        "required_keys": [
+          "id",
+          "versionId"
+        ],
+        "produced_keys": [
+          "id",
+          "versionId"
+        ],
+        "save_as": "versionId"
+      },
+      {
+        "endpoint_id": "ep_0026",
+        "name": "GET /api/dashboards/:id",
+        "kind": "api",
+        "method": "GET",
+        "path": "/api/dashboards/:id",
+        "required_keys": [
+          "id",
+          "dashboardId"
+        ],
+        "produced_keys": [
+          "id",
+          "dashboardId"
+        ],
+        "save_as": "dashboardId"
+      },
+      {
+        "endpoint_id": "ep_0028",
+        "name": "GET /api/datasources/:id",
+        "kind": "api",
+        "method": "GET",
+        "path": "/api/datasources/:id",
+        "required_keys": [
+          "id",
+          "datasourceId"
+        ],
+        "produced_keys": [
+          "id",
+          "datasourceId"
+        ],
+        "save_as": "datasourceId"
+      },
+      {
+        "endpoint_id": "ep_0029",
+        "name": "GET /api/datasources/:id/schema",
+        "kind": "api",
+        "method": "GET",
+        "path": "/api/datasources/:id/schema",
+        "required_keys": [
+          "id",
+          "schemaId"
+        ],
+        "produced_keys": [
+          "id",
+          "schemaId"
+        ],
+        "save_as": "schemaId"
+      },
+      {
+        "endpoint_id": "ep_0032",
+        "name": "GET /api/delivery/channels/:id",
+        "kind": "api",
+        "method": "GET",
+        "path": "/api/delivery/channels/:id",
+        "required_keys": [
+          "id",
+          "channelId"
+        ],
+        "produced_keys": [
+          "id",
+          "channelId"
+        ],
+        "save_as": "channelId"
+      },
+      {
+        "endpoint_id": "ep_0038",
+        "name": "GET /api/outputs/:id",
+        "kind": "api",
+        "method": "GET",
+        "path": "/api/outputs/:id",
+        "required_keys": [
+          "id",
+          "outputId"
+        ],
+        "produced_keys": [
+          "id",
+          "outputId"
+        ],
+        "save_as": "outputId"
+      },
+      {
+        "endpoint_id": "ep_0041",
+        "name": "GET /api/query-specs/:id",
+        "kind": "api",
+        "method": "GET",
+        "path": "/api/query-specs/:id",
+        "required_keys": [
+          "id",
+          "query-specId"
+        ],
+        "produced_keys": [
+          "id",
+          "query-specId"
+        ],
+        "save_as": "query-specId"
+      },
+      {
+        "endpoint_id": "ep_0043",
+        "name": "GET /api/views/:id",
+        "kind": "api",
+        "method": "GET",
+        "path": "/api/views/:id",
+        "required_keys": [
+          "id",
+          "viewId"
+        ],
+        "produced_keys": [
+          "id",
+          "viewId",
+          "token"
+        ],
+        "save_as": "viewId"
+      },
+      {
+        "endpoint_id": "ep_0045",
+        "name": "GET /api/workstreams/:id",
+        "kind": "api",
+        "method": "GET",
+        "path": "/api/workstreams/:id",
+        "required_keys": [
+          "id",
+          "workstreamId"
+        ],
+        "produced_keys": [
+          "id",
+          "workstreamId"
+        ],
+        "save_as": "workstreamId"
+      },
+      {
+        "endpoint_id": "ep_0048",
+        "name": "PATCH /api/delivery/channels/:id",
+        "kind": "api",
+        "method": "PATCH",
+        "path": "/api/delivery/channels/:id",
+        "required_keys": [
+          "id",
+          "channelId",
+          "deliveryId"
+        ],
+        "produced_keys": [
+          "id"
+        ],
+        "save_as": "id",
+        "body": {
+          "name": "E2E-{ts}"
+        }
+      },
+      {
+        "endpoint_id": "ep_0049",
+        "name": "PATCH /api/outputs/:id",
+        "kind": "api",
+        "method": "PATCH",
+        "path": "/api/outputs/:id",
+        "required_keys": [
+          "id",
+          "outputId"
+        ],
+        "produced_keys": [
+          "id"
+        ],
+        "save_as": "id",
+        "body": {
+          "name": "E2E-{ts}"
+        }
+      },
+      {
+        "endpoint_id": "ep_0051",
+        "name": "PATCH /api/widgets/:id",
+        "kind": "api",
+        "method": "PATCH",
+        "path": "/api/widgets/:id",
+        "required_keys": [
+          "id",
+          "widgetId"
+        ],
+        "produced_keys": [
+          "id"
+        ],
+        "save_as": "id",
+        "body": {
+          "name": "E2E-{ts}"
+        }
+      },
+      {
+        "endpoint_id": "ep_0052",
+        "name": "PATCH /api/workstreams/:id",
+        "kind": "api",
+        "method": "PATCH",
+        "path": "/api/workstreams/:id",
+        "required_keys": [
+          "id",
+          "workstreamId"
+        ],
+        "produced_keys": [
+          "id"
+        ],
+        "save_as": "id",
+        "body": {
+          "name": "E2E-{ts}"
+        }
+      },
+      {
+        "endpoint_id": "ep_0055",
+        "name": "POST /api/artifacts/:id/items",
+        "kind": "api",
+        "method": "POST",
+        "path": "/api/artifacts/:id/items",
+        "required_keys": [
+          "id",
+          "itemId",
+          "artifactId"
+        ],
+        "produced_keys": [
+          "id",
+          "itemId"
+        ],
+        "save_as": "itemId",
+        "body": {
+          "name": "E2E-{ts}"
+        }
+      },
+      {
+        "endpoint_id": "ep_0056",
+        "name": "POST /api/artifacts/:id/run",
+        "kind": "api",
+        "method": "POST",
+        "path": "/api/artifacts/:id/run",
+        "required_keys": [
+          "id",
+          "runId",
+          "artifactId"
+        ],
+        "produced_keys": [
+          "id",
+          "runId",
+          "analysisId",
+          "jobId"
+        ],
+        "save_as": "runId",
+        "body": {
+          "name": "E2E-{ts}"
+        }
+      },
+      {
+        "endpoint_id": "ep_0057",
+        "name": "POST /api/artifacts/:id/versions",
+        "kind": "api",
+        "method": "POST",
+        "path": "/api/artifacts/:id/versions",
+        "required_keys": [
+          "id",
+          "versionId",
+          "artifactId"
+        ],
+        "produced_keys": [
+          "id",
+          "versionId"
+        ],
+        "save_as": "versionId",
+        "body": {
+          "name": "E2E-{ts}"
+        }
+      },
+      {
+        "endpoint_id": "ep_0065",
+        "name": "POST /api/datasources/:id/query",
+        "kind": "api",
+        "method": "POST",
+        "path": "/api/datasources/:id/query",
+        "required_keys": [
+          "id",
+          "queryId",
+          "datasourceId"
+        ],
+        "produced_keys": [
+          "id",
+          "queryId"
+        ],
+        "save_as": "queryId",
+        "body": {
+          "name": "E2E-{ts}"
+        }
+      },
+      {
+        "endpoint_id": "ep_0066",
+        "name": "POST /api/datasources/:id/sync",
+        "kind": "api",
+        "method": "POST",
+        "path": "/api/datasources/:id/sync",
+        "required_keys": [
+          "id",
+          "syncId",
+          "datasourceId"
+        ],
+        "produced_keys": [
+          "id",
+          "syncId"
+        ],
+        "save_as": "syncId",
+        "body": {
+          "name": "E2E-{ts}"
+        }
+      },
+      {
+        "endpoint_id": "ep_0069",
+        "name": "POST /api/delivery/channels/:id/run",
+        "kind": "api",
+        "method": "POST",
+        "path": "/api/delivery/channels/:id/run",
+        "required_keys": [
+          "id",
+          "runId",
+          "channelId"
+        ],
+        "produced_keys": [
+          "id",
+          "runId",
+          "analysisId",
+          "jobId"
+        ],
+        "save_as": "runId",
+        "body": {
+          "name": "E2E-{ts}"
+        }
+      },
+      {
+        "endpoint_id": "ep_0075",
+        "name": "POST /api/outputs/:id/run",
+        "kind": "api",
+        "method": "POST",
+        "path": "/api/outputs/:id/run",
+        "required_keys": [
+          "id",
+          "runId",
+          "outputId"
+        ],
+        "produced_keys": [
+          "id",
+          "runId",
+          "analysisId",
+          "jobId"
+        ],
+        "save_as": "runId",
+        "body": {
+          "name": "E2E-{ts}"
+        }
+      },
+      {
+        "endpoint_id": "ep_0086",
+        "name": "PUT /api/artifacts/:id",
+        "kind": "api",
+        "method": "PUT",
+        "path": "/api/artifacts/:id",
+        "required_keys": [
+          "id",
+          "artifactId"
+        ],
+        "produced_keys": [
+          "id"
+        ],
+        "save_as": "id",
+        "body": {
+          "name": "E2E-{ts}"
+        }
+      },
+      {
+        "endpoint_id": "ep_0087",
+        "name": "PUT /api/artifacts/:id/items/:itemId",
+        "kind": "api",
+        "method": "PUT",
+        "path": "/api/artifacts/:id/items/:itemId",
+        "required_keys": [
+          "id",
+          "itemId",
+          "artifactId"
+        ],
+        "produced_keys": [
+          "id"
+        ],
+        "save_as": "id",
+        "body": {
+          "name": "E2E-{ts}"
+        }
+      },
+      {
+        "endpoint_id": "ep_0090",
+        "name": "PUT /api/query-specs/:id",
+        "kind": "api",
+        "method": "PUT",
+        "path": "/api/query-specs/:id",
+        "required_keys": [
+          "id",
+          "query-specId"
+        ],
+        "produced_keys": [
+          "id"
+        ],
+        "save_as": "id",
+        "body": {
+          "name": "E2E-{ts}"
+        }
+      },
+      {
+        "endpoint_id": "ep_0004",
+        "name": "DELETE /api/datasources/:id",
+        "kind": "api",
+        "method": "DELETE",
+        "path": "/api/datasources/:id",
+        "required_keys": [
+          "id",
+          "datasourceId"
+        ],
+        "produced_keys": [],
+        "save_as": ""
+      }
+    ],
+    "branches": [
+      {
+        "endpoint_id": "ep_0010",
+        "name": "DELETE /api/workstreams/:id",
+        "kind": "api",
+        "method": "DELETE",
+        "path": "/api/workstreams/:id",
+        "required_keys": [
+          "id",
+          "workstreamId"
+        ],
+        "produced_keys": [],
+        "save_as": ""
+      }
+    ],
+    "covered_endpoint_ids": [
+      "ep_0004",
+      "ep_0010",
+      "ep_0011",
+      "ep_0014",
+      "ep_0015",
+      "ep_0016",
+      "ep_0017",
+      "ep_0018",
+      "ep_0019",
+      "ep_0020",
+      "ep_0022",
+      "ep_0023",
+      "ep_0024",
+      "ep_0025",
+      "ep_0026",
+      "ep_0028",
+      "ep_0029",
+      "ep_0030",
+      "ep_0031",
+      "ep_0032",
+      "ep_0033",
+      "ep_0034",
+      "ep_0035",
+      "ep_0037",
+      "ep_0038",
+      "ep_0040",
+      "ep_0041",
+      "ep_0043",
+      "ep_0045",
+      "ep_0047",
+      "ep_0048",
+      "ep_0049",
+      "ep_0050",
+      "ep_0051",
+      "ep_0052",
+      "ep_0055",
+      "ep_0056",
+      "ep_0057",
+      "ep_0065",
+      "ep_0066",
+      "ep_0069",
+      "ep_0075",
+      "ep_0086",
+      "ep_0087",
+      "ep_0090"
+    ]
+  },
+  "utility_hits": [
+    {
+      "method": "GET",
+      "path": "/api/admin/datasources",
+      "endpoint_id": "ep_0011",
+      "requires_keys": [],
+      "best_effort": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users",
+      "endpoint_id": "ep_0014",
+      "requires_keys": [],
+      "best_effort": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/artifact-runs",
+      "endpoint_id": "ep_0015",
+      "requires_keys": [],
+      "best_effort": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/artifacts",
+      "endpoint_id": "ep_0017",
+      "requires_keys": [],
+      "best_effort": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/google/start",
+      "endpoint_id": "ep_0022",
+      "requires_keys": [],
+      "best_effort": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "endpoint_id": "ep_0023",
+      "requires_keys": [],
+      "best_effort": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/organizations",
+      "endpoint_id": "ep_0024",
+      "requires_keys": [],
+      "best_effort": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/dashboards",
+      "endpoint_id": "ep_0025",
+      "requires_keys": [],
+      "best_effort": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/datasources/mcp-providers",
+      "endpoint_id": "ep_0030",
+      "requires_keys": [],
+      "best_effort": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/delivery/channels",
+      "endpoint_id": "ep_0031",
+      "requires_keys": [],
+      "best_effort": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/google-sheets-live/service-account",
+      "endpoint_id": "ep_0033",
+      "requires_keys": [],
+      "best_effort": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/org/members",
+      "endpoint_id": "ep_0034",
+      "requires_keys": [],
+      "best_effort": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/org/settings",
+      "endpoint_id": "ep_0035",
+      "requires_keys": [],
+      "best_effort": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/outputs",
+      "endpoint_id": "ep_0037",
+      "requires_keys": [],
+      "best_effort": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/query-specs",
+      "endpoint_id": "ep_0040",
+      "requires_keys": [],
+      "best_effort": false
+    }
+  ],
+  "cleanup": [
+    {
+      "state_key": "id",
+      "path": "/api/query-specs/{id}",
+      "method": "DELETE",
+      "non_critical": true
+    },
+    {
+      "state_key": "id",
+      "path": "/api/artifacts/{id}",
+      "method": "DELETE",
+      "non_critical": true
+    },
+    {
+      "state_key": "runId",
+      "path": "/api/outputs/{runId}",
+      "method": "DELETE",
+      "non_critical": true
+    },
+    {
+      "state_key": "runId",
+      "path": "/api/delivery/channels/{runId}",
+      "method": "DELETE",
+      "non_critical": true
+    },
+    {
+      "state_key": "syncId",
+      "path": "/api/datasources/{syncId}",
+      "method": "DELETE",
+      "non_critical": true
+    },
+    {
+      "state_key": "queryId",
+      "path": "/api/datasources/{queryId}",
+      "method": "DELETE",
+      "non_critical": true
+    },
+    {
+      "state_key": "versionId",
+      "path": "/api/artifacts/{versionId}",
+      "method": "DELETE",
+      "non_critical": true
+    },
+    {
+      "state_key": "runId",
+      "path": "/api/artifacts/{runId}",
+      "method": "DELETE",
+      "non_critical": true
+    },
+    {
+      "state_key": "itemId",
+      "path": "/api/artifacts/{itemId}",
+      "method": "DELETE",
+      "non_critical": true
+    },
+    {
+      "state_key": "id",
+      "path": "/api/workstreams/{id}",
+      "method": "DELETE",
+      "non_critical": true
+    },
+    {
+      "state_key": "id",
+      "path": "/api/widgets/{id}",
+      "method": "DELETE",
+      "non_critical": true
+    },
+    {
+      "state_key": "id",
+      "path": "/api/outputs/{id}",
+      "method": "DELETE",
+      "non_critical": true
+    },
+    {
+      "state_key": "id",
+      "path": "/api/delivery/channels/{id}",
+      "method": "DELETE",
+      "non_critical": true
+    },
+    {
+      "state_key": "workstreamId",
+      "path": "/api/workstreams/{workstreamId}",
+      "method": "DELETE",
+      "non_critical": true
+    },
+    {
+      "state_key": "viewId",
+      "path": "/api/views/{viewId}",
+      "method": "DELETE",
+      "non_critical": true
+    },
+    {
+      "state_key": "query-specId",
+      "path": "/api/query-specs/{query-specId}",
+      "method": "DELETE",
+      "non_critical": true
+    },
+    {
+      "state_key": "outputId",
+      "path": "/api/outputs/{outputId}",
+      "method": "DELETE",
+      "non_critical": true
+    },
+    {
+      "state_key": "channelId",
+      "path": "/api/delivery/channels/{channelId}",
+      "method": "DELETE",
+      "non_critical": true
+    },
+    {
+      "state_key": "schemaId",
+      "path": "/api/datasources/{schemaId}",
+      "method": "DELETE",
+      "non_critical": true
+    },
+    {
+      "state_key": "datasourceId",
+      "path": "/api/datasources/{datasourceId}",
+      "method": "DELETE",
+      "non_critical": true
+    },
+    {
+      "state_key": "dashboardId",
+      "path": "/api/dashboards/{dashboardId}",
+      "method": "DELETE",
+      "non_critical": true
+    },
+    {
+      "state_key": "artifactId",
+      "path": "/api/artifacts/{artifactId}",
+      "method": "DELETE",
+      "non_critical": true
+    },
+    {
+      "state_key": "artifact-runId",
+      "path": "/api/artifact-runs/{artifact-runId}",
+      "method": "DELETE",
+      "non_critical": true
+    },
+    {
+      "state_key": "id",
+      "path": "/api/datasources/{id}",
+      "method": "DELETE",
+      "non_critical": true
+    },
+    {
+      "state_key": "id",
+      "path": "/api/project-agent/{id}",
+      "method": "DELETE",
+      "non_critical": true
+    }
+  ],
+  "skipped": [
+    {
+      "method": "DELETE",
+      "path": "/api/artifacts/:id",
+      "endpoint_id": "ep_0001",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/artifacts/:id/items/:itemId",
+      "endpoint_id": "ep_0002",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/dashboards/:id",
+      "endpoint_id": "ep_0003",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/delivery/channels/:id",
+      "endpoint_id": "ep_0005",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/outputs/:id",
+      "endpoint_id": "ep_0006",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/project-agent/::...path",
+      "endpoint_id": "ep_0007",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/views/:id",
+      "endpoint_id": "ep_0008",
+      "reason": "auth/session endpoint not needed post-login"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/widgets/:id",
+      "endpoint_id": "ep_0009",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/organizations",
+      "endpoint_id": "ep_0012",
+      "reason": "requires admin role"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/stats",
+      "endpoint_id": "ep_0013",
+      "reason": "requires admin role"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/google/callback",
+      "endpoint_id": "ep_0021",
+      "reason": "auth/session endpoint not needed post-login"
+    },
+    {
+      "method": "GET",
+      "path": "/api/datasources",
+      "endpoint_id": "ep_0027",
+      "reason": "not selected by heuristic"
+    },
+    {
+      "method": "GET",
+      "path": "/api/org/stats",
+      "endpoint_id": "ep_0036",
+      "reason": "auth/session endpoint not needed post-login"
+    },
+    {
+      "method": "GET",
+      "path": "/api/project-agent/::...path",
+      "endpoint_id": "ep_0039",
+      "reason": "not selected by heuristic"
+    },
+    {
+      "method": "GET",
+      "path": "/api/views",
+      "endpoint_id": "ep_0042",
+      "reason": "not selected by heuristic"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workstreams",
+      "endpoint_id": "ep_0044",
+      "reason": "not selected by heuristic"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/organizations",
+      "endpoint_id": "ep_0046",
+      "reason": "requires admin role"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/organizations",
+      "endpoint_id": "ep_0053",
+      "reason": "requires admin role"
+    },
+    {
+      "method": "POST",
+      "path": "/api/artifacts",
+      "endpoint_id": "ep_0054",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "endpoint_id": "ep_0058",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "endpoint_id": "ep_0059",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "endpoint_id": "ep_0060",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/switch-organization",
+      "endpoint_id": "ep_0061",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "POST",
+      "path": "/api/chat",
+      "endpoint_id": "ep_0062",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "POST",
+      "path": "/api/dashboards",
+      "endpoint_id": "ep_0063",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "POST",
+      "path": "/api/datasources",
+      "endpoint_id": "ep_0064",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "POST",
+      "path": "/api/datasources/test-connection",
+      "endpoint_id": "ep_0067",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "POST",
+      "path": "/api/delivery/channels",
+      "endpoint_id": "ep_0068",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "POST",
+      "path": "/api/delivery/scheduler/run",
+      "endpoint_id": "ep_0070",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "POST",
+      "path": "/api/demo/chat",
+      "endpoint_id": "ep_0071",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "POST",
+      "path": "/api/google-sheets-live/test-connection",
+      "endpoint_id": "ep_0072",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "POST",
+      "path": "/api/org/members/invite",
+      "endpoint_id": "ep_0073",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "POST",
+      "path": "/api/outputs",
+      "endpoint_id": "ep_0074",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "POST",
+      "path": "/api/project-agent/::...path",
+      "endpoint_id": "ep_0076",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "POST",
+      "path": "/api/project-agent/chat/add-to-dashboard",
+      "endpoint_id": "ep_0077",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "POST",
+      "path": "/api/project-agent/chat/create-chart",
+      "endpoint_id": "ep_0078",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "POST",
+      "path": "/api/project-agent/chat/create-kpi",
+      "endpoint_id": "ep_0079",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "POST",
+      "path": "/api/project-agent/chat/save-sql",
+      "endpoint_id": "ep_0080",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "POST",
+      "path": "/api/project-agent/chat/save-table",
+      "endpoint_id": "ep_0081",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "POST",
+      "path": "/api/query-specs",
+      "endpoint_id": "ep_0082",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "POST",
+      "path": "/api/views",
+      "endpoint_id": "ep_0083",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "POST",
+      "path": "/api/widgets",
+      "endpoint_id": "ep_0084",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workstreams",
+      "endpoint_id": "ep_0085",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/org/settings",
+      "endpoint_id": "ep_0088",
+      "reason": "mutating endpoint not in inferred workflow"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/project-agent/::...path",
+      "endpoint_id": "ep_0089",
+      "reason": "mutating endpoint not in inferred workflow"
+    }
+  ],
+  "coverage": {
+    "run_target_covered": 45,
+    "total": 90,
+    "run_target_pct": 50.0,
+    "accounted_total": 90,
+    "accounted_pct": 100.0
+  },
+  "audit": {
+    "skip_buckets": {
+      "mutating endpoint not in inferred workflow": 34,
+      "auth/session endpoint not needed post-login": 3,
+      "requires admin role": 4,
+      "not selected by heuristic": 4
+    }
+  }
+}
