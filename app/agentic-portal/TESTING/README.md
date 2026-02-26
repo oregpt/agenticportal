@@ -33,6 +33,21 @@ Optional:
 - `SOURCE_ID`
 - `DELIVERY_RECIPIENT`
 
+## One-Command Regression
+
+Runs:
+- API smoke
+- UI smoke
+- UI use
+
+and writes a consolidated report:
+- `TESTING/reports/latest.json`
+- `TESTING/reports/regression-<timestamp>.json`
+
+```powershell
+npm run test:regression
+```
+
 ## 2) Webapp E2E Harness
 
 Generated folder: `TESTING/webapp-harness`
