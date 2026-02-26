@@ -26,12 +26,13 @@ import { Label } from '@/components/ui/label';
 import { Plus, Search, MoreHorizontal, Users, Database } from 'lucide-react';
 import Link from 'next/link';
 
-type McpProviderId = 'tres_finance' | 'hubspot' | 'ccview';
+type McpProviderId = 'tres_finance' | 'hubspot' | 'ccview' | 'lighthouse';
 
 const MCP_PROVIDER_OPTIONS: Array<{ id: McpProviderId; label: string }> = [
   { id: 'tres_finance', label: 'Tres Finance' },
   { id: 'hubspot', label: 'HubSpot' },
   { id: 'ccview', label: 'CCView' },
+  { id: 'lighthouse', label: 'Lighthouse' },
 ];
 
 interface Organization {

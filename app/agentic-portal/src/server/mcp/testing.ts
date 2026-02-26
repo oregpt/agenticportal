@@ -24,6 +24,11 @@ function setServerTokens(serverName: string, credentials: Record<string, string>
       token1: credentials.apiKey,
     };
   }
+  if (serverName === 'lighthouse') {
+    return {
+      token1: credentials.baseUrl || undefined,
+    };
+  }
   return {};
 }
 
