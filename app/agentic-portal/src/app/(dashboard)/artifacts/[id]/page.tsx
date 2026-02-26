@@ -273,10 +273,10 @@ export default function ArtifactDetailPage() {
     return `SELECT ${selectClause} FROM ${quoteIdentifier(selectedGuidedTable.name)}${whereClause} LIMIT 200`;
   }, [selectedGuidedTable, guidedColumns, guidedFilterColumn, guidedFilterValue]);
 
-  async function fetchChildBlock(item: DashboardItem): Promise<ChildBlock | null> {
-    try {
-      const detailRes = await fetch(`/api/artifacts/${item.childArtifactId}`);
-      const detailPayload = await detailRes.json().catch(() => ({}));
+async function fetchChildBlock(item: DashboardItem): Promise<ChildBlock | null> {
+  try {
+    const detailRes = await fetch(`/api/artifacts/${item.childArtifactId}`);
+    const detailPayload = await detailRes.json().catch(() => ({}));
       if (!detailRes.ok) return null;
       const detail = detailPayload as ArtifactDetails;
       const version =
@@ -285,14 +285,11 @@ export default function ArtifactDetailPage() {
         detail.versions[0] ||
         null;
 
-      const runRes = await fetch(`/api/artifacts/${item.childArtifactId}/run`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ triggerType: 'api' }),
-      });
+      const runRes = await fetch(`/api/artifact-runs?artifactId=${item.childArtifactId}&limit=1`);
       const runPayload = await runRes.json().catch(() => ({}));
-      const rows = Array.isArray(runPayload?.run?.resultSampleJson)
-        ? (runPayload.run.resultSampleJson as Array<Record<string, unknown>>)
+      const latestRun = Array.isArray(runPayload?.runs) ? runPayload.runs[0] : null;
+      const rows = Array.isArray(latestRun?.resultSampleJson)
+        ? (latestRun.resultSampleJson as Array<Record<string, unknown>>)
         : [];
 
       return {

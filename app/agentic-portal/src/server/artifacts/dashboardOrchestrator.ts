@@ -1,6 +1,7 @@
 import { addDashboardItem } from './dashboardService';
 import { createQuerySpec } from './querySpecService';
 import { createArtifactWithVersion, listArtifacts, listDashboardItems } from './artifactService';
+import { runArtifact } from './runService';
 import {
   buildDeterministicArtifactConfig,
   defaultDashboardDisplay,
@@ -111,11 +112,19 @@ export async function createDashboardBlockFromSql(input: {
       }),
   });
 
+  // Persist an initial data snapshot at creation time so artifacts are not "schema-only".
+  const initialRunResult = await runArtifact({
+    organizationId: input.organizationId,
+    artifactId: created.artifact.id,
+    triggerType: 'chat',
+  });
+
   return {
     querySpec,
     artifact: created.artifact,
     version: created.version,
     dashboard,
     dashboardItem: item,
+    initialRun: initialRunResult.run,
   };
 }
