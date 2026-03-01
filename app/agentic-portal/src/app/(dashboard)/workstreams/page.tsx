@@ -75,10 +75,13 @@ export default function WorkstreamsPage() {
 
   const fetchWorkstreams = async () => {
     try {
-      const response = await fetch('/api/workstreams');
+      const response = await fetch('/api/workstreams', { credentials: 'same-origin' });
       if (response.ok) {
         const data = await response.json();
         setWorkstreams(data.workstreams || []);
+      } else if (response.status === 401) {
+        router.push('/login');
+        return;
       }
     } catch (error) {
       console.error('Error fetching workstreams:', error);
@@ -218,7 +221,15 @@ export default function WorkstreamsPage() {
       {!isLoading && (
         <div className="grid gap-4">
           {filteredWorkstreams.map((ws) => (
-            <div key={ws.id} className="group block">
+            <div
+              key={ws.id}
+              className="group block cursor-pointer"
+              onClick={() => router.push(`/workstreams/${ws.id}`)}
+              onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/workstreams/${ws.id}`); }}
+              role="link"
+              tabIndex={0}
+              data-testid={`workstream-card-${ws.id}`}
+            >
               <div className="bg-card border border-border rounded-xl p-6 hover:border-primary/50 hover:shadow-lg transition-all">
                 <div className="flex items-start justify-between mb-5">
                   <div className="flex items-center gap-4">
@@ -246,7 +257,7 @@ export default function WorkstreamsPage() {
                       variant="outline"
                       size="sm"
                       disabled={deletingWorkstreamId === ws.id}
-                      onClick={() => void handleDelete(ws)}
+                      onClick={(e) => { e.stopPropagation(); void handleDelete(ws); }}
                       className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
                     >
                       {deletingWorkstreamId === ws.id ? (
@@ -297,7 +308,7 @@ export default function WorkstreamsPage() {
 
                   <Button
                     variant="ghost"
-                    onClick={() => router.push(`/workstreams/${ws.id}`)}
+                    onClick={(e) => { e.stopPropagation(); router.push(`/workstreams/${ws.id}`); }}
                     className="ml-auto flex items-center gap-2 text-muted-foreground group-hover:text-primary transition-colors"
                   >
                     <span className="text-sm">Open</span>

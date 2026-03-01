@@ -2,40 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/lib/db';
 import { eq, desc, sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
-import { cookies } from 'next/headers';
+import { getCurrentUser } from '@/lib/auth';
 import { getDataSourceIdsForWorkstream } from '@/server/datasource-assignments';
-
-// Helper to get current user from session
-async function getCurrentUser() {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get('agentic_session');
-  
-  if (!sessionCookie?.value) {
-    return null;
-  }
-  
-  try {
-    const decoded = Buffer.from(sessionCookie.value, 'base64').toString('utf-8');
-    const session = JSON.parse(decoded);
-    if (!session.userId) return null;
-    
-    const [user] = await db
-      .select()
-      .from(schema.users)
-      .where(eq(schema.users.id, session.userId))
-      .limit(1);
-    
-    return user;
-  } catch {
-    return null;
-  }
-}
 
 // GET /api/workstreams - List workstreams with stats
 export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();
-    const orgId = user?.organizationId || request.headers.get('x-org-id') || 'default-org';
+    if (!user) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+    const orgId = user.organizationId || 'default-org';
 
     // Get workstreams
     const workstreams = await db
@@ -116,8 +93,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await getCurrentUser();
-    const orgId = user?.organizationId || request.headers.get('x-org-id') || 'default-org';
-    const userId = user?.id || 'system';
+    if (!user) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+    const orgId = user.organizationId || 'default-org';
+    const userId = user.id;
 
     const body = await request.json();
     const { name, description, color } = body;

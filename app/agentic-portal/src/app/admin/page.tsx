@@ -16,20 +16,31 @@ export default function PlatformAdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
     async function fetchStats() {
       try {
-        const res = await fetch('/api/admin/stats');
+        const res = await fetch('/api/admin/stats', { signal: controller.signal });
         if (res.ok) {
           const data = await res.json();
           setStats(data);
         }
       } catch (error) {
-        console.error('Failed to fetch stats:', error);
+        if ((error as Error).name !== 'AbortError') {
+          console.error('Failed to fetch stats:', error);
+        }
       } finally {
+        clearTimeout(timeout);
         setIsLoading(false);
       }
     }
     fetchStats();
+
+    return () => {
+      clearTimeout(timeout);
+      controller.abort();
+    };
   }, []);
 
   const statCards = [

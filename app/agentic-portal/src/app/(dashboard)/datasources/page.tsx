@@ -801,6 +801,7 @@ function DataSourcesPageContent() {
                     return (
                       <button
                         key={type.id}
+                        data-testid={`ds-type-${type.id}`}
                         onClick={() => {
                           setSelectedType(type.id);
                           setTestResult(null);

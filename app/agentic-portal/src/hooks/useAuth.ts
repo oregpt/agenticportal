@@ -29,13 +29,19 @@ export function useAuth() {
         setUser(data.user);
       } else {
         setUser(null);
+        if (res.status === 401) {
+          const pathname = window.location.pathname;
+          if (pathname !== '/login' && pathname !== '/register' && pathname !== '/') {
+            router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
+          }
+        }
       }
     } catch {
       setUser(null);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     fetchUser();
@@ -78,7 +84,7 @@ export function useAuth() {
   const logout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
     setUser(null);
-    router.push('/');
+    router.push('/login');
   };
 
   const canAccessPlatformAdmin = user?.isPlatformAdmin === true;

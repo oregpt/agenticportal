@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db, schema } from '@/lib/db';
 import { eq, and, inArray } from 'drizzle-orm';
-import { cookies } from 'next/headers';
+import { getCurrentUser } from '@/lib/auth';
 import { ensureDataSourceAssignmentTable, getDataSourceIdsForWorkstream } from '@/server/datasource-assignments';
 import { ensureProjectAgentTables } from '@/server/project-agent/bootstrap';
 
@@ -26,32 +26,6 @@ function artifactTypeLabel(type: string) {
   return type;
 }
 
-// Helper to get current user from session
-async function getCurrentUser() {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get('agentic_session');
-
-  if (!sessionCookie?.value) {
-    return null;
-  }
-
-  try {
-    const decoded = Buffer.from(sessionCookie.value, 'base64').toString('utf-8');
-    const session = JSON.parse(decoded);
-    if (!session.userId) return null;
-
-    const [user] = await db
-      .select()
-      .from(schema.users)
-      .where(eq(schema.users.id, session.userId))
-      .limit(1);
-
-    return user;
-  } catch {
-    return null;
-  }
-}
-
 // GET /api/workstreams/[id] - Get workstream with all nodes
 export async function GET(
   request: NextRequest,
@@ -62,7 +36,10 @@ export async function GET(
     await ensureProjectAgentTables();
     const { id: workstreamId } = await params;
     const user = await getCurrentUser();
-    const orgId = user?.organizationId || request.headers.get('x-org-id') || 'default-org';
+    if (!user) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+    const orgId = user.organizationId || 'default-org';
 
     const [workstream] = await db
       .select()
@@ -302,7 +279,10 @@ export async function PATCH(
     await ensureProjectAgentTables();
     const { id: workstreamId } = await params;
     const user = await getCurrentUser();
-    const orgId = user?.organizationId || request.headers.get('x-org-id') || 'default-org';
+    if (!user) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+    const orgId = user.organizationId || 'default-org';
 
     const body = await request.json();
     const { name, description, color } = body;
@@ -342,7 +322,10 @@ export async function DELETE(
   try {
     const { id: workstreamId } = await params;
     const user = await getCurrentUser();
-    const orgId = user?.organizationId || request.headers.get('x-org-id') || 'default-org';
+    if (!user) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+    const orgId = user.organizationId || 'default-org';
 
     await db.transaction(async (tx) => {
       const [workstream] = await tx

@@ -225,21 +225,27 @@ function NewViewPageContent() {
               </div>
               <div className="space-y-2">
                 <Label>Data Source *</Label>
-                <Select value={dataSourceId} onValueChange={setDataSourceId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a data source" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {dataSources.map((ds) => (
-                      <SelectItem key={ds.id} value={ds.id}>
-                        <div className="flex items-center gap-2">
-                          <Database className="w-4 h-4" />
-                          {ds.name}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {!isLoading && dataSources.length === 0 ? (
+                  <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    No data sources found. <Link href="/datasources" className="underline font-medium">Add a data source</Link> first to create views.
+                  </div>
+                ) : (
+                  <Select value={dataSourceId} onValueChange={setDataSourceId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a data source" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {dataSources.map((ds) => (
+                        <SelectItem key={ds.id} value={ds.id}>
+                          <div className="flex items-center gap-2">
+                            <Database className="w-4 h-4" />
+                            {ds.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -303,15 +309,18 @@ function NewViewPageContent() {
                 </TabsContent>
               </Tabs>
 
-              <div className="mt-4">
-                <Button 
-                  variant="outline" 
+              <div className="mt-4 flex items-center gap-3">
+                <Button
+                  variant="outline"
                   onClick={handleRunQuery}
                   disabled={!currentSql.trim() || !dataSourceId || isRunning}
                 >
                   <Play className="w-4 h-4 mr-2" />
                   {isRunning ? 'Running...' : 'Run Query'}
                 </Button>
+                {!dataSourceId && !isLoading && (
+                  <span className="text-sm text-muted-foreground">Select a data source to run queries</span>
+                )}
               </div>
             </CardContent>
           </Card>

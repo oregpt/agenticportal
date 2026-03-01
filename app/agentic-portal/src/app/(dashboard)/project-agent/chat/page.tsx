@@ -1059,6 +1059,7 @@ export default function ProjectAgentChatPage() {
                 <Zap className="w-4 h-4" />
               </Button>
               <Textarea
+                data-testid="chat-input"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder='Ask a question (Shift+Enter for new line)'
